@@ -43,3 +43,4 @@ htmlcov/
 # Build
 *.tsbuildinfo
 claude-code-notion-plugin/
+.github/
