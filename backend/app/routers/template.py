@@ -1,0 +1,72 @@
+"""템플릿 생성 REST API 라우터"""
+
+from fastapi import APIRouter
+
+from app.agent.intent_analyzer import analyze_intent
+from app.agent.blueprint_generator import generate_blueprint
+from app.agent.orchestrator import AgentOrchestrator
+from app.schemas.template import (
+    TemplateGenerateRequest,
+    TemplateGenerateResponse,
+    TemplatePreviewRequest,
+    TemplatePreviewResponse,
+)
+
+router = APIRouter(prefix="/api/templates", tags=["templates"])
+
+
+@router.post("/generate", response_model=TemplateGenerateResponse)
+async def generate_template(req: TemplateGenerateRequest):
+    """템플릿 생성 (동기)"""
+    agent = AgentOrchestrator(
+        notion_token=req.notion_token,
+        parent_page_id=req.parent_page_id,
+    )
+
+    result = None
+    async for event in agent.process(req.prompt):
+        if event["type"] == "complete":
+            result = event.get("result", {})
+        elif event["type"] == "question":
+            return TemplateGenerateResponse(
+                success=False,
+                summary={"question": event["content"]},
+            )
+
+    if result:
+        return TemplateGenerateResponse(
+            success=True,
+            notion_url=result.get("main_url"),
+            page_id=result["pages"][0]["id"] if result.get("pages") else None,
+            summary={
+                "pages": len(result.get("pages", [])),
+                "databases": len(result.get("databases", [])),
+                "blocks": result.get("blocks", 0),
+            },
+        )
+
+    return TemplateGenerateResponse(success=False)
+
+
+@router.post("/preview", response_model=TemplatePreviewResponse)
+async def preview_template(req: TemplatePreviewRequest):
+    """Blueprint 미리보기 (생성 없이 구조만 확인)"""
+    intent = await analyze_intent(req.prompt)
+    blueprint = generate_blueprint(intent)
+    return TemplatePreviewResponse(blueprint=blueprint)
+
+
+@router.get("/patterns")
+async def list_patterns():
+    """사용 가능한 템플릿 패턴 목록"""
+    return {
+        "patterns": [
+            {"id": "dashboard", "name": "대시보드", "icon": "🏢", "description": "갤러리 뷰 + 칼럼 + 네비게이션"},
+            {"id": "tracker", "name": "트래커", "icon": "✅", "description": "습관/목표/학습 추적"},
+            {"id": "bookmark", "name": "북마크 사이트", "icon": "🔖", "description": "카테고리별 링크 정리"},
+            {"id": "project", "name": "프로젝트 보드", "icon": "📊", "description": "태스크 관리 + 칸반"},
+            {"id": "note", "name": "노트/기록", "icon": "📝", "description": "기록 수집 (Tea Note 스타일)"},
+            {"id": "onboarding", "name": "온보딩 가이드", "icon": "👋", "description": "신입사원 인수인계"},
+            {"id": "crm", "name": "CRM", "icon": "🤝", "description": "고객/영업 관리"},
+        ]
+    }

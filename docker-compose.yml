@@ -1,0 +1,23 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "9500:9500"
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "9501:9501"
+    environment:
+      - VITE_API_URL=http://localhost:9500
+      - VITE_WS_URL=ws://localhost:9500
+    depends_on:
+      - backend
+    restart: unless-stopped

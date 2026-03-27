@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# uv
+.python-version
+
+# Node
+node_modules/
+.next/
+
+# Vite
+dist/
+
+# Environment
+.env
+.env.dev
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Test
+htmlcov/
+.coverage
+.pytest_cache/
+
+# Build
+*.tsbuildinfo
+claude-code-notion-plugin/
