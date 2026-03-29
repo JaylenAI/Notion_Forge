@@ -64,7 +64,7 @@ def generate_blueprint(intent: IntentResult) -> dict[str, Any]:
 def _build_dashboard(bp: dict, intent: IntentResult, bg: str, color: str) -> None:
     title = intent.title or "To-Do List"
 
-    # 메인 DB
+    # 메인 DB (고도화: 더 풍부한 속성)
     bp["databases"].append({
         "title": title,
         "is_inline": True,
@@ -73,18 +73,26 @@ def _build_dashboard(bp: dict, intent: IntentResult, bg: str, color: str) -> Non
             "날짜": "date",
             "설명": "rich_text",
             "진행사항": "status",
+            "우선순위": {"type": "select", "options": [
+                {"name": "높음", "color": "red"},
+                {"name": "중간", "color": "yellow"},
+                {"name": "낮음", "color": "green"},
+            ]},
             "태그": {"type": "multi_select", "options": [
                 {"name": "ETC", "color": "yellow"},
                 {"name": "Study", "color": "blue"},
                 {"name": "Meeting", "color": "purple"},
                 {"name": "To-Do List", "color": "orange"},
+                {"name": "Project", "color": "green"},
             ]},
+            "담당자": "rich_text",
         },
         "sample_items": [
-            {"이름": "고객사 출장", "날짜": "2026-01-12", "태그": "ETC", "icon": "⭐"},
-            {"이름": "노션팀 1주차 스터디", "날짜": "2026-01-13", "태그": "Study", "icon": "📌"},
-            {"이름": "노션팀 주간 미팅", "날짜": "2026-01-15", "태그": "Meeting", "icon": "📁"},
-            {"이름": "마케팅 홍보 자료 제작하기", "날짜": "2026-01-16", "태그": "To-Do List", "icon": "⬜"},
+            {"이름": "고객사 출장 미팅", "날짜": "2026-01-12", "태그": "ETC", "우선순위": "높음", "icon": "⭐"},
+            {"이름": "노션팀 1주차 스터디", "날짜": "2026-01-13", "태그": "Study", "우선순위": "중간", "icon": "📌"},
+            {"이름": "노션팀 주간 미팅", "날짜": "2026-01-15", "태그": "Meeting", "우선순위": "중간", "icon": "📁"},
+            {"이름": "마케팅 홍보 자료 제작하기", "날짜": "2026-01-16", "태그": "To-Do List", "우선순위": "낮음", "icon": "⬜"},
+            {"이름": "Q2 목표 설정", "날짜": "2026-01-19", "태그": "Project", "우선순위": "높음", "icon": "🎯"},
         ],
     })
 

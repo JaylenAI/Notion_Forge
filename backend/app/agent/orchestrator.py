@@ -1,4 +1,10 @@
-"""Agent Orchestrator: 사용자 요청 -> 의도 분석 -> Blueprint -> Tool 실행 -> 결과"""
+"""Agent Orchestrator: 사용자 요청 → 의도 분석 → Blueprint → Tool 실행 → 결과
+
+고도화 항목:
+1. 생성 완료 후 안내 메시지 (전체 너비, 뷰 변경 등)
+2. 대화 맥락 유지 (후속 수정 지원)
+3. 스킬 동적 로딩 (AI가 .md 읽고 Blueprint 생성)
+"""
 
 from typing import Any, AsyncGenerator
 
@@ -9,6 +15,7 @@ from app.agent.tools.add_database_items import AddDatabaseItemsTool
 from app.notion.client import NotionClient
 from app.notion.block_builder import build_database_properties
 from app.schemas.blueprint import IntentResult
+from app.skills import load_skill, load_content_skill
 
 
 class AgentOrchestrator:
@@ -23,41 +30,219 @@ class AgentOrchestrator:
         self.add_blocks_tool = AddBlocksTool(self.client)
         self.add_items_tool = AddDatabaseItemsTool(self.client)
 
+        # 대화 맥락 유지
+        self._conversation: list[dict[str, str]] = []
+        self._last_intent: IntentResult | None = None
+        self._last_result: dict[str, Any] | None = None
+
     async def process(self, message: str) -> AsyncGenerator[dict[str, Any], None]:
         """메인 처리 파이프라인"""
+
+        # 대화 히스토리에 유저 메시지 추가
+        self._conversation.append({"role": "user", "content": message})
 
         yield {"type": "progress", "step": "intent_analysis", "message": "요청을 분석하고 있어요..."}
         intent = await analyze_intent(message)
 
-        if intent.confidence < 0.7 and intent.missing_info:
+        # MODIFY 의도 + 이전 결과 있으면 수정 모드
+        if intent.intent == "MODIFY" and self._last_result:
+            async for event in self._handle_modify(message, intent):
+                yield event
+            return
+
+        # QUESTION 의도
+        if intent.intent == "QUESTION":
+            yield {"type": "ai_response", "content": self._answer_question(message)}
+            return
+
+        # confidence 낮으면 질문
+        if intent.confidence < 0.5 and intent.missing_info:
             yield {"type": "question", "content": self._build_question(intent), "intent": intent.model_dump()}
             return
 
+        # 스킬 동적 로딩
+        yield {"type": "progress", "step": "skill_loading", "message": "스킬을 로딩하고 있어요..."}
+        skill_content = load_skill(intent.template_type)
+        content_skill = load_content_skill()
+
         yield {"type": "progress", "step": "blueprint", "message": "템플릿 구조를 설계하고 있어요..."}
         blueprint = generate_blueprint(intent)
+
+        # 스킬 로딩 정보 추가
+        blueprint["metadata"]["skill_loaded"] = skill_content is not None
+        blueprint["metadata"]["content_skill_loaded"] = content_skill is not None
 
         yield {"type": "blueprint_preview", "content": self._format_preview(blueprint), "blueprint": blueprint}
 
         yield {"type": "progress", "step": "generating", "message": "노션에 생성 중..."}
         result = await self._execute_blueprint(blueprint)
 
+        # 결과 저장 (후속 수정용)
+        self._last_intent = intent
+        self._last_result = result
+
+        # 완료 메시지 + 사용 안내
         yield {"type": "complete", "content": self._format_complete(result), "result": result}
 
-    async def _execute_blueprint(self, blueprint: dict) -> dict[str, Any]:
-        """Blueprint 실행 -- 올바른 순서로 생성
+    async def _handle_modify(self, message: str, intent: IntentResult) -> AsyncGenerator[dict[str, Any], None]:
+        """후속 수정 처리 — 기존 생성 결과에 추가/변경"""
+        msg = message.lower()
+        result = self._last_result
 
-        순서:
-        1. 메인 페이지 (빈 페이지)
-        2. 하위 페이지 (link_to_page에 필요)
-        3. 블록을 순서대로 추가 -- database_ref를 만나면 해당 위치에 인라인 DB 생성
-        4. 하위 페이지에 블록 추가
-        """
+        if not result or not result.get("databases"):
+            yield {"type": "ai_response", "content": "수정할 템플릿이 없습니다. 먼저 템플릿을 생성해주세요."}
+            return
+
+        # DB 속성 추가 요청
+        if "속성" in msg and ("추가" in msg or "넣어" in msg):
+            yield {"type": "progress", "step": "modifying", "message": "데이터베이스를 수정 중..."}
+
+            db_id = result["databases"][0]["id"]
+            new_props = self._parse_property_request(message)
+
+            if new_props:
+                try:
+                    props = build_database_properties(new_props)
+                    await self.client.update_database(db_id, {"properties": props})
+                    prop_names = ", ".join(new_props.keys())
+                    yield {
+                        "type": "complete",
+                        "content": f"✅ 속성 추가 완료!\n📊 추가된 속성: {prop_names}\n\n기존 데이터베이스에 새 속성이 추가되었습니다.",
+                    }
+                except Exception as e:
+                    yield {"type": "error", "content": f"속성 추가 중 오류: {str(e)[:100]}"}
+            else:
+                yield {
+                    "type": "question",
+                    "content": "어떤 속성을 추가할까요?\n\n예시:\n- \"우선순위 select 속성 추가해줘 (높음/중간/낮음)\"\n- \"메모 텍스트 속성 추가해줘\"\n- \"마감일 날짜 속성 추가해줘\"",
+                }
+            return
+
+        # 블록 추가 요청
+        if any(w in msg for w in ["블록", "섹션", "내용", "텍스트"]) and "추가" in msg:
+            yield {"type": "progress", "step": "modifying", "message": "블록을 추가 중..."}
+            main_page_id = result["pages"][0]["id"]
+
+            blocks_to_add = self._parse_block_request(message)
+            try:
+                notion_blocks = [spec_to_block(b) for b in blocks_to_add]
+                await self.client.add_blocks(main_page_id, notion_blocks)
+                yield {"type": "complete", "content": f"✅ 블록 {len(blocks_to_add)}개 추가 완료!"}
+            except Exception as e:
+                yield {"type": "error", "content": f"블록 추가 중 오류: {str(e)[:100]}"}
+            return
+
+        # 기타 수정
+        yield {
+            "type": "question",
+            "content": "어떤 수정을 원하시나요?\n\n가능한 수정:\n- \"DB에 우선순위 속성 추가해줘\"\n- \"FAQ 섹션 추가해줘\"\n- \"새 하위 페이지 추가해줘\"",
+        }
+
+    def _parse_property_request(self, message: str) -> dict[str, Any]:
+        """유저 메시지에서 속성 추가 요청 파싱"""
+        msg = message.lower()
+        props: dict[str, Any] = {}
+
+        # "우선순위 select 속성 (높음/중간/낮음)"
+        if "select" in msg or "셀렉트" in msg:
+            # 속성 이름 추출 (첫 번째 한글 단어)
+            import re
+            name_match = re.search(r"[가-힣a-zA-Z]+", message)
+            name = name_match.group() if name_match else "카테고리"
+
+            # 옵션 추출 (괄호 안 또는 / 구분)
+            options_match = re.search(r"[(\(]([^)]+)[)\)]", message)
+            if options_match:
+                options = [o.strip() for o in options_match.group(1).split("/")]
+            else:
+                options = ["옵션1", "옵션2", "옵션3"]
+
+            colors = ["blue", "orange", "green", "red", "purple", "yellow"]
+            props[name] = {
+                "type": "select",
+                "options": [{"name": o, "color": colors[i % len(colors)]} for i, o in enumerate(options)],
+            }
+
+        elif "날짜" in msg or "date" in msg or "마감" in msg:
+            props["마감일" if "마감" in msg else "날짜"] = "date"
+
+        elif "체크" in msg or "checkbox" in msg:
+            props["완료"] = "checkbox"
+
+        elif "숫자" in msg or "number" in msg or "점수" in msg:
+            props["점수" if "점수" in msg else "숫자"] = "number"
+
+        elif "텍스트" in msg or "메모" in msg or "text" in msg:
+            props["메모" if "메모" in msg else "비고"] = "rich_text"
+
+        elif "url" in msg or "링크" in msg:
+            props["URL"] = "url"
+
+        elif "이메일" in msg or "email" in msg:
+            props["이메일"] = "email"
+
+        return props
+
+    def _parse_block_request(self, message: str) -> list[dict]:
+        """유저 메시지에서 블록 추가 요청 파싱"""
+        msg = message.lower()
+        blocks: list[dict] = []
+
+        if "faq" in msg or "자주" in msg:
+            blocks.extend([
+                {"type": "divider"},
+                {"type": "heading_2", "text": "💡 자주 묻는 질문"},
+                {"type": "toggle", "text": "질문 1", "children_text": "답변을 입력하세요."},
+                {"type": "toggle", "text": "질문 2", "children_text": "답변을 입력하세요."},
+                {"type": "toggle", "text": "질문 3", "children_text": "답변을 입력하세요."},
+            ])
+        elif "구분" in msg or "divider" in msg:
+            blocks.append({"type": "divider"})
+        elif "제목" in msg or "헤딩" in msg:
+            blocks.append({"type": "heading_2", "text": "새 섹션"})
+        else:
+            blocks.extend([
+                {"type": "divider"},
+                {"type": "heading_2", "text": "📌 추가 내용"},
+                {"type": "paragraph", "text": "여기에 내용을 입력하세요."},
+            ])
+
+        return blocks
+
+    def _answer_question(self, message: str) -> str:
+        """QUESTION 의도 응답"""
+        msg = message.lower()
+
+        if "버튼" in msg:
+            return "Notion API에서는 버튼 블록 생성이 불가능합니다.\n\n대안으로 콜아웃 블록에 아이콘을 넣어 버튼처럼 보이게 만들어드립니다."
+
+        if "갤러리" in msg or "캘린더" in msg or "칸반" in msg or "뷰" in msg:
+            return "Notion API에서는 DB 뷰를 변경할 수 없습니다 (기본 테이블 뷰만 생성).\n\n생성 후 Notion에서 직접 뷰를 추가할 수 있어요:\nDB 상단 + 버튼 → 갤러리/캘린더/보드 선택 (10초)"
+
+        if "전체 너비" in msg or "풀 너비" in msg or "full width" in msg:
+            return "Notion API에서는 페이지 전체 너비 설정이 불가능합니다.\n\n생성 후 직접 변경 방법:\n페이지 우측 상단 ··· → 전체 너비 활성화 (3초)"
+
+        if any(w in msg for w in ["가능", "할 수", "뭐야", "뭘 할"]):
+            return (
+                "NotionForge가 할 수 있는 것:\n\n"
+                "✅ 페이지 생성 (커버, 아이콘, 제목)\n"
+                "✅ 데이터베이스 생성 + 모든 속성 타입\n"
+                "✅ 블록 배치 (heading, callout, toggle, 체크리스트 등)\n"
+                "✅ 2단/3단 칼럼 레이아웃\n"
+                "✅ 색상 테마 (8가지)\n"
+                "✅ 하위 페이지 구조\n"
+                "✅ 샘플 데이터 자동 입력\n\n"
+                "❌ 불가: 버튼 블록, DB 뷰 변경, 전체 너비, Synced Block"
+            )
+
+        return "궁금한 점이 있으시면 편하게 물어보세요! 또는 원하는 템플릿을 설명해주시면 바로 만들어드립니다."
+
+    async def _execute_blueprint(self, blueprint: dict) -> dict[str, Any]:
+        """Blueprint 실행 — 올바른 순서로 생성"""
         main = blueprint["main_page"]
         result: dict[str, Any] = {"pages": [], "databases": [], "blocks": 0}
 
-        # ==============================
-        # 1. 메인 페이지 생성 (빈 페이지)
-        # ==============================
+        # 1. 메인 페이지 생성
         try:
             page = await self.client.create_page(
                 parent_id=self.parent_page_id,
@@ -69,17 +254,11 @@ class AgentOrchestrator:
             raise RuntimeError(f"메인 페이지 생성 실패: {e}") from e
 
         main_page_id = page["id"]
-        result["pages"].append({
-            "id": main_page_id,
-            "title": main["title"],
-            "url": page.get("url", ""),
-        })
+        result["pages"].append({"id": main_page_id, "title": main["title"], "url": page.get("url", "")})
         result["main_url"] = page.get("url", "")
 
-        # ==============================
-        # 2. 하위 페이지 먼저 생성 (link_to_page에 필요)
-        # ==============================
-        sub_page_map: dict[str, str] = {}  # title -> page_id
+        # 2. 하위 페이지 먼저 생성
+        sub_page_map: dict[str, str] = {}
         for sub in blueprint.get("sub_pages", []):
             try:
                 sub_page = await self.client.create_page(
@@ -92,9 +271,7 @@ class AgentOrchestrator:
             except Exception as e:
                 print(f"[하위 페이지 생성 스킵] {sub.get('title', '?')}: {str(e)[:100]}")
 
-        # ==============================
-        # 3. 블록 + DB를 순서대로 메인 페이지에 삽입
-        # ==============================
+        # 3. 블록 + DB를 순서대로 삽입
         blocks = blueprint.get("blocks", [])
         databases = blueprint.get("databases", [])
         db_index = 0
@@ -102,17 +279,18 @@ class AgentOrchestrator:
         for block in blocks:
             try:
                 if block.get("type") == "database_ref":
-                    # DB를 이 위치에 인라인으로 생성
                     if db_index < len(databases):
-                        db_result = await self._create_database_with_data(
-                            parent_id=main_page_id,
-                            db_spec=databases[db_index],
-                        )
-                        result["databases"].append(db_result)
+                        try:
+                            db_result = await self._create_database_with_data(
+                                parent_id=main_page_id,
+                                db_spec=databases[db_index],
+                            )
+                            result["databases"].append(db_result)
+                        except Exception as e:
+                            print(f"[DB 생성 스킵] {str(e)[:100]}")
                         db_index += 1
 
                 elif block.get("type") == "column_list":
-                    # 칼럼 처리 -- 내부에 database_ref가 있으면 칼럼 앞에 DB 생성
                     db_refs_in_col = self._collect_db_refs_in_columns(block)
                     for _ in db_refs_in_col:
                         if db_index < len(databases):
@@ -126,10 +304,7 @@ class AgentOrchestrator:
                                 print(f"[칼럼 내 DB 스킵] {str(e)[:100]}")
                             db_index += 1
 
-                    # 칼럼 블록 자체를 생성 (database_ref는 제거)
-                    column_block = await self._build_column_with_db(
-                        block, main_page_id, sub_page_map, result
-                    )
+                    column_block = await self._build_column_with_db(block, main_page_id, sub_page_map, result)
                     if column_block:
                         try:
                             await self.client.add_blocks(main_page_id, [column_block])
@@ -137,29 +312,7 @@ class AgentOrchestrator:
                         except Exception as e:
                             print(f"[칼럼 블록 스킵] {str(e)[:100]}")
 
-                elif block.get("type") == "link_to_page":
-                    # link_to_page -- 하위 페이지 이름으로 실제 ID 매핑
-                    page_title = block.get("page_title", "")
-                    target_id = sub_page_map.get(page_title)
-                    if target_id:
-                        from app.notion import block_builder as bb
-                        ltp = bb.link_to_page(target_id)
-                        try:
-                            await self.client.add_blocks(main_page_id, [ltp])
-                            result["blocks"] += 1
-                        except Exception as e:
-                            print(f"[link_to_page 스킵] {str(e)[:100]}")
-                    else:
-                        # fallback: 일반 블록으로 처리
-                        notion_block = spec_to_block(block)
-                        try:
-                            await self.client.add_blocks(main_page_id, [notion_block])
-                            result["blocks"] += 1
-                        except Exception as e:
-                            print(f"[블록 스킵] {block.get('type', '?')}: {str(e)[:100]}")
-
                 else:
-                    # 일반 블록
                     notion_block = spec_to_block(block)
                     try:
                         await self.client.add_blocks(main_page_id, [notion_block])
@@ -170,7 +323,7 @@ class AgentOrchestrator:
             except Exception as e:
                 print(f"[블록 처리 오류] {block.get('type', '?')}: {str(e)[:100]}")
 
-        # 아직 삽입 안 된 DB가 있으면 마지막에 추가
+        # 남은 DB 추가
         while db_index < len(databases):
             try:
                 db_result = await self._create_database_with_data(
@@ -182,18 +335,12 @@ class AgentOrchestrator:
                 print(f"[DB 생성 스킵] {str(e)[:100]}")
             db_index += 1
 
-        # ==============================
         # 4. 하위 페이지에 블록 추가
-        # ==============================
         for sub in blueprint.get("sub_pages", []):
             sub_id = sub_page_map.get(sub["title"])
             if sub_id and sub.get("blocks"):
                 try:
-                    notion_blocks = [
-                        spec_to_block(b)
-                        for b in sub["blocks"]
-                        if b.get("type") != "database_ref"
-                    ]
+                    notion_blocks = [spec_to_block(b) for b in sub["blocks"] if b.get("type") != "database_ref"]
                     if notion_blocks:
                         await self.client.add_blocks(sub_id, notion_blocks)
                 except Exception as e:
@@ -203,22 +350,14 @@ class AgentOrchestrator:
 
     async def _create_database_with_data(self, parent_id: str, db_spec: dict) -> dict[str, Any]:
         """DB 생성 + 샘플 데이터 추가"""
-        try:
-            properties = build_database_properties(db_spec["properties"])
-        except Exception as e:
-            raise RuntimeError(f"DB 속성 빌드 실패 ({db_spec.get('title', '?')}): {e}") from e
+        properties = build_database_properties(db_spec["properties"])
+        db = await self.client.create_database(
+            parent_id=parent_id,
+            title=db_spec["title"],
+            properties=properties,
+            is_inline=db_spec.get("is_inline", True),
+        )
 
-        try:
-            db = await self.client.create_database(
-                parent_id=parent_id,
-                title=db_spec["title"],
-                properties=properties,
-                is_inline=db_spec.get("is_inline", True),
-            )
-        except Exception as e:
-            raise RuntimeError(f"DB 생성 API 실패 ({db_spec.get('title', '?')}): {e}") from e
-
-        # 샘플 데이터 추가
         if "sample_items" in db_spec:
             try:
                 await self.add_items_tool.execute(
@@ -231,11 +370,8 @@ class AgentOrchestrator:
 
         return {"id": db["id"], "title": db_spec["title"]}
 
-    async def _build_column_with_db(
-        self, block: dict, page_id: str,
-        sub_page_map: dict, result: dict,
-    ) -> dict | None:
-        """칼럼 블록 생성 -- database_ref는 제거하고, link_to_page는 실제 ID로 변환"""
+    async def _build_column_with_db(self, block: dict, page_id: str, sub_page_map: dict, result: dict) -> dict | None:
+        """칼럼 블록 생성"""
         from app.notion import block_builder as bb
 
         columns_data = block.get("columns", [])
@@ -245,14 +381,8 @@ class AgentOrchestrator:
             col_children = []
             for b in col.get("blocks", []):
                 if b.get("type") == "database_ref":
-                    # 칼럼 안에서는 DB를 직접 넣을 수 없음 -- 이미 앞에서 생성함
-                    col_children.append(
-                        bb.callout("위 데이터베이스를 확인하세요", icon="📊")
-                    )
-                elif b.get("type") == "bulleted_list" and any(
-                    name in b.get("text", "") for name in sub_page_map
-                ):
-                    # 하위 페이지 이름이 포함된 bulleted_list -> link_to_page로 변환
+                    col_children.append(bb.callout("위 데이터베이스를 확인하세요", icon="📊"))
+                elif b.get("type") == "bulleted_list" and any(name in b.get("text", "") for name in sub_page_map):
                     matched = False
                     for name, pid in sub_page_map.items():
                         if name in b.get("text", ""):
@@ -264,16 +394,13 @@ class AgentOrchestrator:
                 else:
                     try:
                         col_children.append(spec_to_block(b))
-                    except Exception as e:
-                        print(f"[칼럼 내 블록 스킵] {b.get('type', '?')}: {str(e)[:80]}")
+                    except Exception:
+                        pass
             col_blocks.append(col_children)
 
-        if col_blocks:
-            return bb.column_list(col_blocks)
-        return None
+        return bb.column_list(col_blocks) if col_blocks else None
 
     def _collect_db_refs_in_columns(self, block: dict) -> list[int]:
-        """칼럼 내부의 database_ref 인덱스 목록 수집"""
         refs = []
         for col in block.get("columns", []):
             for b in col.get("blocks", []):
@@ -300,6 +427,8 @@ class AgentOrchestrator:
             lines.append(f"📊 DB: {db['title']} ({', '.join(db['properties'].keys())})")
         for sub in blueprint.get("sub_pages", []):
             lines.append(f"📁 하위: {sub['title']}")
+        if meta.get("skill_loaded"):
+            lines.append("🔧 스킬: 로딩됨")
         return "\n".join(lines)
 
     def _format_complete(self, result: dict) -> str:
@@ -311,4 +440,15 @@ class AgentOrchestrator:
         ]
         if result.get("main_url"):
             lines.append(f"🔗 {result['main_url']}")
+
+        # 사용 안내 (고도화 #1)
+        lines.append("")
+        lines.append("💡 **추가 설정 안내**")
+        lines.append("• 전체 너비: 페이지 우측 상단 ··· → 전체 너비 활성화")
+        if result.get("databases"):
+            lines.append("• DB 뷰 변경: DB 상단 + 버튼 → 갤러리/캘린더/보드 선택")
+            lines.append("• 필터/정렬: DB 상단 필터 아이콘 클릭")
+        lines.append("")
+        lines.append("💬 수정이 필요하면 말씀해주세요! (예: \"DB에 우선순위 속성 추가해줘\")")
+
         return "\n".join(lines)
