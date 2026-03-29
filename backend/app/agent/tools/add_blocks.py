@@ -42,5 +42,13 @@ def spec_to_block(spec: dict) -> dict:
     elif t == "column_list":
         cols = [[spec_to_block(b) for b in c.get("blocks", []) if b.get("type") != "database_ref"] for c in spec.get("columns", [])]
         return bb.column_list(cols)
+    elif t == "tab":
+        return bb.tab_block(spec.get("tabs", []))
+    elif t == "bookmark_link":
+        return bb.bookmark(spec.get("url", ""))
+    elif t == "image":
+        return bb.image(spec.get("url", ""))
+    elif t == "table_of_contents":
+        return bb.table_of_contents()
     else:
         return bb.paragraph(spec.get("text", f"[{t}]"))

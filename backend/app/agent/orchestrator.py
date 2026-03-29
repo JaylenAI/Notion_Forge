@@ -217,7 +217,7 @@ class AgentOrchestrator:
             return "Notion API에서는 버튼 블록 생성이 불가능합니다.\n\n대안으로 콜아웃 블록에 아이콘을 넣어 버튼처럼 보이게 만들어드립니다."
 
         if "갤러리" in msg or "캘린더" in msg or "칸반" in msg or "뷰" in msg:
-            return "Notion API에서는 DB 뷰를 변경할 수 없습니다 (기본 테이블 뷰만 생성).\n\n생성 후 Notion에서 직접 뷰를 추가할 수 있어요:\nDB 상단 + 버튼 → 갤러리/캘린더/보드 선택 (10초)"
+            return "Views API (2026-03-19)로 갤러리, 캘린더, 칸반 뷰를 자동 생성할 수 있습니다!\n\n템플릿 생성 시 원하는 뷰를 말씀해주시면 자동으로 추가해드립니다.\n예: \"프로젝트 보드 만들어줘, 칸반 뷰로\""
 
         if "전체 너비" in msg or "풀 너비" in msg or "full width" in msg:
             return "Notion API에서는 페이지 전체 너비 설정이 불가능합니다.\n\n생성 후 직접 변경 방법:\n페이지 우측 상단 ··· → 전체 너비 활성화 (3초)"
@@ -232,7 +232,9 @@ class AgentOrchestrator:
                 "✅ 색상 테마 (8가지)\n"
                 "✅ 하위 페이지 구조\n"
                 "✅ 샘플 데이터 자동 입력\n\n"
-                "❌ 불가: 버튼 블록, DB 뷰 변경, 전체 너비, Synced Block"
+                "✅ DB 뷰 자동 생성 (갤러리, 캘린더, 칸반, 타임라인)\n"
+                "✅ Tab 블록 (콘텐츠 탭 구분)\n\n"
+                "❌ 불가: 버튼 블록, 전체 너비 설정"
             )
 
         return "궁금한 점이 있으시면 편하게 물어보세요! 또는 원하는 템플릿을 설명해주시면 바로 만들어드립니다."
@@ -349,7 +351,7 @@ class AgentOrchestrator:
         return result
 
     async def _create_database_with_data(self, parent_id: str, db_spec: dict) -> dict[str, Any]:
-        """DB 생성 + 샘플 데이터 추가"""
+        """DB 생성 + 샘플 데이터 + 뷰 자동 생성"""
         properties = build_database_properties(db_spec["properties"])
         db = await self.client.create_database(
             parent_id=parent_id,
@@ -358,17 +360,34 @@ class AgentOrchestrator:
             is_inline=db_spec.get("is_inline", True),
         )
 
+        db_id = db["id"]
+
+        # 샘플 데이터 추가
         if "sample_items" in db_spec:
             try:
                 await self.add_items_tool.execute(
-                    database_id=db["id"],
+                    database_id=db_id,
                     items=db_spec["sample_items"],
                     db_properties=db_spec["properties"],
                 )
             except Exception as e:
                 print(f"[샘플 데이터 스킵] {str(e)[:80]}")
 
-        return {"id": db["id"], "title": db_spec["title"]}
+        # 뷰 자동 생성 (Views API 2026-03-19)
+        views = db_spec.get("views", [])
+        for view in views:
+            try:
+                await self.client.create_view(
+                    database_id=db_id,
+                    view_type=view.get("type", "table"),
+                    title=view.get("title", ""),
+                    filters=view.get("filters"),
+                    sorts=view.get("sorts"),
+                )
+            except Exception as e:
+                print(f"[뷰 생성 스킵] {view.get('type', '?')}: {str(e)[:80]}")
+
+        return {"id": db_id, "title": db_spec["title"], "views": len(views)}
 
     async def _build_column_with_db(self, block: dict, page_id: str, sub_page_map: dict, result: dict) -> dict | None:
         """칼럼 블록 생성"""

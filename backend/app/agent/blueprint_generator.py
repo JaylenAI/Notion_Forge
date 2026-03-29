@@ -94,6 +94,11 @@ def _build_dashboard(bp: dict, intent: IntentResult, bg: str, color: str) -> Non
             {"이름": "마케팅 홍보 자료 제작하기", "날짜": "2026-01-16", "태그": "To-Do List", "우선순위": "낮음", "icon": "⬜"},
             {"이름": "Q2 목표 설정", "날짜": "2026-01-19", "태그": "Project", "우선순위": "높음", "icon": "🎯"},
         ],
+        # Views API (2026-03-19) - 추가 뷰 자동 생성
+        "views": [
+            {"type": "calendar", "title": "캘린더"},
+            {"type": "board", "title": "보드"},
+        ],
     })
 
     # 하위 페이지 (네비게이션용)
@@ -190,6 +195,9 @@ def _build_tracker(bp: dict, intent: IntentResult, bg: str, color: str) -> None:
             "날짜": "date",
             "메모": "rich_text",
         },
+        "views": [
+            {"type": "calendar", "title": "캘린더"},
+        ],
         "sample_items": [
             {"항목": "운동 30분", "카테고리": "건강", "icon": "💪"},
             {"항목": "독서 1시간", "카테고리": "학습", "icon": "📚"},
@@ -232,6 +240,9 @@ def _build_bookmark(bp: dict, intent: IntentResult, bg: str, color: str) -> None
             "즐겨찾기": "checkbox",
             "메모": "rich_text",
         },
+        "views": [
+            {"type": "gallery", "title": "갤러리"},
+        ],
         "sample_items": [
             {"이름": "Google", "icon": "🔍"},
             {"이름": "GitHub", "icon": "🐙"},
@@ -279,6 +290,10 @@ def _build_project(bp: dict, intent: IntentResult, bg: str, color: str) -> None:
             ]},
             "기한": "date",
         },
+        "views": [
+            {"type": "board", "title": "칸반 보드"},
+            {"type": "timeline", "title": "타임라인"},
+        ],
         "sample_items": [
             {"태스크": "기획서 작성", "icon": "📝"},
             {"태스크": "디자인 시안", "icon": "🎨"},
@@ -430,6 +445,9 @@ def _build_crm(bp: dict, intent: IntentResult, bg: str, color: str) -> None:
             "최근 연락": "date",
             "메모": "rich_text",
         },
+        "views": [
+            {"type": "board", "title": "파이프라인"},
+        ],
         "sample_items": [
             {"고객명": "김철수", "icon": "👤"},
             {"고객명": "이영희", "icon": "👤"},
