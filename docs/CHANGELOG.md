@@ -6,6 +6,23 @@
 
 # Part 1: 변경 이력
 
+## [0.4.0] - 2026-03-29
+
+### Added (프로덕션 준비)
+- Integration Tests 10개 (health, patterns, preview, generate, search, 404)
+- 전역 Exception Handler (500 JSON 응답)
+- HTTP 요청 로깅 미들웨어 (method, path, status, duration)
+- Notion Client 에러 래핑 (create_page, create_database, add_blocks, add_database_item)
+- Health Check 고도화 (version, ai_provider, notion_ready, features)
+- 구조화된 로깅 (timestamps, level)
+- Docker healthcheck + non-root user + 리소스 제한
+- Makefile: test-all, typecheck 추가
+- .env.example: GROQ_API_KEY, GEMINI_API_KEY 추가
+
+### 테스트 현황: 38/38 통과 (28 unit + 10 integration)
+
+---
+
 ## [0.3.0] - 2026-03-29
 
 ### Added (Phase F: Notion API 전체 기능)

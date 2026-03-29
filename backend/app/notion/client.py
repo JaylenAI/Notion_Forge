@@ -70,7 +70,10 @@ class NotionClient:
         if children:
             page_data["children"] = children[:100]
 
-        return await self.rate_limiter.call_with_retry(self._real_client.pages.create, **page_data)
+        try:
+            return await self.rate_limiter.call_with_retry(self._real_client.pages.create, **page_data)
+        except Exception as e:
+            raise RuntimeError(f"페이지 '{title}' 생성 실패: {e}") from e
 
     # ========================================
     # 데이터베이스
@@ -92,7 +95,10 @@ class NotionClient:
             "is_inline": is_inline,
             "properties": properties,
         }
-        return await self.rate_limiter.call_with_retry(self._real_client.databases.create, **db_data)
+        try:
+            return await self.rate_limiter.call_with_retry(self._real_client.databases.create, **db_data)
+        except Exception as e:
+            raise RuntimeError(f"데이터베이스 '{title}' 생성 실패: {e}") from e
 
     async def get_database(self, database_id: str) -> dict[str, Any]:
         if self.mock_mode:
@@ -124,16 +130,19 @@ class NotionClient:
         if self.mock_mode:
             return self._mock_blocks(page_id, blocks)
 
-        results = []
-        for i in range(0, len(blocks), 100):
-            chunk = blocks[i : i + 100]
-            resp = await self.rate_limiter.call_with_retry(
-                self._real_client.blocks.children.append,
-                block_id=page_id,
-                children=chunk,
-            )
-            results.extend(resp.get("results", []))
-        return results
+        try:
+            results = []
+            for i in range(0, len(blocks), 100):
+                chunk = blocks[i : i + 100]
+                resp = await self.rate_limiter.call_with_retry(
+                    self._real_client.blocks.children.append,
+                    block_id=page_id,
+                    children=chunk,
+                )
+                results.extend(resp.get("results", []))
+            return results
+        except Exception as e:
+            raise RuntimeError(f"블록 추가 실패 (page={page_id[:8]}...): {e}") from e
 
     # ========================================
     # DB 아이템
@@ -158,7 +167,10 @@ class NotionClient:
         if cover_url:
             page_data["cover"] = {"type": "external", "external": {"url": cover_url}}
 
-        return await self.rate_limiter.call_with_retry(self._real_client.pages.create, **page_data)
+        try:
+            return await self.rate_limiter.call_with_retry(self._real_client.pages.create, **page_data)
+        except Exception as e:
+            raise RuntimeError(f"DB 아이템 추가 실패 (db={database_id[:8]}...): {e}") from e
 
     # ========================================
     # Views API (2026-03-19)

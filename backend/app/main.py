@@ -1,15 +1,27 @@
-from fastapi import FastAPI
+import logging
+import time
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.routers import chat, template
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+logger = logging.getLogger("notionforge")
 
 
 def create_app() -> FastAPI:
     app = FastAPI(
         title="NotionForge API",
         description="AI 기반 노션 템플릿 자동 생성 에이전트",
-        version="0.1.0",
+        version="0.3.0",
         docs_url="/docs",
         redoc_url="/redoc",
     )
@@ -22,6 +34,22 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(exc), "detail": "Internal server error"},
+        )
+
+    @app.middleware("http")
+    async def log_requests(request: Request, call_next):
+        start = time.time()
+        response = await call_next(request)
+        duration = time.time() - start
+        logger.info(f"{request.method} {request.url.path} → {response.status_code} ({duration:.2f}s)")
+        return response
+
     app.include_router(chat.router)
     app.include_router(template.router)
 
@@ -29,7 +57,10 @@ def create_app() -> FastAPI:
     async def health_check():
         return {
             "status": "ok",
-            "version": "0.1.0",
+            "version": "0.3.0",
+            "ai_provider": settings.ai_provider,
+            "notion_ready": settings.notion_ready,
+            "features": 74,
         }
 
     return app

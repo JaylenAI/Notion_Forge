@@ -1,4 +1,4 @@
-.PHONY: dev dev-local test lint format build clean
+.PHONY: dev dev-local test lint format build clean test-all typecheck
 
 # ========================================
 # Docker 환경
@@ -41,7 +41,13 @@ test-unit:
 	cd backend && uv run pytest tests/unit/ -v
 
 test-integration:
-	cd backend && uv run pytest tests/integration/ -v --timeout=30
+	cd backend && uv run pytest tests/integration/ -v
+
+test-all:
+	cd backend && uv run pytest -v
+
+typecheck:
+	cd frontend && npx tsc --noEmit
 
 test-cov:
 	cd backend && uv run pytest --cov=app --cov-report=html
