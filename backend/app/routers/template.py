@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.agent.intent_analyzer import analyze_intent
 from app.agent.blueprint_generator import generate_blueprint
 from app.agent.orchestrator import AgentOrchestrator
+from app.notion.client import NotionClient
 from app.schemas.template import (
     TemplateGenerateRequest,
     TemplateGenerateResponse,
@@ -70,3 +71,45 @@ async def list_patterns():
             {"id": "crm", "name": "CRM", "icon": "🤝", "description": "고객/영업 관리"},
         ]
     }
+
+
+@router.get("/search")
+async def search_workspace(q: str = ""):
+    """워크스페이스 검색"""
+    from app.config import settings
+
+    client = NotionClient(token=settings.notion_api_key, parent_page_id=settings.notion_parent_page_id)
+    if client.mock_mode:
+        return {"results": []}
+    results = await client.search(query=q)
+    return results
+
+
+@router.post("/{page_id}/comment")
+async def add_comment(page_id: str, text: str = ""):
+    """페이지에 코멘트 추가"""
+    from app.config import settings
+
+    client = NotionClient(token=settings.notion_api_key, parent_page_id=settings.notion_parent_page_id)
+    result = await client.add_comment(page_id, text)
+    return result
+
+
+@router.post("/{page_id}/lock")
+async def lock_page(page_id: str, locked: bool = True):
+    """페이지 잠금/해제"""
+    from app.config import settings
+
+    client = NotionClient(token=settings.notion_api_key, parent_page_id=settings.notion_parent_page_id)
+    result = await client.lock_page(page_id, locked)
+    return result
+
+
+@router.post("/{page_id}/archive")
+async def archive_page(page_id: str):
+    """페이지 아카이브"""
+    from app.config import settings
+
+    client = NotionClient(token=settings.notion_api_key, parent_page_id=settings.notion_parent_page_id)
+    result = await client.archive_page(page_id)
+    return result

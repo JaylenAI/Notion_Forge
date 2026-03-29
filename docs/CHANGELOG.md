@@ -6,6 +6,34 @@
 
 # Part 1: 변경 이력
 
+## [0.3.0] - 2026-03-29
+
+### Added (Phase F: Notion API 전체 기능)
+- Search API (워크스페이스 검색)
+- Users API (목록/조회)
+- Comments API (코멘트 추가/조회)
+- Page archive/restore (아카이브/복원)
+- Page/DB lock (잠금/해제)
+- Markdown API (마크다운 페이지 생성/조회)
+- Custom Emoji API (커스텀 이모지 조회)
+- DB mention, Template mention (@today, @now, @me)
+- Icon helpers (emoji, external, native, custom_emoji)
+- DB property: relation, formula, rollup, auto-generated types
+- DB item: people, files, phone_number, relation 값 포맷
+- Router: search, comment, lock, archive 엔드포인트
+
+### Added (Phase A~E: 블록 전체 지원)
+- quote (인용), table (정적 테이블), heading_4
+- code block (60+ 언어), video, audio, file, pdf
+- breadcrumb, equation block, synced_block
+- toggle heading (is_toggleable), 4~5단 칼럼
+- embed (12개 서비스: Figma, GitHub, Loom, Miro 등)
+- 인라인: italic, underline, strikethrough, inline code, link, inline equation
+
+### 전체 기능 수: 74개 (100% 구현)
+
+---
+
 ## [0.2.0] - 2026-03-29
 
 ### Added

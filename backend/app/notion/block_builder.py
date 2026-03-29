@@ -1,8 +1,18 @@
-"""Notion API 블록 JSON을 쉽게 생성하는 유틸리티"""
+"""Notion API 블록 JSON 빌더 — 전체 블록 타입 지원
+
+Phase A: 기본 블록 (heading_4, table, quote)
+Phase B: 인라인 서식 (italic, underline, strikethrough, code, link, equation)
+Phase C: 미디어 (code block, video, audio, file, pdf)
+Phase D: 고급 (breadcrumb, synced_block, 4~5단 칼럼, 토글 제목, equation block, comment)
+Phase E: 임베드 (embed 블록)
+"""
 
 from typing import Any
 
-# Notion API가 허용하는 색상 값
+# ============================================================
+# 색상 유효성 검사
+# ============================================================
+
 VALID_COLORS = {
     "default", "gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red",
     "gray_background", "brown_background", "orange_background", "yellow_background",
@@ -11,28 +21,91 @@ VALID_COLORS = {
 
 
 def _safe_color(color: str) -> str:
-    """유효한 색상값인지 확인하고 아니면 default 반환"""
     return color if color in VALID_COLORS else "default"
 
 
-def rich_text(content: str, bold: bool = False, color: str = "default") -> list[dict]:
-    """Rich text 배열 생성"""
-    annotations = {"bold": bold, "color": _safe_color(color)}
-    return [{"type": "text", "text": {"content": content}, "annotations": annotations}]
+# ============================================================
+# Phase B: Rich Text (인라인 서식 전체 지원)
+# ============================================================
+
+def rich_text(
+    content: str,
+    bold: bool = False,
+    italic: bool = False,
+    underline: bool = False,
+    strikethrough: bool = False,
+    code: bool = False,
+    color: str = "default",
+    link: str | None = None,
+) -> list[dict]:
+    """Rich text 배열 생성 — 모든 인라인 서식 지원"""
+    annotations = {
+        "bold": bold,
+        "italic": italic,
+        "underline": underline,
+        "strikethrough": strikethrough,
+        "code": code,
+        "color": _safe_color(color),
+    }
+    text_obj: dict[str, Any] = {"content": content}
+    if link:
+        text_obj["link"] = {"url": link}
+    return [{"type": "text", "text": text_obj, "annotations": annotations}]
 
 
-def heading(text: str, level: int = 1, color: str = "default") -> dict[str, Any]:
-    """heading_1/2/3 블록"""
+def rich_text_equation(expression: str) -> list[dict]:
+    """인라인 수식 (LaTeX)"""
+    return [{"type": "equation", "equation": {"expression": expression}}]
+
+
+def rich_text_mention_page(page_id: str) -> list[dict]:
+    """페이지 멘션 (인라인)"""
+    return [{"type": "mention", "mention": {"type": "page", "page": {"id": page_id}}}]
+
+
+def rich_text_mention_date(start: str, end: str | None = None) -> list[dict]:
+    """날짜 멘션 (인라인)"""
+    date_obj: dict[str, Any] = {"start": start}
+    if end:
+        date_obj["end"] = end
+    return [{"type": "mention", "mention": {"type": "date", "date": date_obj}}]
+
+
+def rich_text_mention_user(user_id: str) -> list[dict]:
+    """유저 멘션 (인라인)"""
+    return [{"type": "mention", "mention": {"type": "user", "user": {"id": user_id}}}]
+
+
+def rich_text_mention_database(database_id: str) -> list[dict]:
+    """DB 멘션 (인라인)"""
+    return [{"type": "mention", "mention": {"type": "database", "database": {"id": database_id}}}]
+
+
+def rich_text_template_mention(template_type: str = "today") -> list[dict]:
+    """템플릿 멘션 (@today, @now, @me)"""
+    if template_type == "me":
+        return [{"type": "mention", "mention": {"type": "template_mention", "template_mention": {"type": "template_mention_user", "template_mention_user": "me"}}}]
+    return [{"type": "mention", "mention": {"type": "template_mention", "template_mention": {"type": "template_mention_date", "template_mention_date": template_type}}}]
+
+
+# ============================================================
+# Phase A: 기본 블록 (전체)
+# ============================================================
+
+def heading(text: str, level: int = 1, color: str = "default", is_toggleable: bool = False, children: list[dict] | None = None) -> dict[str, Any]:
+    """heading_1/2/3/4 블록 — 토글 제목 지원"""
     key = f"heading_{level}"
-    return {
+    block: dict[str, Any] = {
         "object": "block",
         "type": key,
-        key: {"rich_text": rich_text(text), "color": _safe_color(color)},
+        key: {"rich_text": rich_text(text), "color": _safe_color(color), "is_toggleable": is_toggleable},
     }
+    if is_toggleable and children:
+        block[key]["children"] = children
+    return block
 
 
 def paragraph(text: str, color: str = "default") -> dict[str, Any]:
-    """paragraph 블록"""
     return {
         "object": "block",
         "type": "paragraph",
@@ -40,9 +113,8 @@ def paragraph(text: str, color: str = "default") -> dict[str, Any]:
     }
 
 
-def callout(text: str, icon: str = "📌", color: str = "default") -> dict[str, Any]:
-    """callout 블록"""
-    return {
+def callout(text: str, icon: str = "📌", color: str = "default", children: list[dict] | None = None) -> dict[str, Any]:
+    block: dict[str, Any] = {
         "object": "block",
         "type": "callout",
         "callout": {
@@ -51,10 +123,12 @@ def callout(text: str, icon: str = "📌", color: str = "default") -> dict[str, 
             "color": _safe_color(color),
         },
     }
+    if children:
+        block["callout"]["children"] = children
+    return block
 
 
 def toggle(text: str, children: list[dict] | None = None, color: str = "default") -> dict[str, Any]:
-    """toggle 블록"""
     block: dict[str, Any] = {
         "object": "block",
         "type": "toggle",
@@ -65,69 +139,208 @@ def toggle(text: str, children: list[dict] | None = None, color: str = "default"
     return block
 
 
-def to_do(text: str, checked: bool = False) -> dict[str, Any]:
-    """to_do 블록"""
+def to_do(text: str, checked: bool = False, color: str = "default") -> dict[str, Any]:
     return {
         "object": "block",
         "type": "to_do",
-        "to_do": {"rich_text": rich_text(text), "checked": checked},
+        "to_do": {"rich_text": rich_text(text), "checked": checked, "color": _safe_color(color)},
     }
 
 
 def divider() -> dict[str, Any]:
-    """divider 블록"""
     return {"object": "block", "type": "divider", "divider": {}}
 
 
-def bulleted_list(text: str, color: str = "default") -> dict[str, Any]:
-    """bulleted_list_item 블록"""
-    return {
+def bulleted_list(text: str, color: str = "default", children: list[dict] | None = None) -> dict[str, Any]:
+    block: dict[str, Any] = {
         "object": "block",
         "type": "bulleted_list_item",
         "bulleted_list_item": {"rich_text": rich_text(text), "color": _safe_color(color)},
     }
+    if children:
+        block["bulleted_list_item"]["children"] = children
+    return block
 
 
-def numbered_list(text: str, color: str = "default") -> dict[str, Any]:
-    """numbered_list_item 블록"""
-    return {
+def numbered_list(text: str, color: str = "default", children: list[dict] | None = None) -> dict[str, Any]:
+    block: dict[str, Any] = {
         "object": "block",
         "type": "numbered_list_item",
         "numbered_list_item": {"rich_text": rich_text(text), "color": _safe_color(color)},
     }
+    if children:
+        block["numbered_list_item"]["children"] = children
+    return block
 
 
-def bookmark(url: str) -> dict[str, Any]:
-    """bookmark 블록"""
-    return {"object": "block", "type": "bookmark", "bookmark": {"url": url}}
+def quote(text: str, color: str = "default", children: list[dict] | None = None) -> dict[str, Any]:
+    """인용 블록"""
+    block: dict[str, Any] = {
+        "object": "block",
+        "type": "quote",
+        "quote": {"rich_text": rich_text(text), "color": _safe_color(color)},
+    }
+    if children:
+        block["quote"]["children"] = children
+    return block
 
 
-def image(url: str) -> dict[str, Any]:
-    """image 블록 (external URL)"""
+def table(rows: list[list[str]], has_column_header: bool = True, has_row_header: bool = False) -> dict[str, Any]:
+    """정적 테이블 블록"""
+    if not rows:
+        rows = [["", ""]]
+    width = len(rows[0])
+    table_rows = []
+    for row in rows:
+        cells = [rich_text(cell) for cell in row]
+        # 폭 맞추기
+        while len(cells) < width:
+            cells.append(rich_text(""))
+        table_rows.append({
+            "object": "block",
+            "type": "table_row",
+            "table_row": {"cells": cells},
+        })
     return {
+        "object": "block",
+        "type": "table",
+        "table": {
+            "table_width": width,
+            "has_column_header": has_column_header,
+            "has_row_header": has_row_header,
+            "children": table_rows,
+        },
+    }
+
+
+# ============================================================
+# Phase C: 미디어 블록
+# ============================================================
+
+def bookmark(url: str, caption: str = "") -> dict[str, Any]:
+    block: dict[str, Any] = {"object": "block", "type": "bookmark", "bookmark": {"url": url}}
+    if caption:
+        block["bookmark"]["caption"] = rich_text(caption)
+    return block
+
+
+def image(url: str, caption: str = "") -> dict[str, Any]:
+    block: dict[str, Any] = {
         "object": "block",
         "type": "image",
         "image": {"type": "external", "external": {"url": url}},
     }
+    if caption:
+        block["image"]["caption"] = rich_text(caption)
+    return block
 
 
-def table_of_contents() -> dict[str, Any]:
-    """table_of_contents 블록"""
-    return {"object": "block", "type": "table_of_contents", "table_of_contents": {"color": "default"}}
+def video(url: str, caption: str = "") -> dict[str, Any]:
+    """비디오 블록 (external URL)"""
+    block: dict[str, Any] = {
+        "object": "block",
+        "type": "video",
+        "video": {"type": "external", "external": {"url": url}},
+    }
+    if caption:
+        block["video"]["caption"] = rich_text(caption)
+    return block
+
+
+def audio(url: str, caption: str = "") -> dict[str, Any]:
+    """오디오 블록 (external URL)"""
+    block: dict[str, Any] = {
+        "object": "block",
+        "type": "audio",
+        "audio": {"type": "external", "external": {"url": url}},
+    }
+    if caption:
+        block["audio"]["caption"] = rich_text(caption)
+    return block
+
+
+def file_block(url: str, name: str = "", caption: str = "") -> dict[str, Any]:
+    """파일 블록 (external URL)"""
+    block: dict[str, Any] = {
+        "object": "block",
+        "type": "file",
+        "file": {"type": "external", "external": {"url": url}},
+    }
+    if name:
+        block["file"]["name"] = name
+    if caption:
+        block["file"]["caption"] = rich_text(caption)
+    return block
+
+
+def pdf(url: str, caption: str = "") -> dict[str, Any]:
+    """PDF 블록 (external URL)"""
+    block: dict[str, Any] = {
+        "object": "block",
+        "type": "pdf",
+        "pdf": {"type": "external", "external": {"url": url}},
+    }
+    if caption:
+        block["pdf"]["caption"] = rich_text(caption)
+    return block
+
+
+def code_block(code: str, language: str = "python", caption: str = "") -> dict[str, Any]:
+    """코드 블록 (60+ 언어 지원)"""
+    block: dict[str, Any] = {
+        "object": "block",
+        "type": "code",
+        "code": {"rich_text": rich_text(code), "language": language},
+    }
+    if caption:
+        block["code"]["caption"] = rich_text(caption)
+    return block
+
+
+# ============================================================
+# Phase D: 고급 블록
+# ============================================================
+
+def table_of_contents(color: str = "default") -> dict[str, Any]:
+    return {"object": "block", "type": "table_of_contents", "table_of_contents": {"color": _safe_color(color)}}
+
+
+def breadcrumb() -> dict[str, Any]:
+    """경로 블록"""
+    return {"object": "block", "type": "breadcrumb", "breadcrumb": {}}
+
+
+def equation_block(expression: str) -> dict[str, Any]:
+    """수식 블록 (display mode, KaTeX)"""
+    return {"object": "block", "type": "equation", "equation": {"expression": expression}}
+
+
+def synced_block_original(children: list[dict]) -> dict[str, Any]:
+    """동기화 블록 (원본 생성)"""
+    return {
+        "object": "block",
+        "type": "synced_block",
+        "synced_block": {"synced_from": None, "children": children},
+    }
+
+
+def synced_block_duplicate(original_block_id: str) -> dict[str, Any]:
+    """동기화 블록 (복제)"""
+    return {
+        "object": "block",
+        "type": "synced_block",
+        "synced_block": {"synced_from": {"block_id": original_block_id}},
+    }
 
 
 def column_list(columns: list[list[dict]]) -> dict[str, Any]:
-    """column_list + column 블록 생성"""
+    """N단 칼럼 (2~5단)"""
     return {
         "object": "block",
         "type": "column_list",
         "column_list": {
             "children": [
-                {
-                    "object": "block",
-                    "type": "column",
-                    "column": {"children": col_blocks},
-                }
+                {"object": "block", "type": "column", "column": {"children": col_blocks}}
                 for col_blocks in columns
             ]
         },
@@ -135,7 +348,6 @@ def column_list(columns: list[list[dict]]) -> dict[str, Any]:
 
 
 def link_to_page(page_id: str) -> dict[str, Any]:
-    """link_to_page 블록"""
     return {
         "object": "block",
         "type": "link_to_page",
@@ -143,17 +355,21 @@ def link_to_page(page_id: str) -> dict[str, Any]:
     }
 
 
-def tab_block(tabs: list[dict[str, Any]]) -> dict[str, Any]:
-    """Tab 블록 생성 (2026-03-25 신규)
+def link_to_database(database_id: str) -> dict[str, Any]:
+    """DB 링크 블록"""
+    return {
+        "object": "block",
+        "type": "link_to_page",
+        "link_to_page": {"type": "database_id", "database_id": database_id},
+    }
 
-    tabs: [{"label": "탭1", "icon": "📊", "children": [block, ...]}, ...]
-    """
+
+def tab_block(tabs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Tab 블록 (2026-03-25)"""
     tab_children = []
     for tab in tabs:
-        # 탭 내부 콘텐츠를 paragraph의 children으로 구성
         tab_content = tab.get("children", [paragraph(tab.get("label", "탭"))])
-        # 탭 라벨은 paragraph + icon으로 표현
-        label_block = {
+        label_block: dict[str, Any] = {
             "object": "block",
             "type": "paragraph",
             "paragraph": {
@@ -164,68 +380,95 @@ def tab_block(tabs: list[dict[str, Any]]) -> dict[str, Any]:
         if tab.get("icon"):
             label_block["paragraph"]["icon"] = {"type": "emoji", "emoji": tab["icon"]}
         tab_children.append(label_block)
+    return {"object": "block", "type": "tab", "tab": {"children": tab_children}}
 
-    return {
+
+# ============================================================
+# Phase E: 임베드
+# ============================================================
+
+def embed(url: str, caption: str = "") -> dict[str, Any]:
+    """임베드 블록 (Google Drive, Figma, GitHub, Tweet, Loom, Miro 등)"""
+    block: dict[str, Any] = {
         "object": "block",
-        "type": "tab",
-        "tab": {"children": tab_children},
+        "type": "embed",
+        "embed": {"url": url},
     }
+    if caption:
+        block["embed"]["caption"] = rich_text(caption)
+    return block
 
+
+# ============================================================
+# 멘션 헬퍼 (하위 호환)
+# ============================================================
 
 def mention_page(page_id: str, text: str = "") -> dict[str, Any]:
-    """페이지 멘션 (인라인 링크)"""
-    return {
-        "type": "mention",
-        "mention": {"type": "page", "page": {"id": page_id}},
-        "plain_text": text,
-    }
+    return {"type": "mention", "mention": {"type": "page", "page": {"id": page_id}}, "plain_text": text}
 
 
 def mention_date(start: str, end: str | None = None) -> dict[str, Any]:
-    """날짜 멘션"""
     date_obj: dict[str, Any] = {"start": start}
     if end:
         date_obj["end"] = end
-    return {
-        "type": "mention",
-        "mention": {"type": "date", "date": date_obj},
-    }
+    return {"type": "mention", "mention": {"type": "date", "date": date_obj}}
 
+
+# ============================================================
+# 아이콘 헬퍼
+# ============================================================
+
+def icon_emoji(emoji: str) -> dict:
+    return {"type": "emoji", "emoji": emoji}
+
+
+def icon_external(url: str) -> dict:
+    return {"type": "external", "external": {"url": url}}
+
+
+def icon_native(name: str, color: str = "default") -> dict:
+    """Native Notion icon (2026-03)"""
+    return {"type": "icon", "icon": {"name": name, "color": color}}
+
+
+def icon_custom_emoji(custom_emoji_id: str) -> dict:
+    return {"type": "custom_emoji", "custom_emoji": {"id": custom_emoji_id}}
+
+
+# ============================================================
+# DB 속성 빌더
+# ============================================================
 
 def build_database_properties(props: dict[str, Any]) -> dict[str, Any]:
-    """DB 속성 스키마 생성
-
-    사용법:
-        build_database_properties({
-            "이름": "title",
-            "카테고리": {"type": "select", "options": [{"name": "A", "color": "blue"}]},
-            "완료": "checkbox",
-            "날짜": "date",
-            "링크": "url",
-        })
-    """
+    """DB 속성 스키마 생성"""
     result = {}
     for name, spec in props.items():
+        # Handle auto-generated types (string shorthand)
         if isinstance(spec, str):
+            if spec in ("created_time", "created_by", "last_edited_time", "last_edited_by", "unique_id"):
+                result[name] = {spec: {}}
+                continue
             result[name] = {spec: {}}
         elif isinstance(spec, dict):
             prop_type = spec["type"]
             config: dict[str, Any] = {}
-            if prop_type == "select" and "options" in spec:
+            if prop_type in ("select", "multi_select") and "options" in spec:
                 config["options"] = [
                     {"name": opt["name"], "color": opt.get("color", "default")}
-                    if isinstance(opt, dict)
-                    else {"name": opt, "color": "default"}
-                    for opt in spec["options"]
-                ]
-            elif prop_type == "multi_select" and "options" in spec:
-                config["options"] = [
-                    {"name": opt["name"], "color": opt.get("color", "default")}
-                    if isinstance(opt, dict)
-                    else {"name": opt, "color": "default"}
+                    if isinstance(opt, dict) else {"name": opt, "color": "default"}
                     for opt in spec["options"]
                 ]
             elif prop_type == "status" and "options" in spec:
                 config["options"] = spec["options"]
+            elif prop_type == "relation" and "database_id" in spec:
+                config["database_id"] = spec["database_id"]
+                if spec.get("single_property"):
+                    config["single_property"] = {}
+            elif prop_type == "formula" and "expression" in spec:
+                config["expression"] = spec["expression"]
+            elif prop_type == "rollup" and "relation_property_name" in spec:
+                config["relation_property_name"] = spec["relation_property_name"]
+                config["rollup_property_name"] = spec["rollup_property_name"]
+                config["function"] = spec.get("function", "count")
             result[name] = {prop_type: config}
     return result

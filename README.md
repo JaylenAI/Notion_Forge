@@ -85,16 +85,30 @@ make test       # 테스트 실행
 
 ## 주요 기능
 
-- **채팅 기반 템플릿 생성**: 자연어로 설명 → AI가 분석 → Notion에 자동 생성
+### 템플릿 생성
+- **채팅 기반 생성**: 자연어 → AI 분석 → Notion에 자동 생성
 - **7가지 템플릿 패턴**: 대시보드, 트래커, 북마크, 프로젝트, 노트, 온보딩, CRM
-- **AI 의도 분석**: Groq (무료) / Gemini / Claude 지원 + Mock 폴백
-- **스킬 시스템**: `.md` 파일로 템플릿 패턴 정의 (확장 가능)
-- **DB 뷰 자동 생성**: 10개 뷰 전부 지원 — 표, 갤러리, 캘린더, 칸반, 타임라인, 리스트, 차트, 폼, 지도, 대시보드 (Views API 2026-03)
-- **Tab 블록**: 콘텐츠를 탭으로 구분 (2026-03-25 신규)
-- **Status 속성 쓰기**: 샘플 데이터에 상태값 직접 입력 (2026-03-19 신규)
 - **대화형 수정**: "DB에 속성 추가해줘" 등 후속 수정 지원
-- **실시간 진행률**: WebSocket으로 생성 과정 실시간 표시
-- **색상 테마**: 8가지 색상 (blue, orange, green, red, purple, pink, yellow, gray)
+
+### Notion API 전체 지원 (74개 기능)
+- **블록 전체**: heading, callout, toggle, quote, table, code, equation, tab, synced_block 등 30+ 블록
+- **인라인 서식 전체**: bold, italic, underline, strikethrough, code, link, 색상, 멘션 (@page, @date, @user, @today)
+- **미디어 전체**: image, video, audio, file, pdf, bookmark, embed (Figma, GitHub, Loom 등 12개)
+- **DB 뷰 10개**: 표, 갤러리, 캘린더, 칸반, 타임라인, 리스트, 차트, 폼, 지도, 대시보드
+- **DB 속성 전체**: select, multi_select, status, relation, rollup, formula, unique_id, people, files 등
+
+### API 확장
+- **Search API**: 워크스페이스 검색
+- **Comments API**: 페이지 코멘트 추가/조회
+- **Markdown API**: 마크다운으로 페이지 생성/조회
+- **Page Lock/Archive**: 잠금, 아카이브, 복원
+- **Custom Emoji**: 워크스페이스 커스텀 이모지 조회
+
+### AI & 인프라
+- **AI 의도 분석**: Groq gpt-oss-120b (무료) / Gemini / Claude + Mock 폴백
+- **스킬 시스템**: `.md` 파일로 템플릿 패턴 정의 (8개, 영어)
+- **실시간 진행률**: WebSocket + REST 폴백
+- **색상 테마**: 8가지 (blue, orange, green, red, purple, pink, yellow, gray)
 
 ---
 
@@ -161,6 +175,10 @@ NotionForge/
 | GET | `/api/templates/patterns` | 사용 가능한 패턴 목록 (7개) |
 | POST | `/api/templates/preview` | Blueprint 미리보기 |
 | POST | `/api/templates/generate` | 템플릿 생성 |
+| GET | `/api/templates/search?q=` | 워크스페이스 검색 |
+| POST | `/api/templates/{page_id}/comment` | 코멘트 추가 |
+| POST | `/api/templates/{page_id}/lock` | 페이지 잠금/해제 |
+| POST | `/api/templates/{page_id}/archive` | 페이지 아카이브 |
 | WS | `/ws/chat` | 실시간 채팅 |
 
 ---
@@ -206,8 +224,31 @@ backend/app/skills/
 | [세팅 + 배포](docs/SETUP.md) | 환경 세팅 + Docker + 배포 |
 | [개발 계획](docs/DEVELOPMENT_PLAN.md) | 모듈별 기능 + 로드맵 |
 | [테스트 + QA](docs/TEST_GUIDE.md) | 테스트 실행 + 품질 체크리스트 |
+| [블록 지원 현황](docs/BLOCK_SUPPORT.md) | 74개 기능 구현 상태 |
 | [인수인계](docs/ONBOARDING.md) | 합류자 가이드 |
 | [변경 이력](docs/CHANGELOG.md) | 변경사항 + 회고 |
+
+---
+
+## 이어서 개발할 것 (TODO)
+
+### 우선순위 HIGH
+- [ ] 프론트엔드 UI 디자인 레퍼런스 적용 (사용자 제공 예정)
+- [ ] 생성된 템플릿 디자인 품질 고도화 (이미지 수준)
+- [ ] 스킬 .md → AI가 동적으로 Blueprint 생성 (현재는 코드 기반)
+- [ ] 샘플 데이터 품질 개선 (실제 사용 시나리오 기반)
+
+### 우선순위 MEDIUM
+- [ ] Vercel (FE) + Railway (BE) 프로덕션 배포
+- [ ] Integration Tests 작성
+- [ ] 반응형 UI + 다크모드 완성
+- [ ] Webhook 이벤트 구독
+
+### 우선순위 LOW
+- [ ] 시연 영상 제작
+- [ ] 가짜연구소 발표 자료
+- [ ] 커뮤니티 공유 (GitHub, Reddit, 노션 한국 커뮤니티)
+- [ ] 다국어 지원 (영어, 일본어)
 
 ---
 

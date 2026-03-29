@@ -5,6 +5,7 @@
 - Views API (갤러리, 캘린더, 칸반 등) — 2026-03-19
 - Tab 블록 — 2026-03-25
 - Status 속성 쓰기 — 2026-03-19
+- Search / Users / Comments / Archive / Lock / Markdown / Custom Emoji — 2026-03-27
 """
 
 import uuid
@@ -204,6 +205,140 @@ class NotionClient:
         except Exception as e:
             print(f"[Views API 에러] {view_type}: {str(e)[:100]}")
             return {"id": self._mock_id(), "type": view_type, "name": title, "fallback": True}
+
+    # ========================================
+    # Search API
+    # ========================================
+
+    async def search(self, query: str = "", filter_type: str = "") -> dict:
+        """Search workspace. filter_type: 'page' or 'database'"""
+        if self.mock_mode:
+            return {"results": []}
+        body: dict[str, Any] = {}
+        if query:
+            body["query"] = query
+        if filter_type:
+            body["filter"] = {"value": filter_type, "property": "object"}
+        return await self.rate_limiter.call_with_retry(self._real_client.search, **body)
+
+    # ========================================
+    # Users API
+    # ========================================
+
+    async def list_users(self) -> list:
+        if self.mock_mode:
+            return []
+        result = await self.rate_limiter.call_with_retry(self._real_client.users.list)
+        return result.get("results", [])
+
+    async def get_user(self, user_id: str) -> dict:
+        if self.mock_mode:
+            return {"id": user_id}
+        return await self.rate_limiter.call_with_retry(self._real_client.users.retrieve, user_id=user_id)
+
+    # ========================================
+    # Comments API
+    # ========================================
+
+    async def add_comment(self, page_id: str, text: str) -> dict:
+        if self.mock_mode:
+            return {"id": self._mock_id()}
+        from app.notion.block_builder import rich_text
+
+        return await self.rate_limiter.call_with_retry(
+            self._real_client.comments.create,
+            parent={"page_id": page_id},
+            rich_text=rich_text(text),
+        )
+
+    async def get_comments(self, block_id: str) -> list:
+        if self.mock_mode:
+            return []
+        result = await self.rate_limiter.call_with_retry(
+            self._real_client.comments.list, block_id=block_id
+        )
+        return result.get("results", [])
+
+    # ========================================
+    # Page operations (archive / restore / lock)
+    # ========================================
+
+    async def archive_page(self, page_id: str) -> dict:
+        if self.mock_mode:
+            return {"id": page_id, "in_trash": True}
+        return await self.rate_limiter.call_with_retry(
+            self._real_client.pages.update, page_id=page_id, in_trash=True
+        )
+
+    async def restore_page(self, page_id: str) -> dict:
+        if self.mock_mode:
+            return {"id": page_id, "in_trash": False}
+        return await self.rate_limiter.call_with_retry(
+            self._real_client.pages.update, page_id=page_id, in_trash=False
+        )
+
+    async def lock_page(self, page_id: str, locked: bool = True) -> dict:
+        if self.mock_mode:
+            return {"id": page_id, "is_locked": locked}
+        await self.rate_limiter.acquire()
+        resp = await self._http_client.patch(f"/pages/{page_id}", json={"is_locked": locked})
+        return resp.json()
+
+    async def lock_database(self, database_id: str, locked: bool = True) -> dict:
+        if self.mock_mode:
+            return {"id": database_id, "is_locked": locked}
+        await self.rate_limiter.acquire()
+        resp = await self._http_client.patch(f"/databases/{database_id}", json={"is_locked": locked})
+        return resp.json()
+
+    # ========================================
+    # Markdown API (httpx — SDK 미지원)
+    # ========================================
+
+    async def create_page_markdown(
+        self, parent_id: str, title: str, markdown: str, icon: str | None = None
+    ) -> dict:
+        if self.mock_mode:
+            return self._mock_page(parent_id, title, icon, None)
+        body: dict[str, Any] = {
+            "parent": {"type": "page_id", "page_id": parent_id},
+            "properties": {"title": [{"text": {"content": title}}]},
+            "markdown": markdown,
+        }
+        if icon:
+            body["icon"] = {"type": "emoji", "emoji": icon}
+        await self.rate_limiter.acquire()
+        resp = await self._http_client.post("/pages", json=body)
+        if resp.status_code >= 400:
+            print(f"[Markdown API {resp.status_code}] {resp.text[:100]}")
+            return self._mock_page(parent_id, title, icon, None)
+        return resp.json()
+
+    async def get_page_markdown(self, page_id: str) -> str:
+        if self.mock_mode:
+            return ""
+        await self.rate_limiter.acquire()
+        resp = await self._http_client.get(f"/pages/{page_id}/markdown")
+        if resp.status_code >= 400:
+            return ""
+        data = resp.json()
+        return data.get("markdown", "")
+
+    # ========================================
+    # Custom Emoji API
+    # ========================================
+
+    async def list_custom_emojis(self) -> list:
+        if self.mock_mode:
+            return []
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.get("/custom_emojis")
+            if resp.status_code >= 400:
+                return []
+            return resp.json().get("results", [])
+        except Exception:
+            return []
 
     # ========================================
     # Mock 응답

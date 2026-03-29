@@ -219,5 +219,19 @@ def _format_value(prop_type: str, value: Any) -> dict[str, Any]:
         if value:
             return {"date": {"start": str(value)}}
         return {"date": None}
+    elif prop_type == "people":
+        if isinstance(value, list):
+            return {"people": [{"id": uid} for uid in value]}
+        return {"people": [{"id": str(value)}]}
+    elif prop_type == "files":
+        if isinstance(value, list):
+            return {"files": [{"type": "external", "name": v, "external": {"url": v}} for v in value]}
+        return {"files": [{"type": "external", "name": str(value), "external": {"url": str(value)}}]}
+    elif prop_type == "phone_number":
+        return {"phone_number": str(value) if value else None}
+    elif prop_type == "relation":
+        if isinstance(value, list):
+            return {"relation": [{"id": rid} for rid in value]}
+        return {"relation": [{"id": str(value)}]}
     else:
         return {"rich_text": [{"text": {"content": str(value)}}]}
