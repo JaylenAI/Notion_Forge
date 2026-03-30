@@ -7,7 +7,7 @@
 **NotionForge**는 사용자가 자연어로 원하는 노션 템플릿을 설명하면, AI Agent가 Notion API를 통해 완성된 템플릿을 자동으로 생성해주는 서비스입니다.
 
 > **소속**: 가짜연구소 - "나만의 자동화 AI Agent 만들기" 프로젝트
-> **브랜치**: `dev` (개발 브랜치)
+> **브랜치**: `dev-2` (AI 스킬 기반, 최신) | `dev` (하드코딩 방식)
 
 ---
 
@@ -27,7 +27,7 @@
 ```bash
 git clone https://github.com/JaylenAI/notion_ai_agent.git
 cd notion_ai_agent
-git checkout dev
+git checkout dev-2    # AI 스킬 기반 (최신) | dev: 하드코딩 방식
 cp .env.example .env
 ```
 
