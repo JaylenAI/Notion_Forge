@@ -1,56 +1,54 @@
-"""Blueprint Generator 단위 테스트 (dev-2: async + skill based)"""
+"""Blueprint Generator 단위 테스트 (dev-2: smart fallback + AI)"""
 import pytest
-from app.agent.blueprint_generator import generate_blueprint, _mock_call, _assemble_blueprint
+from app.agent.blueprint_generator import generate_blueprint, _smart_fallback, _assemble_blueprint
 
 
-def test_mock_call_dashboard():
-    result = _mock_call("프로젝트 대시보드 만들어줘")
-    assert result["skill"] in ("manage", "hub")
-
-
-def test_mock_call_tracker():
-    result = _mock_call("습관 트래커 만들어줘")
+def test_fallback_exercise():
+    result = _smart_fallback("운동 기록 만들어줘")
     assert result["skill"] == "track"
+    assert len(result["sample_items"]) >= 5
 
 
-def test_mock_call_bookmark():
-    result = _mock_call("북마크 사이트 만들어줘")
-    assert result["skill"] == "organize"
+def test_fallback_reading():
+    result = _smart_fallback("독서 기록 만들어줘")
+    assert result["skill"] == "collect"
+    assert len(result["sample_items"]) >= 5
 
 
-def test_mock_call_onboarding():
-    result = _mock_call("온보딩 가이드 만들어줘")
-    assert result["skill"] == "guide"
+def test_fallback_project():
+    result = _smart_fallback("프로젝트 보드 만들어줘")
+    assert result["skill"] == "manage"
+    assert len(result["sample_items"]) >= 5
 
 
-def test_mock_call_color():
-    result = _mock_call("보라색으로 만들어줘")
-    assert result["color"] == "purple"
+def test_fallback_has_properties():
+    result = _smart_fallback("운동 기록 만들어줘")
+    assert len(result["db_properties"]) >= 5
 
 
-def test_assemble_track():
-    content = _mock_call("운동 기록 만들어줘")
+def test_fallback_has_views():
+    result = _smart_fallback("프로젝트 보드 만들어줘")
+    assert len(result["views"]) >= 2
+
+
+def test_fallback_not_generic():
+    """폴백이 '항목 1, 항목 2' 같은 기본값이 아님을 확인"""
+    result = _smart_fallback("운동 기록 만들어줘")
+    first_item = result["sample_items"][0]
+    title_key = list(first_item.keys())[0]
+    assert "항목" not in first_item[title_key]
+
+
+def test_assemble_creates_blueprint():
+    content = _smart_fallback("운동 기록 만들어줘")
     bp = _assemble_blueprint(content, None)
     assert bp["version"] == "2.0"
-    assert len(bp["databases"]) >= 1
-    assert any(b["type"] == "callout" for b in bp["blocks"])
-
-
-def test_assemble_has_database():
-    content = {"skill": "track", "title": "Test", "icon": "📋", "color": "blue",
-               "callout_text": "테스트", "db_name": "DB", 
-               "db_properties": {"이름": "title", "날짜": "date"},
-               "views": ["calendar"], "sample_items": [{"이름": "항목1", "icon": "📌"}],
-               "sub_pages": [], "faq": []}
-    bp = _assemble_blueprint(content, None)
     assert len(bp["databases"]) == 1
-    assert bp["databases"][0]["title"] == "DB"
+    assert len(bp["blocks"]) >= 3
 
 
 @pytest.mark.asyncio
 async def test_generate_blueprint_async():
-    """generate_blueprint는 async 함수"""
     bp = await generate_blueprint("트래커 만들어줘")
     assert bp["version"] == "2.0"
-    assert "metadata" in bp
-    assert "databases" in bp
+    assert len(bp["databases"]) >= 1
