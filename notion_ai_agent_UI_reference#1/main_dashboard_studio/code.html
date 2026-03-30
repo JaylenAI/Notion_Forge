@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>NotionForge | AI Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-fixed-dim": "#4edea3",
+                        "on-primary-fixed": "#001a41",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-tertiary-container": "#e1ffec",
+                        "surface": "#131313",
+                        "surface-container-high": "#2a2a2a",
+                        "inverse-primary": "#005bc1",
+                        "secondary-fixed-dim": "#ffb59a",
+                        "secondary-fixed": "#ffdbce",
+                        "on-surface-variant": "#c2c6d8",
+                        "surface-bright": "#3a3939",
+                        "tertiary-fixed": "#6ffbbe",
+                        "surface-container-low": "#1c1b1b",
+                        "surface-container-highest": "#353534",
+                        "on-surface": "#e5e2e1",
+                        "secondary-container": "#ff5e07",
+                        "surface-dim": "#131313",
+                        "surface-container": "#201f1f",
+                        "primary": "#adc6ff",
+                        "on-tertiary-fixed": "#002113",
+                        "on-secondary-fixed": "#370e00",
+                        "on-background": "#e5e2e1",
+                        "surface-tint": "#adc6ff",
+                        "primary-fixed-dim": "#adc6ff",
+                        "outline-variant": "#424656",
+                        "secondary": "#ffb59a",
+                        "primary-fixed": "#d8e2ff",
+                        "on-primary-container": "#f7f7ff",
+                        "on-secondary": "#5a1b00",
+                        "outline": "#8c90a1",
+                        "tertiary": "#4edea3",
+                        "inverse-on-surface": "#313030",
+                        "background": "#131313",
+                        "on-secondary-container": "#531900",
+                        "inverse-surface": "#e5e2e1",
+                        "on-tertiary": "#003824",
+                        "on-secondary-fixed-variant": "#802a00",
+                        "on-tertiary-fixed-variant": "#005236",
+                        "on-primary": "#002e69",
+                        "on-error-container": "#ffdad6",
+                        "error-container": "#93000a",
+                        "on-error": "#690005",
+                        "tertiary-container": "#008259",
+                        "error": "#ffb4ab",
+                        "on-primary-fixed-variant": "#004493",
+                        "primary-container": "#006de6",
+                        "surface-variant": "#353534"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .glass-panel {
+            background: rgba(53, 53, 52, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .blueprint-bg {
+            background-image: radial-gradient(circle, #424656 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #353534; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary selection:text-on-primary">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#131313] shadow-[0_0_48px_0_rgba(173,198,255,0.06)]">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-[#e5e2e1] font-headline">NotionForge</span>
+<nav class="hidden md:flex gap-6 items-center">
+<a class="text-[#adc6ff] border-b-2 border-[#adc6ff] pb-1 font-label text-sm uppercase tracking-widest" href="#">Dashboard</a>
+<a class="text-[#e5e2e1]/60 hover:text-[#adc6ff] transition-colors duration-200 font-label text-sm uppercase tracking-widest" href="#">Library</a>
+<a class="text-[#e5e2e1]/60 hover:text-[#adc6ff] transition-colors duration-200 font-label text-sm uppercase tracking-widest" href="#">Integrations</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-[#e5e2e1]/60 hover:text-[#adc6ff] transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-[#e5e2e1]/60 hover:text-[#adc6ff] transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant/30">
+<img alt="User profile avatar" data-alt="close-up portrait of a professional male designer with neutral expression and soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZIA9n7VAJztZlZH5Io-zHk5q81APau62NfHOBUr_C4sJ8eaYQpGaiPTrP1vGn-73-Ksfp8Y3KQd00qa0QsvAORM5_vtzzQPp8rGG4RQLzjV0Af1HAJhzoszPEsuW9e_bLh69qAi0VWELyEuCHQ33HafJyL8H3wzxFw7FTc_wdq47Cfy6ZwXVnQt1B24wLPYTtdExsU2NJuKlYa4aiSi7P00Pw5mPgVJJDvm0pTGBe68VHl9dLdp-F2CRqdL-YS7WgX8GSjtfnhImG"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full flex flex-col py-8 z-40 bg-[#0e0e0e] w-64 pt-20">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-container rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined text-white" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div>
+<h2 class="text-lg font-black text-[#adc6ff] font-headline leading-tight">NotionForge</h2>
+<p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant/50">AI Alchemist</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 px-4 space-y-2">
+<a class="flex items-center gap-3 bg-[#1c1b1b] text-[#adc6ff] rounded-lg px-4 py-3 group transition-all duration-200 active:translate-x-1" href="#">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+<span class="font-label text-sm uppercase tracking-wider">New Template</span>
+</a>
+<a class="flex items-center gap-3 text-[#e5e2e1]/50 px-4 py-3 hover:bg-[#1c1b1b] hover:text-[#e5e2e1] transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+<span class="font-label text-sm uppercase tracking-wider">Library</span>
+</a>
+<a class="flex items-center gap-3 text-[#e5e2e1]/50 px-4 py-3 hover:bg-[#1c1b1b] hover:text-[#e5e2e1] transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="api">api</span>
+<span class="font-label text-sm uppercase tracking-wider">Integrations</span>
+</a>
+<a class="flex items-center gap-3 text-[#e5e2e1]/50 px-4 py-3 hover:bg-[#1c1b1b] hover:text-[#e5e2e1] transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label text-sm uppercase tracking-wider">Profile</span>
+</a>
+</nav>
+<div class="px-4 mt-auto space-y-4">
+<div class="bg-surface-container-high rounded-xl p-4 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-secondary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<p class="text-xs text-secondary-fixed-dim font-bold mb-1">PRO PLAN</p>
+<p class="text-[10px] text-on-surface-variant mb-3">Unlock unlimited AI alchemy.</p>
+<button class="w-full py-2 bg-secondary text-on-secondary font-bold text-xs rounded-lg transition-transform active:scale-95">Upgrade to Pro</button>
+</div>
+<div class="space-y-1">
+<a class="flex items-center gap-3 text-[#e5e2e1]/30 px-4 py-2 hover:text-on-surface transition-all text-xs" href="#">
+<span class="material-symbols-outlined scale-75" data-icon="help">help</span>
+<span>Support</span>
+</a>
+<a class="flex items-center gap-3 text-[#e5e2e1]/30 px-4 py-2 hover:text-on-surface transition-all text-xs" href="#">
+<span class="material-symbols-outlined scale-75" data-icon="description">description</span>
+<span>Documentation</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Workspace -->
+<main class="pl-64 pt-16 h-screen flex flex-col">
+<div class="flex flex-1 overflow-hidden p-6 gap-6">
+<!-- Left Panel: Chat Interface -->
+<section class="w-1/3 flex flex-col bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/10">
+<div class="p-6 border-b border-outline-variant/10 flex items-center justify-between">
+<div>
+<h3 class="font-headline font-bold text-lg">Alchemist Chat</h3>
+<p class="text-xs text-on-surface-variant/60">Define your Notion architecture</p>
+</div>
+<span class="flex h-2 w-2 rounded-full bg-tertiary animate-pulse"></span>
+</div>
+<div class="flex-1 overflow-y-auto p-6 space-y-6">
+<!-- Chat History -->
+<div class="flex flex-col gap-4">
+<div class="flex justify-end">
+<div class="bg-surface-container-high text-on-surface max-w-[85%] rounded-2xl rounded-tr-none px-4 py-3 text-sm">
+                                Create a project dashboard with orange theme.
+                            </div>
+</div>
+<div class="flex justify-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div class="glass-panel text-on-surface-variant max-w-[85%] rounded-2xl rounded-tl-none px-4 py-3 text-sm border-l-2 border-primary">
+<p class="mb-2 italic">Transmuting request into structure...</p>
+                                I'm building a project dashboard using your <span class="text-secondary font-medium">Sunset Orange</span> palette. I'll include a high-level task database, a timeline view, and a resource gallery.
+                            </div>
+</div>
+<div class="flex justify-end">
+<div class="bg-surface-container-high text-on-surface max-w-[85%] rounded-2xl rounded-tr-none px-4 py-3 text-sm">
+                                Add a "Budgeting" section with auto-calculating margins.
+                            </div>
+</div>
+<div class="flex justify-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div class="glass-panel text-on-surface-variant max-w-[85%] rounded-2xl rounded-tl-none px-4 py-3 text-sm border-l-2 border-primary">
+                                Perfect. I'll inject a Financial Database linked to the Projects. Calculating properties...
+                            </div>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="p-4 bg-surface-container-low border-t border-outline-variant/10">
+<div class="relative">
+<textarea class="w-full bg-surface-container-highest border-none rounded-xl text-sm placeholder:text-on-surface-variant/40 focus:ring-1 focus:ring-primary py-3 pl-4 pr-12 resize-none" placeholder="Describe your next creation..." rows="2"></textarea>
+<button class="absolute right-3 bottom-3 w-8 h-8 bg-primary text-on-primary rounded-lg flex items-center justify-center hover:scale-105 transition-transform active:scale-95">
+<span class="material-symbols-outlined text-sm" data-icon="send">send</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Right Panel: Live Creation Viewer -->
+<section class="flex-1 flex flex-col bg-surface rounded-2xl border border-outline-variant/10 overflow-hidden relative">
+<!-- Toolbar -->
+<div class="h-14 flex items-center justify-between px-6 bg-surface-container/30 border-b border-outline-variant/10 backdrop-blur-md">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="description">description</span>
+<span class="text-sm font-semibold tracking-wide">Project Alchemy Workspace</span>
+</div>
+<span class="h-4 w-px bg-outline-variant/30"></span>
+<div class="flex items-center gap-2 text-xs text-on-surface-variant/60">
+<span class="material-symbols-outlined text-xs" data-icon="cloud_done">cloud_done</span>
+                            Saved to Notion
+                        </div>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-4 py-1.5 rounded-lg border border-outline-variant/30 text-xs font-label uppercase tracking-wider hover:bg-surface-container-high transition-colors">Preview</button>
+<button class="px-4 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-label font-bold uppercase tracking-wider hover:opacity-90 transition-opacity">Export to Notion</button>
+</div>
+</div>
+<!-- Live Canvas Area -->
+<div class="flex-1 blueprint-bg p-8 overflow-y-auto">
+<div class="max-w-4xl mx-auto space-y-8">
+<!-- AI Creation Stepper (The "Active" visual) -->
+<div class="flex flex-col gap-4">
+<div class="relative pl-8 pb-4 border-l border-outline-variant/30">
+<div class="absolute -left-[5px] top-0 w-[9px] h-[9px] rounded-full bg-tertiary shadow-[0_0_10px_#4edea3]"></div>
+<div class="flex items-center justify-between group">
+<div class="space-y-1">
+<p class="text-xs font-bold text-tertiary flex items-center gap-2 uppercase tracking-tighter">
+                                            Creating Page...
+                                            <span class="material-symbols-outlined text-[10px]" data-icon="check_circle">check_circle</span>
+</p>
+<h4 class="text-lg font-headline font-extrabold text-on-surface">"Orange Project Hub"</h4>
+</div>
+<span class="text-[10px] text-on-surface-variant/40 font-mono">ID: nf_9281</span>
+</div>
+</div>
+<div class="relative pl-8 pb-4 border-l border-outline-variant/30">
+<div class="absolute -left-[5px] top-0 w-[9px] h-[9px] rounded-full bg-tertiary shadow-[0_0_10px_#4edea3]"></div>
+<div class="flex items-center justify-between">
+<div class="space-y-1">
+<p class="text-xs font-bold text-tertiary flex items-center gap-2 uppercase tracking-tighter">
+                                            Adding Database: Projects
+                                            <span class="material-symbols-outlined text-[10px]" data-icon="check_circle">check_circle</span>
+</p>
+<div class="w-full bg-surface-container-low rounded-xl p-4 border border-outline-variant/10 mt-2">
+<div class="grid grid-cols-4 gap-4 mb-2">
+<div class="h-2 bg-outline-variant/20 rounded-full w-24"></div>
+<div class="h-2 bg-outline-variant/20 rounded-full w-16"></div>
+<div class="h-2 bg-outline-variant/20 rounded-full w-20"></div>
+<div class="h-2 bg-outline-variant/20 rounded-full w-12"></div>
+</div>
+<div class="space-y-2 opacity-40">
+<div class="h-3 bg-surface-container-high rounded-md w-full"></div>
+<div class="h-3 bg-surface-container-high rounded-md w-[90%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="relative pl-8 pb-4">
+<div class="absolute -left-[5px] top-0 w-[9px] h-[9px] rounded-full bg-primary border-4 border-surface shadow-[0_0_15px_#adc6ff]"></div>
+<div class="space-y-1">
+<p class="text-xs font-bold text-primary flex items-center gap-2 uppercase tracking-tighter">
+                                        Populating 5 Sample Rows...
+                                        <span class="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+</p>
+<div class="grid grid-cols-2 gap-4 mt-3">
+<div class="bg-surface-container-high/60 border border-primary/20 rounded-xl p-4 backdrop-blur-sm">
+<div class="flex items-center gap-2 mb-2">
+<div class="w-2 h-2 rounded-full bg-secondary"></div>
+<div class="h-2 bg-on-surface-variant/20 rounded-full w-24"></div>
+</div>
+<div class="h-2 bg-on-surface-variant/10 rounded-full w-12"></div>
+</div>
+<div class="bg-surface-container-high/60 border border-primary/20 rounded-xl p-4 backdrop-blur-sm">
+<div class="flex items-center gap-2 mb-2">
+<div class="w-2 h-2 rounded-full bg-secondary"></div>
+<div class="h-2 bg-on-surface-variant/20 rounded-full w-20"></div>
+</div>
+<div class="h-2 bg-on-surface-variant/10 rounded-full w-16"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Visual Preview Card -->
+<div class="bg-surface-container-high rounded-2xl p-1 relative overflow-hidden group shadow-2xl">
+<div class="absolute inset-0 bg-gradient-to-tr from-secondary/20 via-transparent to-primary/10 opacity-50"></div>
+<div class="bg-surface rounded-2xl p-8 relative z-10 border border-outline-variant/5">
+<div class="h-40 w-full rounded-xl overflow-hidden mb-8 relative">
+<img alt="Abstract orange gradient" class="w-full h-full object-cover" data-alt="smooth flowing digital waves of deep orange and black with cinematic soft lighting and subtle grain texture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXZBUnX8xAvZxk-qptzv02ufbXmQdYqgSWUU85sqeLt__TOZYNIiDtKiAPVKcPhizHZ8JNEbjFV_YsR8FldjzJ1UszH4y-og62-0Or7EhavTPl2V3bmxJKMWYBzSGNaOsx3UL7qgxZiEtlaQqAS1SJjb9rHmkIfGSpZYHaVBCHJj9_84FLU6pkwajDftZ8Jz_3gzZevXU5WEK6acyLwEDhgcMVEV68cEl8xTCy358GEBVhszLOw-RK8J95rUZNZyIxMRAlM_om3mR8"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface to-transparent"></div>
+<div class="absolute bottom-4 left-6">
+<h2 class="text-4xl font-headline font-black text-on-surface tracking-tight">Project Hub</h2>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-6">
+<div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/10">
+<p class="text-[10px] font-bold text-on-surface-variant/40 uppercase mb-2">Active Tasks</p>
+<p class="text-3xl font-headline font-bold text-secondary">24</p>
+</div>
+<div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/10">
+<p class="text-[10px] font-bold text-on-surface-variant/40 uppercase mb-2">Team Velocity</p>
+<p class="text-3xl font-headline font-bold text-primary">82%</p>
+</div>
+<div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/10">
+<p class="text-[10px] font-bold text-on-surface-variant/40 uppercase mb-2">Days to Launch</p>
+<p class="text-3xl font-headline font-bold text-tertiary">12</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- BottomNavBar (AI Status) -->
+<footer class="fixed bottom-0 left-0 w-full z-50 flex items-center px-6 justify-start bg-[#1c1b1b]/80 backdrop-blur-xl h-10 border-t border-[#424656]/15">
+<div class="flex items-center justify-center gap-2 text-[#4edea3]">
+<span class="material-symbols-outlined text-sm" data-icon="smart_toy">smart_toy</span>
+<span class="font-mono text-xs uppercase tracking-widest">AI Status: Ready to Build</span>
+</div>
+<div class="ml-auto flex gap-6">
+<span class="text-[#e5e2e1]/40 font-mono text-[10px] uppercase tracking-tighter">GPU-Cluster: Beta-09</span>
+<span class="text-[#e5e2e1]/40 font-mono text-[10px] uppercase tracking-tighter">Latency: 24ms</span>
+</div>
+</footer>
+</body></html>

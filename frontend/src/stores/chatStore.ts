@@ -26,6 +26,19 @@ function saveSettings(settings: Settings): void {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
+export type PageName = "dashboard" | "library" | "integrations" | "profile" | "support";
+
+export interface GeneratedTemplate {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly tag: string;
+  readonly tagColor: string;
+  readonly date: string;
+  readonly starred: boolean;
+  readonly notionUrl?: string;
+}
+
 interface ChatState {
   messages: Message[];
   isLoading: boolean;
@@ -34,12 +47,18 @@ interface ChatState {
   settings: Settings;
   settingsOpen: boolean;
   currentStep: string;
+  currentPage: PageName;
+  generatedTemplates: readonly GeneratedTemplate[];
+  connectionTested: boolean;
   connect: () => void;
   disconnect: () => void;
   sendMessage: (content: string) => void;
   updateSettings: (settings: Settings) => void;
   toggleSettings: () => void;
   clearMessages: () => void;
+  setPage: (page: PageName) => void;
+  toggleTemplateStar: (id: string) => void;
+  setConnectionTested: (tested: boolean) => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -50,6 +69,46 @@ export const useChatStore = create<ChatState>((set, get) => ({
   settings: loadSettings(),
   settingsOpen: false,
   currentStep: "",
+  currentPage: "dashboard",
+  connectionTested: false,
+  generatedTemplates: [
+    {
+      id: "tpl_1",
+      title: "Deep Work Architect",
+      description: "A distraction-free operating system for high-output engineers and writers.",
+      tag: "Productivity",
+      tagColor: "tertiary",
+      date: "2024-10-24",
+      starred: false,
+    },
+    {
+      id: "tpl_2",
+      title: "Equity Ledger v2",
+      description: "Sophisticated portfolio tracking with integrated dividend schedules and risk maps.",
+      tag: "Finance",
+      tagColor: "secondary",
+      date: "2024-10-21",
+      starred: true,
+    },
+    {
+      id: "tpl_3",
+      title: "Culinary Nexus",
+      description: "Automated meal planning engine with macro tracking and grocery sync capabilities.",
+      tag: "Lifestyle",
+      tagColor: "primary",
+      date: "2024-10-19",
+      starred: false,
+    },
+    {
+      id: "tpl_4",
+      title: "Agile Forge Dashboard",
+      description: "High-performance project management with sprint burndown templates and team wiki.",
+      tag: "Management",
+      tagColor: "tertiary",
+      date: "2024-10-15",
+      starred: false,
+    },
+  ],
 
   connect: () => {
     const { ws: existing } = get();
@@ -200,5 +259,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   clearMessages: () => {
     set({ messages: [], isLoading: false, currentStep: "" });
+  },
+
+  setPage: (page: PageName) => {
+    set({ currentPage: page });
+  },
+
+  toggleTemplateStar: (id: string) => {
+    set((state) => ({
+      generatedTemplates: state.generatedTemplates.map((t) =>
+        t.id === id ? { ...t, starred: !t.starred } : t
+      ),
+    }));
+  },
+
+  setConnectionTested: (tested: boolean) => {
+    set({ connectionTested: tested });
   },
 }));

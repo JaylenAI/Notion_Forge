@@ -23,6 +23,19 @@
 
 ---
 
+## [2.0.0] - 2026-03-30
+
+### Added (프론트엔드 전면 리뉴얼)
+- 레퍼런스 #1 다크 테마 UI (5개 페이지)
+- 노션 스타일 렌더러 (callout, heading, DB 테이블, 뷰 탭, 체크리스트, 토글)
+- PREVIEW 토글, Profile/Support 페이지, 상단 아이콘, 로고 홈 이동
+
+### Fixed
+- DB 400 에러: TYPE_ALIASES 17개 별칭 (text→rich_text, person→rich_text 등)
+- Select 옵션 색상 검증, 채팅 overflow, 미리보기 색감 통일
+
+---
+
 ## [1.1.0] - 2026-03-30
 
 ### Fixed

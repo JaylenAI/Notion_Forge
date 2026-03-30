@@ -220,6 +220,9 @@ def _format_value(prop_type: str, value: Any) -> dict[str, Any]:
             return {"date": {"start": str(value)}}
         return {"date": None}
     elif prop_type == "people":
+        # people은 user ID가 필요한데 AI는 문자열 이름을 생성함 → rich_text로 폴백
+        if isinstance(value, str) and not value.startswith(("user_", "u_")):
+            return {"rich_text": [{"text": {"content": str(value)}}]}
         if isinstance(value, list):
             return {"people": [{"id": uid} for uid in value]}
         return {"people": [{"id": str(value)}]}

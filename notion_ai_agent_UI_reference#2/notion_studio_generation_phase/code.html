@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Notion Studio: Project Hub</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-low": "#f9f3e7",
+              "primary-container": "#d4e3ff",
+              "on-error": "#fff7f6",
+              "primary-dim": "#005398",
+              "surface-dim": "#e1dac3",
+              "on-surface-variant": "#635f4f",
+              "surface-tint": "#005fad",
+              "surface-container": "#f4eddf",
+              "secondary": "#625f58",
+              "surface": "#fef9ef",
+              "secondary-fixed-dim": "#d9d4cb",
+              "surface-variant": "#e9e2ce",
+              "tertiary-fixed": "#ddddfe",
+              "on-tertiary-fixed-variant": "#565873",
+              "on-background": "#363225",
+              "tertiary-dim": "#4f516c",
+              "on-tertiary-container": "#4c4e68",
+              "primary": "#005fad",
+              "inverse-surface": "#0f0e09",
+              "background": "#fef9ef",
+              "outline-variant": "#b8b29f",
+              "primary-fixed": "#d4e3ff",
+              "inverse-on-surface": "#a09c95",
+              "secondary-container": "#e7e2d9",
+              "on-tertiary": "#fbf8ff",
+              "error-dim": "#4e0309",
+              "on-secondary-container": "#54514b",
+              "inverse-primary": "#499dfe",
+              "outline": "#7f7b6a",
+              "secondary-fixed": "#e7e2d9",
+              "on-primary": "#f6f7ff",
+              "on-primary-fixed": "#004077",
+              "on-secondary-fixed-variant": "#5e5b54",
+              "on-primary-fixed-variant": "#005ca8",
+              "on-surface": "#363225",
+              "on-error-container": "#752121",
+              "tertiary-fixed-dim": "#cfcfef",
+              "tertiary": "#5b5d78",
+              "surface-bright": "#fef9ef",
+              "surface-container-lowest": "#ffffff",
+              "on-secondary-fixed": "#413f39",
+              "error": "#9f403d",
+              "on-primary-container": "#005397",
+              "error-container": "#fe8983",
+              "tertiary-container": "#ddddfe",
+              "primary-fixed-dim": "#bcd6ff",
+              "surface-container-highest": "#e9e2ce",
+              "surface-container-high": "#eee8d6",
+              "on-tertiary-fixed": "#3a3c55",
+              "on-secondary": "#fef8ef",
+              "secondary-dim": "#55534c"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 18px;
+        }
+        .notion-block-hover:hover {
+            background-color: rgba(54, 50, 37, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container">
+<!-- Shared SideNavBar -->
+<aside class="flex flex-col h-screen fixed left-0 top-0 h-full w-64 border-r-0 bg-[#f9f3e7] dark:bg-[#1a1a1a] z-50">
+<div class="p-4 flex items-center gap-3">
+<div class="w-6 h-6 bg-on-surface text-surface flex items-center justify-center rounded-sm font-bold text-sm">N</div>
+<div>
+<h1 class="font-bold text-[#363225] dark:text-[#e9e2ce] text-lg leading-tight">NotionForge</h1>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">AI Workspace</p>
+</div>
+</div>
+<nav class="flex-1 px-2 space-y-0.5 overflow-y-auto">
+<div class="px-3 py-2 text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Workspace</div>
+<!-- Search is active based on intent -->
+<a class="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-[#e9e2ce] dark:bg-[#2c2c2c] text-[#363225] dark:text-[#fef9ef] font-semibold font-['Inter'] text-sm tracking-tight transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">search</span>
+<span>Search</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-1.5 rounded-lg text-[#635f4f] dark:text-[#a09c8f] hover:bg-[#eee8d6] dark:hover:bg-[#252525] font-['Inter'] text-sm font-medium tracking-tight transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">inbox</span>
+<span>Inbox</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-1.5 rounded-lg text-[#635f4f] dark:text-[#a09c8f] hover:bg-[#eee8d6] dark:hover:bg-[#252525] font-['Inter'] text-sm font-medium tracking-tight transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">star</span>
+<span>Favorites</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-1.5 rounded-lg text-[#635f4f] dark:text-[#a09c8f] hover:bg-[#eee8d6] dark:hover:bg-[#252525] font-['Inter'] text-sm font-medium tracking-tight transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">lock</span>
+<span>Private</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-1.5 rounded-lg text-[#635f4f] dark:text-[#a09c8f] hover:bg-[#eee8d6] dark:hover:bg-[#252525] font-['Inter'] text-sm font-medium tracking-tight transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">description</span>
+<span>Templates</span>
+</a>
+<div class="mt-6">
+<button class="w-full flex items-center justify-center gap-2 py-2 mx-auto rounded-lg bg-on-surface text-surface text-sm font-semibold hover:opacity-90 transition-all active:scale-95">
+<span class="material-symbols-outlined text-sm">add</span>
+<span>New Page</span>
+</button>
+</div>
+</nav>
+<footer class="p-2 border-t border-outline-variant/10">
+<a class="flex items-center gap-3 px-3 py-1.5 rounded-lg text-[#635f4f] dark:text-[#a09c8f] hover:bg-[#eee8d6] dark:hover:bg-[#252525] font-['Inter'] text-sm font-medium transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-1.5 rounded-lg text-[#635f4f] dark:text-[#a09c8f] hover:bg-[#eee8d6] dark:hover:bg-[#252525] font-['Inter'] text-sm font-medium transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">help_outline</span>
+<span>Help</span>
+</a>
+</footer>
+</aside>
+<!-- Main Content Layout -->
+<main class="ml-64 min-h-screen flex flex-col bg-surface">
+<!-- Shared TopNavBar -->
+<header class="flex justify-between items-center px-4 w-full h-12 sticky top-0 z-40 bg-[#fef9ef] dark:bg-[#121212] font-['Inter'] text-[13px] font-normal">
+<div class="flex items-center gap-4">
+<span class="text-sm font-semibold text-[#363225] dark:text-[#e9e2ce]">Notion Studio: Project Hub</span>
+<div class="h-4 w-[1px] bg-outline-variant/20"></div>
+<nav class="flex gap-4">
+<a class="text-[#363225] dark:text-[#fef9ef] font-medium hover:text-[#363225]" href="#">Projects</a>
+<a class="text-[#635f4f] dark:text-[#a09c8f] hover:text-[#363225]" href="#">AI Hub</a>
+</nav>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-2 py-1 text-[#635f4f] hover:text-[#363225] transition-opacity opacity-90 hover:opacity-100">Updates</button>
+<button class="px-3 py-1 bg-primary text-on-primary rounded-lg font-medium transition-opacity opacity-90 hover:opacity-100">Share</button>
+<button class="p-1 text-[#635f4f]"><span class="material-symbols-outlined">more_horiz</span></button>
+<div class="w-6 h-6 rounded-full bg-surface-variant overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="professional headshot of a creative director in a minimalist studio setting with soft natural light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2RYo7d_GjMgjDHxArWgzY4AQ1A9Ocd06U51wpIrxUsWxIVL3z6eaxPVt27_MI1vwBWrlcDkWn-rpKHK8jTJ8yegLRvZvjElvdZb7e_If1R6CG8_BF060wNSnqh-sTgy7t5pwaaIHLfiwzWqyTOOarNQEDIs_1DuB88tbdOnStg8qYFDbq_qcsHP_dGuZS0poE7xVXGQEUAA-Z3q9YZ-T9XLzHs-bZVChUNqYMw4osm1wSwklmjcuRsoCWS5rlhHUlfGrpaMV7WeiR"/>
+</div>
+</div>
+</header>
+<!-- Dynamic Studio Layout -->
+<div class="flex flex-1 overflow-hidden">
+<!-- Left Panel: Chat/Prompting -->
+<section class="w-[400px] border-r border-outline-variant/10 flex flex-col bg-surface-container-low">
+<div class="p-6 flex-1 overflow-y-auto space-y-6">
+<!-- AI Greeting -->
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<div class="space-y-2">
+<p class="text-sm font-medium">NotionForge AI</p>
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm text-sm text-on-surface-variant leading-relaxed">
+                                Hello! I'm ready to build your project workspace. What would you like to create today?
+                            </div>
+</div>
+</div>
+<!-- User Prompt -->
+<div class="flex gap-3 justify-end">
+<div class="space-y-2 text-right">
+<p class="text-sm font-medium">You</p>
+<div class="bg-primary text-on-primary p-4 rounded-xl shadow-sm text-sm leading-relaxed text-left">
+                                Create a Project Hub for a new mobile app launch. I need a roadmap, a task database with Kanban view, and a section for brand assets.
+                            </div>
+</div>
+</div>
+<!-- AI Processing Status -->
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<div class="space-y-4 w-full">
+<p class="text-sm font-medium">Building Workspace...</p>
+<div class="space-y-2">
+<div class="flex items-center justify-between text-xs p-2 bg-surface-container rounded border border-outline-variant/10">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-green-600 text-[14px]">check_circle</span>
+<span>Defining structure</span>
+</div>
+<span class="text-on-surface-variant">Done</span>
+</div>
+<div class="flex items-center justify-between text-xs p-2 bg-surface-container rounded border border-outline-variant/10">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<span>Generating Task Database</span>
+</div>
+<span class="text-primary font-medium">Active</span>
+</div>
+<div class="flex items-center justify-between text-xs p-2 bg-surface-container/50 rounded border border-outline-variant/5 text-on-surface-variant/50">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">pending</span>
+<span>Finalizing Roadmap</span>
+</div>
+<span>Pending</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="p-4 bg-surface border-t border-outline-variant/10">
+<div class="relative">
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-4 text-sm focus:ring-2 focus:ring-primary focus:border-transparent resize-none placeholder:text-on-surface-variant/40" placeholder="Ask AI to edit or add blocks..." rows="3"></textarea>
+<button class="absolute bottom-3 right-3 p-2 bg-on-surface text-surface rounded-lg hover:opacity-90 transition-transform active:scale-95">
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+<div class="flex gap-2 mt-3">
+<button class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded bg-secondary-container text-on-secondary-container">Add Timeline</button>
+<button class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded bg-secondary-container text-on-secondary-container">Insert Image</button>
+</div>
+</div>
+</section>
+<!-- Main Panel: Real-time generation -->
+<section class="flex-1 overflow-y-auto bg-surface-container-lowest">
+<div class="max-w-4xl mx-auto py-16 px-12 space-y-8">
+<!-- Page Header Block -->
+<div class="group relative">
+<div class="flex items-center gap-4 mb-4">
+<span class="text-5xl">🚀</span>
+<div class="h-10 w-10 flex items-center justify-center rounded hover:bg-surface-container-high cursor-pointer">
+<span class="material-symbols-outlined text-on-surface-variant">add_photo_alternate</span>
+</div>
+</div>
+<h1 class="text-4xl font-extrabold tracking-tight text-on-surface mb-2">Project Hub: Mobile App Launch</h1>
+<p class="text-on-surface-variant text-lg">Central command for the Q4 product debut. Managed by AI.</p>
+</div>
+<!-- Callout Block -->
+<div class="p-4 bg-tertiary-container border-l-4 border-tertiary rounded-sm flex gap-4 items-start">
+<span class="text-xl">💡</span>
+<div class="text-sm leading-relaxed text-on-tertiary-container">
+<span class="font-bold">AI Tip:</span> I've synchronized the task list with the roadmap. Moving a date in the timeline will automatically update the database properties.
+                        </div>
+</div>
+<!-- Database Generation Block (Active) -->
+<div class="space-y-4">
+<div class="flex items-center justify-between border-b border-outline-variant/20 pb-2">
+<div class="flex items-center gap-2 font-semibold">
+<span class="material-symbols-outlined text-primary">view_kanban</span>
+<span>Tasks &amp; Deliverables</span>
+<div class="px-1.5 py-0.5 rounded bg-primary-container text-[10px] text-primary animate-pulse">GENERATING...</div>
+</div>
+<div class="flex gap-2">
+<span class="material-symbols-outlined text-on-surface-variant/40">search</span>
+<span class="material-symbols-outlined text-on-surface-variant/40">filter_list</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-6">
+<!-- Column 1 -->
+<div class="space-y-3">
+<div class="flex items-center gap-2 px-1">
+<div class="w-2 h-2 rounded-full bg-on-surface-variant/30"></div>
+<span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">To Do</span>
+<span class="text-xs text-on-surface-variant/40 ml-auto">3</span>
+</div>
+<div class="bg-surface rounded border border-outline-variant/10 p-3 shadow-sm notion-block-hover cursor-pointer">
+<p class="text-sm font-medium mb-2">Finalize App Store Screenshots</p>
+<div class="flex gap-2">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-[10px] text-on-surface-variant">Design</span>
+</div>
+</div>
+<div class="bg-surface rounded border border-outline-variant/10 p-3 shadow-sm notion-block-hover cursor-pointer opacity-50 border-dashed">
+<div class="flex items-center gap-2 text-xs text-on-surface-variant">
+<div class="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+<span>Adding task...</span>
+</div>
+</div>
+</div>
+<!-- Column 2 -->
+<div class="space-y-3">
+<div class="flex items-center gap-2 px-1">
+<div class="w-2 h-2 rounded-full bg-blue-500"></div>
+<span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">In Progress</span>
+<span class="text-xs text-on-surface-variant/40 ml-auto">1</span>
+</div>
+<div class="bg-surface rounded border border-outline-variant/10 p-3 shadow-sm notion-block-hover cursor-pointer ring-1 ring-primary/20">
+<p class="text-sm font-medium mb-2">Beta Testing Phase 1</p>
+<div class="flex items-center gap-3">
+<div class="flex -space-x-1">
+<div class="w-5 h-5 rounded-full border border-surface bg-surface-variant overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="portrait of a software engineer in a modern office" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRzBDVxxZqccuI3lwV3faVqpi4-sBM4lTGd4-FJRjktk7SDWa0PV3oS0pVGU_0FF5nT07hVRulvN5QfvFPidQR6zVpIt3AID9iBZr6cCqDoAyc8yGWyIM377lO4eRTv4vq2dcbyGr--RI9bmDefYmWJnkL7rT6Lr4RP38nOY8SqynCVZm3J7Kdf0wnTECsEIWzO8Xj7r6fcesLBTg3jg7aByl7uLdjLstEUYuXuyFe7XVvWe_ETz5ed5AlZ3uE-v8Pr02T4OklvOdg"/>
+</div>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-tertiary-container text-[10px] text-on-tertiary-container">QA</span>
+</div>
+</div>
+</div>
+<!-- Column 3 -->
+<div class="space-y-3">
+<div class="flex items-center gap-2 px-1">
+<div class="w-2 h-2 rounded-full bg-green-500"></div>
+<span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Done</span>
+<span class="text-xs text-on-surface-variant/40 ml-auto">8</span>
+</div>
+<div class="bg-surface rounded border border-outline-variant/10 p-3 shadow-sm notion-block-hover cursor-pointer">
+<p class="text-sm font-medium mb-2 text-on-surface-variant line-through">Brand Guidelines V1</p>
+<span class="px-1.5 py-0.5 rounded bg-secondary-container text-[10px] text-on-secondary-container">Brand</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Media Block Placeholder -->
+<div class="group relative bg-surface-container rounded-xl overflow-hidden min-h-[200px] flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 text-on-surface-variant/40">
+<div class="flex flex-col items-center gap-2">
+<span class="material-symbols-outlined text-4xl">cloud_upload</span>
+<p class="text-sm font-medium">AI is preparing Assets Gallery...</p>
+</div>
+<div class="absolute bottom-4 left-4 right-4 h-1 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[65%]"></div>
+</div>
+</div>
+<!-- Text Block with Slash Menu Simulation -->
+<div class="pt-8 group">
+<div class="flex items-start gap-2 -ml-8">
+<div class="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+<span class="material-symbols-outlined text-on-surface-variant cursor-grab">drag_indicator</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">add</span>
+</div>
+<p class="text-base text-on-surface leading-relaxed">
+                                Next steps involve finalizing the marketing collateral. Type <span class="bg-surface-container-highest px-1 py-0.5 rounded text-primary font-mono text-sm">/collateral</span> to let AI generate a social media calendar.
+                            </p>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Shared BottomNavBar (Status Bar style) -->
+<div class="fixed bottom-4 right-8 z-50 flex gap-4">
+<div class="fixed bottom-4 right-4 rounded-lg px-3 py-1 bg-transparent shadow-sm border border-[#b8b29f]/15 flex gap-4 items-center bg-surface-container-lowest/80 backdrop-blur-md">
+<div class="text-[#2383E2] flex items-center gap-2 font-['Inter'] text-[11px] uppercase tracking-wider font-bold">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+<span>AI Ready</span>
+</div>
+<div class="h-3 w-[1px] bg-outline-variant/20"></div>
+<div class="text-[#635f4f] flex items-center gap-2 font-['Inter'] text-[11px] uppercase tracking-wider font-bold">
+<span class="material-symbols-outlined">cloud_done</span>
+<span>Synced</span>
+</div>
+</div>
+</div>
+</main>
+</body></html>

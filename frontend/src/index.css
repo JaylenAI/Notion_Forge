@@ -1,13 +1,98 @@
 @import "tailwindcss";
 
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+@theme {
+  --color-surface: #131313;
+  --color-surface-dim: #131313;
+  --color-surface-bright: #3a3939;
+  --color-surface-container: #201f1f;
+  --color-surface-container-low: #1c1b1b;
+  --color-surface-container-high: #2a2a2a;
+  --color-surface-container-highest: #353534;
+  --color-surface-container-lowest: #0e0e0e;
+  --color-surface-variant: #353534;
+  --color-surface-tint: #adc6ff;
+
+  --color-primary: #adc6ff;
+  --color-primary-container: #006de6;
+  --color-primary-fixed: #d8e2ff;
+  --color-primary-fixed-dim: #adc6ff;
+  --color-on-primary: #002e69;
+  --color-on-primary-fixed: #001a41;
+  --color-on-primary-container: #f7f7ff;
+  --color-on-primary-fixed-variant: #004493;
+  --color-inverse-primary: #005bc1;
+
+  --color-secondary: #ffb59a;
+  --color-secondary-container: #ff5e07;
+  --color-secondary-fixed: #ffdbce;
+  --color-secondary-fixed-dim: #ffb59a;
+  --color-on-secondary: #5a1b00;
+  --color-on-secondary-fixed: #370e00;
+  --color-on-secondary-container: #531900;
+  --color-on-secondary-fixed-variant: #802a00;
+
+  --color-tertiary: #4edea3;
+  --color-tertiary-container: #008259;
+  --color-tertiary-fixed: #6ffbbe;
+  --color-tertiary-fixed-dim: #4edea3;
+  --color-on-tertiary: #003824;
+  --color-on-tertiary-fixed: #002113;
+  --color-on-tertiary-container: #e1ffec;
+  --color-on-tertiary-fixed-variant: #005236;
+
+  --color-on-surface: #e5e2e1;
+  --color-on-surface-variant: #c2c6d8;
+  --color-on-background: #e5e2e1;
+  --color-background: #131313;
+  --color-outline: #8c90a1;
+  --color-outline-variant: #424656;
+
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  --color-on-error: #690005;
+  --color-on-error-container: #ffdad6;
+
+  --color-inverse-surface: #e5e2e1;
+  --color-inverse-on-surface: #313030;
+
+  --font-family-headline: 'Manrope', sans-serif;
+  --font-family-body: 'Inter', sans-serif;
+  --font-family-label: 'Inter', sans-serif;
+
+  /* Notion light theme for preview panel */
+  --color-notion-bg: #fef9ef;
+  --color-notion-surface: #ffffff;
+  --color-notion-text: #363225;
+  --color-notion-text-secondary: #635f4f;
+  --color-notion-border: #e9e2ce;
+  --color-notion-primary: #005fad;
+  --color-notion-primary-container: #d4e3ff;
+  --color-notion-tertiary-container: #ddddfe;
+  --color-notion-on-tertiary-container: #4c4e68;
+  --color-notion-secondary-container: #e7e2d9;
+  --color-notion-on-secondary-container: #54514b;
+}
+
 @layer base {
+  html {
+    font-family: 'Inter', sans-serif;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+  }
+
   * {
     scrollbar-width: thin;
-    scrollbar-color: #d1d5db transparent;
+    scrollbar-color: #353534 transparent;
   }
 
   *::-webkit-scrollbar {
-    width: 6px;
+    width: 4px;
   }
 
   *::-webkit-scrollbar-track {
@@ -15,8 +100,49 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background-color: #d1d5db;
-    border-radius: 3px;
+    background-color: #353534;
+    border-radius: 10px;
+  }
+}
+
+@layer utilities {
+  .font-headline {
+    font-family: 'Manrope', sans-serif;
+  }
+
+  .font-body {
+    font-family: 'Inter', sans-serif;
+  }
+
+  .font-label {
+    font-family: 'Inter', sans-serif;
+  }
+
+  .glass-panel {
+    background: rgba(53, 53, 52, 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .blueprint-bg {
+    background-image: radial-gradient(circle, #424656 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .material-symbols-filled {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .notion-block-hover:hover {
+    background-color: rgba(54, 50, 37, 0.05);
   }
 }
 
@@ -53,6 +179,15 @@
   }
 }
 
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(78, 222, 163, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(78, 222, 163, 0.6);
+  }
+}
+
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
 }
@@ -71,4 +206,8 @@
 
 .animate-pulse-dot-delay-2 {
   animation: pulse-dot 1.4s ease-in-out 0.4s infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
 }

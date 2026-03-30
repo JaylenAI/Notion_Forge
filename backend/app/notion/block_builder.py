@@ -441,21 +441,43 @@ def icon_custom_emoji(custom_emoji_id: str) -> dict:
 
 def build_database_properties(props: dict[str, Any]) -> dict[str, Any]:
     """DB 속성 스키마 생성"""
+    # AI가 잘못 생성할 수 있는 타입명 → Notion API 올바른 타입명
+    TYPE_ALIASES = {
+        "text": "rich_text",
+        "string": "rich_text",
+        "memo": "rich_text",
+        "integer": "number",
+        "float": "number",
+        "bool": "checkbox",
+        "boolean": "checkbox",
+        "tag": "select",
+        "tags": "multi_select",
+        "link": "url",
+        "person": "rich_text",  # people은 user ID 필요 → 텍스트로 대체
+        "file": "files",
+        "phone": "phone_number",
+        "created": "created_time",
+        "updated": "last_edited_time",
+    }
+
     result = {}
     for name, spec in props.items():
-        # Handle auto-generated types (string shorthand)
         if isinstance(spec, str):
+            # 타입 별칭 자동 변환
+            spec = TYPE_ALIASES.get(spec, spec)
             if spec in ("created_time", "created_by", "last_edited_time", "last_edited_by", "unique_id"):
                 result[name] = {spec: {}}
                 continue
             result[name] = {spec: {}}
         elif isinstance(spec, dict):
-            prop_type = spec["type"]
+            prop_type = TYPE_ALIASES.get(spec["type"], spec["type"])
             config: dict[str, Any] = {}
+            # select/multi_select 옵션 색상 검증
+            VALID_OPTION_COLORS = {"default", "gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"}
             if prop_type in ("select", "multi_select") and "options" in spec:
                 config["options"] = [
-                    {"name": opt["name"], "color": opt.get("color", "default")}
-                    if isinstance(opt, dict) else {"name": opt, "color": "default"}
+                    {"name": str(opt["name"] if isinstance(opt, dict) else opt),
+                     "color": (opt.get("color", "default") if isinstance(opt, dict) and opt.get("color") in VALID_OPTION_COLORS else "default")}
                     for opt in spec["options"]
                 ]
             elif prop_type == "status" and "options" in spec:
