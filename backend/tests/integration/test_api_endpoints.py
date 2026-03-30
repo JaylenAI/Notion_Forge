@@ -30,7 +30,7 @@ async def test_preview_dashboard(client):
     r = await client.post("/api/templates/preview", json={"prompt": "대시보드 만들어줘 보라색"})
     assert r.status_code == 200
     bp = r.json()["blueprint"]
-    assert bp["metadata"]["template_type"] in ("dashboard", "custom")
+    assert bp["metadata"]["template_type"] in ("dashboard", "hub", "manage", "custom")
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,6 @@
 
 from fastapi import APIRouter
 
-from app.agent.intent_analyzer import analyze_intent
 from app.agent.blueprint_generator import generate_blueprint
 from app.agent.orchestrator import AgentOrchestrator
 from app.notion.client import NotionClient
@@ -52,8 +51,7 @@ async def generate_template(req: TemplateGenerateRequest):
 @router.post("/preview", response_model=TemplatePreviewResponse)
 async def preview_template(req: TemplatePreviewRequest):
     """Blueprint 미리보기 (생성 없이 구조만 확인)"""
-    intent = await analyze_intent(req.prompt)
-    blueprint = generate_blueprint(intent)
+    blueprint = await generate_blueprint(req.prompt)
     return TemplatePreviewResponse(blueprint=blueprint)
 
 

@@ -1,52 +1,56 @@
-"""Blueprint Generator 단위 테스트"""
-from app.agent.blueprint_generator import generate_blueprint
-from app.schemas.blueprint import IntentResult
+"""Blueprint Generator 단위 테스트 (dev-2: async + skill based)"""
+import pytest
+from app.agent.blueprint_generator import generate_blueprint, _mock_call, _assemble_blueprint
 
 
-def test_dashboard_blueprint():
-    intent = IntentResult(intent="CREATE", template_type="dashboard", title="대시보드", color_theme="orange", confidence=0.9)
-    bp = generate_blueprint(intent)
-    assert bp["metadata"]["template_type"] == "dashboard"
-    assert bp["metadata"]["color_theme"] == "orange"
-    assert bp["main_page"]["icon"] == "🏢"
-    assert len(bp["databases"]) >= 1
+def test_mock_call_dashboard():
+    result = _mock_call("프로젝트 대시보드 만들어줘")
+    assert result["skill"] in ("manage", "hub")
 
 
-def test_tracker_blueprint():
-    intent = IntentResult(intent="CREATE", template_type="tracker", title="트래커", color_theme="green", confidence=0.9)
-    bp = generate_blueprint(intent)
-    assert bp["metadata"]["template_type"] == "tracker"
+def test_mock_call_tracker():
+    result = _mock_call("습관 트래커 만들어줘")
+    assert result["skill"] == "track"
+
+
+def test_mock_call_bookmark():
+    result = _mock_call("북마크 사이트 만들어줘")
+    assert result["skill"] == "organize"
+
+
+def test_mock_call_onboarding():
+    result = _mock_call("온보딩 가이드 만들어줘")
+    assert result["skill"] == "guide"
+
+
+def test_mock_call_color():
+    result = _mock_call("보라색으로 만들어줘")
+    assert result["color"] == "purple"
+
+
+def test_assemble_track():
+    content = _mock_call("운동 기록 만들어줘")
+    bp = _assemble_blueprint(content, None)
+    assert bp["version"] == "2.0"
     assert len(bp["databases"]) >= 1
     assert any(b["type"] == "callout" for b in bp["blocks"])
 
 
-def test_bookmark_blueprint():
-    intent = IntentResult(intent="CREATE", template_type="bookmark", title="북마크", confidence=0.9)
-    bp = generate_blueprint(intent)
-    assert len(bp["databases"]) >= 1
-    db_props = bp["databases"][0]["properties"]
-    assert "URL" in db_props or "url" in str(db_props).lower()
+def test_assemble_has_database():
+    content = {"skill": "track", "title": "Test", "icon": "📋", "color": "blue",
+               "callout_text": "테스트", "db_name": "DB", 
+               "db_properties": {"이름": "title", "날짜": "date"},
+               "views": ["calendar"], "sample_items": [{"이름": "항목1", "icon": "📌"}],
+               "sub_pages": [], "faq": []}
+    bp = _assemble_blueprint(content, None)
+    assert len(bp["databases"]) == 1
+    assert bp["databases"][0]["title"] == "DB"
 
 
-def test_onboarding_blueprint():
-    intent = IntentResult(intent="CREATE", template_type="onboarding", title="온보딩", color_theme="blue", confidence=0.9)
-    bp = generate_blueprint(intent)
-    assert any(b["type"] == "to_do" for b in bp["blocks"])
-
-
-def test_custom_blueprint():
-    intent = IntentResult(intent="CREATE", template_type="custom", title="커스텀", confidence=0.5)
-    bp = generate_blueprint(intent)
-    assert bp["main_page"]["icon"] == "⚡"
-
-
-def test_sub_pages():
-    intent = IntentResult(intent="CREATE", template_type="dashboard", title="대시보드", sub_pages=["A", "B"], confidence=0.9)
-    bp = generate_blueprint(intent)
-    assert len(bp["sub_pages"]) >= 2
-
-
-def test_note_blueprint_has_sub_pages():
-    intent = IntentResult(intent="CREATE", template_type="note", title="Tea Note", color_theme="green", confidence=0.9)
-    bp = generate_blueprint(intent)
-    assert len(bp["sub_pages"]) >= 1
+@pytest.mark.asyncio
+async def test_generate_blueprint_async():
+    """generate_blueprint는 async 함수"""
+    bp = await generate_blueprint("트래커 만들어줘")
+    assert bp["version"] == "2.0"
+    assert "metadata" in bp
+    assert "databases" in bp

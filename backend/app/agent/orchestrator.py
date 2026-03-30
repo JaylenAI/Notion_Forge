@@ -9,13 +9,12 @@
 from typing import Any, AsyncGenerator
 
 from app.agent.intent_analyzer import analyze_intent
-from app.agent.blueprint_generator import generate_blueprint
+from app.agent.blueprint_generator import generate_blueprint  # now async, takes message string
 from app.agent.tools.add_blocks import AddBlocksTool, spec_to_block
 from app.agent.tools.add_database_items import AddDatabaseItemsTool
 from app.notion.client import NotionClient
 from app.notion.block_builder import build_database_properties
 from app.schemas.blueprint import IntentResult
-from app.skills import load_skill, load_content_skill
 
 
 class AgentOrchestrator:
@@ -60,17 +59,9 @@ class AgentOrchestrator:
             yield {"type": "question", "content": self._build_question(intent), "intent": intent.model_dump()}
             return
 
-        # 스킬 동적 로딩
-        yield {"type": "progress", "step": "skill_loading", "message": "스킬을 로딩하고 있어요..."}
-        skill_content = load_skill(intent.template_type)
-        content_skill = load_content_skill()
-
-        yield {"type": "progress", "step": "blueprint", "message": "템플릿 구조를 설계하고 있어요..."}
-        blueprint = generate_blueprint(intent)
-
-        # 스킬 로딩 정보 추가
-        blueprint["metadata"]["skill_loaded"] = skill_content is not None
-        blueprint["metadata"]["content_skill_loaded"] = content_skill is not None
+        # AI가 스킬 선택 + 맥락 맞춤 내용 생성
+        yield {"type": "progress", "step": "skill_selection", "message": "AI가 스킬을 선택하고 맞춤 내용을 생성하고 있어요..."}
+        blueprint = await generate_blueprint(message)
 
         yield {"type": "blueprint_preview", "content": self._format_preview(blueprint), "blueprint": blueprint}
 

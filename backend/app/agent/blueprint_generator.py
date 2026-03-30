@@ -1,10 +1,18 @@
-"""의도 분석 결과 → Template Blueprint JSON 생성 (스킬 기반)"""
+"""AI Tool Calling 기반 Blueprint Generator (dev-2)
 
+흐름:
+1. AI 1회 호출 → 스킬 선택 + 맥락 맞춤 내용 생성
+2. 선택된 스킬 .md 로드 → 구조 가이드
+3. 스킬 구조 + AI 내용 → Blueprint JSON 조립
+4. 기존 Orchestrator가 실행 (변경 없음)
+"""
+
+import json
+import re
 from typing import Any
 
-from app.schemas.blueprint import IntentResult
-from app.skills import load_skill
-
+from app.config import settings
+from app.skills import load_skill, get_tool_enum_description, SKILL_REGISTRY
 
 COVER_URLS: dict[str, str] = {
     "blue": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200",
@@ -18,33 +26,234 @@ COVER_URLS: dict[str, str] = {
     "default": "https://images.unsplash.com/photo-1557683316-973673baf926?w=1200",
 }
 
-TEMPLATE_ICONS: dict[str, str] = {
-    "dashboard": "🏢", "tracker": "✅", "bookmark": "🔖",
-    "project": "📊", "note": "📝", "onboarding": "👋",
-    "crm": "🤝", "custom": "⚡",
-}
+SYSTEM_PROMPT = """You are a Notion template AI Agent.
+Analyze the user's request and generate a template specification.
+
+Select the most appropriate skill and create context-specific content.
+
+Available skills:
+{skills}
+
+IMPORTANT RULES:
+- Generate 5 realistic sample items with icons (NOT generic/placeholder data)
+- DB properties should match the user's specific context
+- Select options should have appropriate colors
+- Views should match the use case (calendar for dates, board for status, gallery for collections)
+- All text content (title, callout, samples) should be in Korean unless the context is English
+
+CRITICAL SAMPLE DATA RULES:
+- Every sample_item MUST include values for ALL db_properties (not just title and icon)
+- For date properties: use real dates like "2026-04-01", "2026-04-03", etc.
+- For status properties: spread across all statuses (not all "시작 전")
+- For select properties: use different options across items
+- For number properties: use realistic varied numbers
+- For checkbox: mix true and false
+- Calendar views REQUIRE date values in samples
+- Board views REQUIRE status values in samples
+- Gallery views REQUIRE icons in samples
+
+BAD example (missing values):
+  [{{"이름": "항목1", "icon": "📌"}}, {{"이름": "항목2", "icon": "📌"}}]
+
+GOOD example (all values filled):
+  [
+    {{"운동명": "러닝 30분", "종류": "유산소", "시간": 30, "칼로리": 300, "날짜": "2026-04-01", "완료": true, "icon": "🏃"}},
+    {{"운동명": "스쿼트 5세트", "종류": "근력", "시간": 40, "칼로리": 250, "날짜": "2026-04-02", "완료": false, "icon": "🏋️"}}
+  ]
+
+Respond with ONLY valid JSON, no other text:
+{{
+  "skill": "skill_name",
+  "title": "template title",
+  "icon": "emoji",
+  "color": "blue|orange|green|red|purple|pink|yellow|gray",
+  "callout_text": "welcome/guide message",
+  "db_name": "database name",
+  "db_properties": {{
+    "property_name": "type_string" or {{"type": "select", "options": [{{"name": "opt", "color": "blue"}}]}}
+  }},
+  "views": ["gallery", "calendar", "board", "timeline", "table"],
+  "sample_items": [
+    {{"property_name": "value", "icon": "emoji"}},
+  ],
+  "sub_pages": [
+    {{"name": "page name", "icon": "emoji", "description": "brief desc"}}
+  ],
+  "faq": [
+    {{"q": "question", "a": "answer"}}
+  ]
+}}"""
 
 
-def generate_blueprint(intent: IntentResult) -> dict[str, Any]:
-    """의도 분석 결과를 기반으로 Template Blueprint 생성"""
-    template_type = intent.template_type
-    color = intent.color_theme if intent.color_theme != "default" else "gray"
+async def generate_blueprint(user_message: str) -> dict[str, Any]:
+    """AI Tool Calling으로 Blueprint 생성"""
+    try:
+        ai_content = await _call_ai_for_content(user_message)
+        if ai_content:
+            skill_name = ai_content.get("skill", "track")
+            skill_md = load_skill(skill_name)
+            blueprint = _assemble_blueprint(ai_content, skill_md)
+            blueprint["metadata"]["generation_method"] = "ai_dynamic"
+            blueprint["metadata"]["skill_used"] = skill_name
+            return blueprint
+    except Exception as e:
+        print(f"[AI Blueprint 실패, 폴백 사용] {e}")
+
+    # 폴백: Mock 분석으로 기본 템플릿
+    return _fallback_blueprint(user_message)
+
+
+async def _call_ai_for_content(user_message: str) -> dict[str, Any] | None:
+    """AI 호출 → 스킬 선택 + 맥락 맞춤 내용 생성"""
+    provider = settings.ai_provider
+
+    prompt = SYSTEM_PROMPT.format(skills=get_tool_enum_description())
+
+    if provider == "groq":
+        return await _groq_call(prompt, user_message)
+    elif provider == "gemini":
+        return await _gemini_call(prompt, user_message)
+    elif provider == "claude":
+        return await _claude_call(prompt, user_message)
+    else:
+        return _mock_call(user_message)
+
+
+async def _groq_call(system: str, user_message: str) -> dict[str, Any] | None:
+    """Groq API 호출"""
+    try:
+        from groq import AsyncGroq
+
+        client = AsyncGroq(api_key=settings.groq_api_key)
+        response = await client.chat.completions.create(
+            model="openai/gpt-oss-120b",
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_message},
+            ],
+            temperature=0.3,
+            max_tokens=2048,
+        )
+        text = response.choices[0].message.content or ""
+        return _parse_json_response(text)
+    except Exception as e:
+        print(f"[Groq 에러] {e}")
+        return None
+
+
+async def _gemini_call(system: str, user_message: str) -> dict[str, Any] | None:
+    """Gemini API 호출"""
+    try:
+        from google import genai
+
+        client = genai.Client(api_key=settings.gemini_api_key)
+        response = await client.aio.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=f"{system}\n\nUser request: {user_message}",
+        )
+        text = response.text or ""
+        return _parse_json_response(text)
+    except Exception as e:
+        print(f"[Gemini 에러] {e}")
+        return None
+
+
+async def _claude_call(system: str, user_message: str) -> dict[str, Any] | None:
+    """Claude API 호출"""
+    try:
+        import anthropic
+
+        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+        response = await client.messages.create(
+            model=settings.claude_model,
+            max_tokens=2048,
+            system=system,
+            messages=[{"role": "user", "content": user_message}],
+        )
+        text = response.content[0].text
+        return _parse_json_response(text)
+    except Exception as e:
+        print(f"[Claude 에러] {e}")
+        return None
+
+
+def _mock_call(user_message: str) -> dict[str, Any]:
+    """Mock 모드 (API 키 없을 때)"""
+    msg = user_message.lower()
+
+    # 스킬 선택 (키워드 매칭)
+    skill = "track"
+    for skill_id, info in SKILL_REGISTRY.items():
+        keywords = info["keywords"].split(",")
+        if any(kw.strip() in msg for kw in keywords):
+            skill = skill_id
+            break
+
+    # 색상 감지
+    color = "gray"
+    color_map = {"파란": "blue", "하늘": "blue", "주황": "orange", "초록": "green",
+                 "빨간": "red", "보라": "purple", "핑크": "pink", "노란": "yellow"}
+    for kr, en in color_map.items():
+        if kr in msg:
+            color = en
+            break
+
+    return {
+        "skill": skill,
+        "title": user_message.replace("만들어줘", "").replace("만들어", "").strip() or "My Template",
+        "icon": "📋",
+        "color": color,
+        "callout_text": "템플릿이 생성되었습니다. 자유롭게 수정해서 사용하세요!",
+        "db_name": "Items",
+        "db_properties": {"이름": "title", "상태": "status", "날짜": "date"},
+        "views": ["table"],
+        "sample_items": [
+            {"이름": "항목 1", "icon": "📌"},
+            {"이름": "항목 2", "icon": "📌"},
+            {"이름": "항목 3", "icon": "📌"},
+        ],
+        "sub_pages": [],
+        "faq": [],
+    }
+
+
+def _parse_json_response(text: str) -> dict[str, Any] | None:
+    """AI 응답에서 JSON 파싱"""
+    # JSON 블록 추출
+    json_match = re.search(r"\{[\s\S]*\}", text)
+    if not json_match:
+        return None
+    try:
+        data = json.loads(json_match.group())
+        # 필수 필드 확인
+        if "skill" in data and "db_properties" in data:
+            return data
+        return None
+    except (json.JSONDecodeError, Exception):
+        return None
+
+
+# ============================================================
+# Blueprint 조립: 스킬 구조 + AI 내용 → Blueprint JSON
+# ============================================================
+
+def _assemble_blueprint(content: dict, skill_md: str | None) -> dict[str, Any]:
+    """스킬 구조 + AI 내용 → Orchestrator가 실행할 수 있는 Blueprint"""
+    skill = content.get("skill", "track")
+    color = content.get("color", "gray")
     bg = f"{color}_background" if color != "default" else "default"
+    title = content.get("title", "My Template")
 
-    # 스킬 파일 로드 (존재 확인용)
-    skill_content = load_skill(template_type)
-
-    bp: dict[str, Any] = {
-        "version": "1.0",
+    blueprint: dict[str, Any] = {
+        "version": "2.0",
         "metadata": {
-            "title": intent.title or "My Workspace",
-            "template_type": template_type,
+            "title": title,
+            "template_type": skill,
             "color_theme": color,
-            "skill_loaded": skill_content is not None,
         },
         "main_page": {
-            "title": intent.title or "My Workspace",
-            "icon": TEMPLATE_ICONS.get(template_type, "⚡"),
+            "title": title,
+            "icon": content.get("icon", "📋"),
             "cover_url": COVER_URLS.get(color, COVER_URLS["default"]),
         },
         "blocks": [],
@@ -52,437 +261,268 @@ def generate_blueprint(intent: IntentResult) -> dict[str, Any]:
         "sub_pages": [],
     }
 
-    builder = BUILDERS.get(template_type, _build_custom)
-    builder(bp, intent, bg, color)
-    return bp
+    # 스킬별 구조 빌더
+    builder = SKILL_BUILDERS.get(skill, _build_track)
+    builder(blueprint, content, bg)
+
+    return blueprint
 
 
-# ============================================================
-# 대시보드 (이미지 수준 고도화)
-# ============================================================
-
-def _build_dashboard(bp: dict, intent: IntentResult, bg: str, color: str) -> None:
-    title = intent.title or "To-Do List"
-
-    # 메인 DB (고도화: 더 풍부한 속성)
-    bp["databases"].append({
-        "title": title,
-        "is_inline": True,
-        "properties": {
-            "이름": "title",
-            "날짜": "date",
-            "설명": "rich_text",
-            "진행사항": "status",
-            "우선순위": {"type": "select", "options": [
-                {"name": "높음", "color": "red"},
-                {"name": "중간", "color": "yellow"},
-                {"name": "낮음", "color": "green"},
-            ]},
-            "태그": {"type": "multi_select", "options": [
-                {"name": "ETC", "color": "yellow"},
-                {"name": "Study", "color": "blue"},
-                {"name": "Meeting", "color": "purple"},
-                {"name": "To-Do List", "color": "orange"},
-                {"name": "Project", "color": "green"},
-            ]},
-            "담당자": "rich_text",
-        },
-        "sample_items": [
-            {"이름": "고객사 출장 미팅", "날짜": "2026-01-12", "태그": "ETC", "우선순위": "높음", "icon": "⭐"},
-            {"이름": "노션팀 1주차 스터디", "날짜": "2026-01-13", "태그": "Study", "우선순위": "중간", "icon": "📌"},
-            {"이름": "노션팀 주간 미팅", "날짜": "2026-01-15", "태그": "Meeting", "우선순위": "중간", "icon": "📁"},
-            {"이름": "마케팅 홍보 자료 제작하기", "날짜": "2026-01-16", "태그": "To-Do List", "우선순위": "낮음", "icon": "⬜"},
-            {"이름": "Q2 목표 설정", "날짜": "2026-01-19", "태그": "Project", "우선순위": "높음", "icon": "🎯"},
-        ],
-        # Views API (2026-03-19) - 추가 뷰 자동 생성
-        "views": [
-            {"type": "calendar", "title": "캘린더"},
-            {"type": "board", "title": "보드"},
-        ],
-    })
-
-    # 하위 페이지 (네비게이션용)
-    sub_names = intent.sub_pages or ["Members", "Calendar", "Project", "Study"]
-    sub_icons = {"Members": "👥", "Calendar": "📅", "Project": "📋", "Study": "📖"}
-
-    # 좌측 사이드바 블록
-    sidebar: list[dict] = [
-        {"type": "callout", "text": "캘린더 뷰는 DB에서 직접 추가해주세요 :)", "icon": "💡", "color": bg},
-        {"type": "divider"},
-    ]
-
-    # 사이드바 섹션들
-    sections = {
-        "Team": ["Members", "Calendar"],
-        "Project": ["Project"],
-        "Study": ["Study"],
-    }
-    for section_name, items in sections.items():
-        sidebar.append({"type": "heading_2", "text": section_name, "color": bg})
-        for item in items:
-            icon = sub_icons.get(item, "📄")
-            sidebar.append({"type": "bulleted_list", "text": f"{icon} {item}"})
-        sidebar.append({"type": "paragraph", "text": ""})
-
-    # 우측 메인 블록
-    main_content: list[dict] = [
-        {"type": "heading_1", "text": title, "color": bg},
-        {"type": "divider"},
-    ]
-
-    # 액션 버튼 (콜아웃으로 대체 - 4개 가로 배치)
-    action_buttons: list[dict] = [
-        {"type": "callout", "text": "To Do List 추가하기", "icon": "✅", "color": bg},
-        {"type": "callout", "text": "회의록 추가하기", "icon": "🗓️", "color": bg},
-        {"type": "callout", "text": "스터디 일정 추가하기", "icon": "📋", "color": bg},
-        {"type": "callout", "text": "기타 일정 추가하기", "icon": "📝", "color": bg},
-    ]
-
-    # 액션 버튼을 콜아웃으로 세로 배치 (칼럼 중첩 불가)
-    for btn in action_buttons:
-        main_content.append(btn)
-
-    main_content.append({"type": "divider"})
-    # DB는 칼럼 안에 넣을 수 없으므로, 칼럼 아래에 별도 배치
-    main_content.append({"type": "callout", "text": "📊 아래 데이터베이스에서 일정을 관리하세요", "icon": "👇", "color": bg})
-
-    # 네비게이션 바 (상단)
-    nav_text = " | ".join(["Home"] + sub_names)
+def _build_track(bp: dict, c: dict, bg: str) -> None:
+    """Track 스킬 구조: callout → heading → DB → FAQ"""
     bp["blocks"] = [
-        {"type": "paragraph", "text": nav_text, "color": bg},
+        {"type": "callout", "text": c.get("callout_text", ""), "icon": c.get("icon", "✅"), "color": bg},
         {"type": "divider"},
-        {"type": "column_list", "columns": [
-            {"blocks": sidebar},
-            {"blocks": main_content},
-        ]},
+        {"type": "heading_1", "text": f"📋 {c.get('db_name', bp['main_page']['title'])}", "color": bg},
+        {"type": "database_ref", "db_index": 0},
         {"type": "divider"},
-        {"type": "heading_2", "text": f"📊 {title}", "color": bg},
+    ]
+    # FAQ 토글
+    for faq in c.get("faq", []):
+        bp["blocks"].append({"type": "toggle", "text": faq["q"], "children_text": faq["a"]})
+
+    _add_database(bp, c)
+
+
+def _build_collect(bp: dict, c: dict, bg: str) -> None:
+    """Collect 스킬 구조: callout → 2단 칼럼 → DB → toggle"""
+    # 좌측 사이드바
+    left_blocks: list[dict] = [
+        {"type": "heading_2", "text": "Quick Action"},
+        {"type": "callout", "text": "새 기록 쓰기", "icon": "✏️", "color": bg},
+        {"type": "divider"},
+        {"type": "heading_2", "text": "Menu"},
+    ]
+    for sub in c.get("sub_pages", []):
+        left_blocks.append({"type": "bulleted_list", "text": f"{sub.get('icon', '📄')} {sub['name']}"})
+
+    # 우측 메인
+    right_blocks: list[dict] = [
+        {"type": "heading_1", "text": c.get("db_name", bp["main_page"]["title"]), "color": bg},
+        {"type": "callout", "text": "아래에서 컬렉션을 관리하세요", "icon": "👇", "color": bg},
+    ]
+
+    bp["blocks"] = [
+        {"type": "callout", "text": c.get("callout_text", ""), "icon": c.get("icon", "📝"), "color": bg},
+        {"type": "divider"},
+        {"type": "column_list", "columns": [{"blocks": left_blocks}, {"blocks": right_blocks}]},
+        {"type": "divider"},
+        {"type": "database_ref", "db_index": 0},
+        {"type": "divider"},
+    ]
+    for faq in c.get("faq", []):
+        bp["blocks"].append({"type": "toggle", "text": faq["q"], "children_text": faq["a"]})
+
+    _add_database(bp, c)
+    _add_sub_pages(bp, c, bg)
+
+
+def _build_manage(bp: dict, c: dict, bg: str) -> None:
+    """Manage 스킬 구조: callout → heading → DB → toggle"""
+    bp["blocks"] = [
+        {"type": "callout", "text": c.get("callout_text", ""), "icon": c.get("icon", "📊"), "color": bg},
+        {"type": "divider"},
+        {"type": "heading_1", "text": f"🗂️ {c.get('db_name', 'Tasks')}", "color": bg},
+        {"type": "database_ref", "db_index": 0},
+        {"type": "divider"},
+    ]
+    for faq in c.get("faq", []):
+        bp["blocks"].append({"type": "toggle", "text": faq["q"], "children_text": faq["a"]})
+
+    _add_database(bp, c)
+
+
+def _build_plan(bp: dict, c: dict, bg: str) -> None:
+    """Plan 스킬 구조: callout → 체크리스트 섹션들 → DB → FAQ"""
+    bp["blocks"] = [
+        {"type": "callout", "text": c.get("callout_text", ""), "icon": c.get("icon", "📅"), "color": bg},
+        {"type": "divider"},
+    ]
+
+    # 샘플 데이터를 카테고리별로 그룹화하여 체크리스트 생성
+    categories = set()
+    for item in c.get("sample_items", []):
+        for key, val in item.items():
+            if key not in ("icon",) and isinstance(val, str) and val in [
+                opt.get("name", "") for prop in c.get("db_properties", {}).values()
+                if isinstance(prop, dict) for opt in prop.get("options", [])
+            ]:
+                categories.add(val)
+
+    if categories:
+        for cat in sorted(categories):
+            bp["blocks"].append({"type": "heading_2", "text": f"📋 {cat}", "color": bg})
+            items = [item for item in c.get("sample_items", []) if cat in str(item.values())]
+            for item in items[:3]:
+                title_val = next((v for k, v in item.items() if k not in ("icon",) and isinstance(v, str) and v != cat), "항목")
+                bp["blocks"].append({"type": "to_do", "text": title_val})
+    else:
+        # 카테고리 없으면 샘플로 체크리스트
+        for item in c.get("sample_items", [])[:5]:
+            title_val = next((v for k, v in item.items() if k != "icon" and isinstance(v, str)), "항목")
+            bp["blocks"].append({"type": "to_do", "text": title_val})
+
+    bp["blocks"].extend([
+        {"type": "divider"},
+        {"type": "heading_1", "text": f"📊 {c.get('db_name', '상세 계획')}", "color": bg},
+        {"type": "database_ref", "db_index": 0},
+        {"type": "divider"},
+    ])
+    for faq in c.get("faq", []):
+        bp["blocks"].append({"type": "toggle", "text": faq["q"], "children_text": faq["a"]})
+
+    _add_database(bp, c)
+
+
+def _build_organize(bp: dict, c: dict, bg: str) -> None:
+    """Organize 스킬 구조: 2단 칼럼(카테고리+메인) → DB"""
+    # 카테고리 목록 추출
+    categories = []
+    for prop_name, prop_spec in c.get("db_properties", {}).items():
+        if isinstance(prop_spec, dict) and prop_spec.get("type") == "select":
+            categories = [opt["name"] for opt in prop_spec.get("options", [])]
+            break
+
+    left_blocks: list[dict] = [{"type": "heading_2", "text": "📂 Categories", "color": bg}]
+    for cat in categories[:8]:
+        left_blocks.append({"type": "bulleted_list", "text": cat})
+
+    right_blocks: list[dict] = [
+        {"type": "callout", "text": c.get("callout_text", ""), "icon": c.get("icon", "🔖"), "color": bg},
+        {"type": "divider"},
+        {"type": "heading_1", "text": c.get("db_name", bp["main_page"]["title"]), "color": bg},
+        {"type": "callout", "text": "아래에서 정리하세요", "icon": "👇", "color": bg},
+    ]
+
+    bp["blocks"] = [
+        {"type": "column_list", "columns": [{"blocks": left_blocks}, {"blocks": right_blocks}]},
+        {"type": "divider"},
         {"type": "database_ref", "db_index": 0},
     ]
 
-    # 하위 페이지
-    for name in sub_names:
-        icon = sub_icons.get(name, "📄")
+    _add_database(bp, c)
+
+
+def _build_guide(bp: dict, c: dict, bg: str) -> None:
+    """Guide 스킬 구조: callout → 체크리스트 → DB → FAQ"""
+    bp["blocks"] = [
+        {"type": "callout", "text": c.get("callout_text", ""), "icon": "👋", "color": bg},
+        {"type": "divider"},
+    ]
+
+    # 샘플을 체크리스트로
+    for i, item in enumerate(c.get("sample_items", [])):
+        title_val = next((v for k, v in item.items() if k != "icon" and isinstance(v, str)), f"항목 {i+1}")
+        bp["blocks"].append({"type": "to_do", "text": title_val, "checked": i < 2})
+
+    bp["blocks"].extend([
+        {"type": "divider"},
+        {"type": "heading_1", "text": f"📊 {c.get('db_name', '진행 현황')}", "color": bg},
+        {"type": "database_ref", "db_index": 0},
+        {"type": "divider"},
+        {"type": "heading_2", "text": "💡 자주 묻는 질문", "color": bg},
+    ])
+    for faq in c.get("faq", []):
+        bp["blocks"].append({"type": "toggle", "text": faq["q"], "children_text": faq["a"]})
+
+    _add_database(bp, c)
+
+
+def _build_hub(bp: dict, c: dict, bg: str) -> None:
+    """Hub 스킬 구조: nav → 2단 칼럼(사이드바+메인) → DB"""
+    sub_pages = c.get("sub_pages", [])
+    nav_text = " | ".join(["Home"] + [s["name"] for s in sub_pages])
+
+    # 사이드바
+    left_blocks: list[dict] = [
+        {"type": "callout", "text": "캘린더 뷰는 DB에서 추가하세요 :)", "icon": "💡", "color": bg},
+        {"type": "divider"},
+    ]
+
+    # 하위 페이지를 섹션별로 그룹
+    for i, sub in enumerate(sub_pages):
+        if i % 2 == 0:
+            section_name = sub.get("description", sub["name"])
+            left_blocks.append({"type": "heading_2", "text": section_name, "color": bg})
+        left_blocks.append({"type": "bulleted_list", "text": f"{sub.get('icon', '📄')} {sub['name']}"})
+
+    # 메인
+    right_blocks: list[dict] = [
+        {"type": "heading_1", "text": bp["main_page"]["title"], "color": bg},
+        {"type": "divider"},
+    ]
+    # 액션 콜아웃
+    action_texts = ["일정 추가하기", "회의록 추가하기", "새 항목 추가하기"]
+    action_icons = ["✅", "🗓️", "📝"]
+    for text, icon in zip(action_texts[:3], action_icons[:3]):
+        right_blocks.append({"type": "callout", "text": text, "icon": icon, "color": bg})
+    right_blocks.append({"type": "divider"})
+    right_blocks.append({"type": "callout", "text": "아래 데이터베이스에서 관리하세요", "icon": "👇", "color": bg})
+
+    bp["blocks"] = [
+        {"type": "paragraph", "text": nav_text, "color": bg},
+        {"type": "divider"},
+        {"type": "column_list", "columns": [{"blocks": left_blocks}, {"blocks": right_blocks}]},
+        {"type": "divider"},
+        {"type": "heading_2", "text": f"📊 {c.get('db_name', bp['main_page']['title'])}", "color": bg},
+        {"type": "database_ref", "db_index": 0},
+    ]
+
+    _add_database(bp, c)
+    _add_sub_pages(bp, c, bg)
+
+
+# ============================================================
+# 공통 헬퍼
+# ============================================================
+
+def _add_database(bp: dict, c: dict) -> None:
+    """DB 정보를 Blueprint에 추가"""
+    views = []
+    for v in c.get("views", ["table"]):
+        if isinstance(v, str):
+            views.append({"type": v, "title": v})
+        elif isinstance(v, dict):
+            views.append(v)
+
+    bp["databases"].append({
+        "title": c.get("db_name", "Items"),
+        "is_inline": True,
+        "properties": c.get("db_properties", {"이름": "title"}),
+        "views": views,
+        "sample_items": c.get("sample_items", []),
+    })
+
+
+def _add_sub_pages(bp: dict, c: dict, bg: str) -> None:
+    """하위 페이지를 Blueprint에 추가"""
+    for sub in c.get("sub_pages", []):
         bp["sub_pages"].append({
-            "title": name,
-            "icon": icon,
+            "title": sub["name"],
+            "icon": sub.get("icon", "📄"),
             "blocks": [
-                {"type": "heading_1", "text": f"{icon} {name}", "color": bg},
-                {"type": "callout", "text": f"{name} 관련 내용을 여기에 정리하세요.", "icon": "📌", "color": bg},
+                {"type": "heading_1", "text": f"{sub.get('icon', '📄')} {sub['name']}", "color": bg},
+                {"type": "callout", "text": sub.get("description", f"{sub['name']} 관련 내용을 정리하세요."), "icon": "📌", "color": bg},
                 {"type": "divider"},
-                {"type": "paragraph", "text": ""},
             ],
         })
 
 
-# ============================================================
-# 트래커
-# ============================================================
-
-def _build_tracker(bp: dict, intent: IntentResult, bg: str, color: str) -> None:
-    bp["databases"].append({
-        "title": intent.title or "습관 트래커",
-        "is_inline": True,
-        "properties": {
-            "항목": "title",
-            "카테고리": {"type": "select", "options": [
-                {"name": "건강", "color": "green"},
-                {"name": "학습", "color": "blue"},
-                {"name": "생활", "color": "orange"},
-                {"name": "자기계발", "color": "purple"},
-            ]},
-            "완료": "checkbox",
-            "날짜": "date",
-            "메모": "rich_text",
-        },
-        "views": [
-            {"type": "calendar", "title": "캘린더"},
-        ],
-        "sample_items": [
-            {"항목": "운동 30분", "카테고리": "건강", "icon": "💪"},
-            {"항목": "독서 1시간", "카테고리": "학습", "icon": "📚"},
-            {"항목": "명상 10분", "카테고리": "건강", "icon": "🧘"},
-            {"항목": "영어 공부", "카테고리": "학습", "icon": "🇺🇸"},
-            {"항목": "물 2L 마시기", "카테고리": "생활", "icon": "💧"},
-        ],
-    })
-
-    bp["blocks"] = [
-        {"type": "callout", "text": "매일 체크하며 습관을 만들어보세요! 작은 습관이 큰 변화를 만듭니다.", "icon": "🎯", "color": bg},
-        {"type": "divider"},
-        {"type": "heading_1", "text": "📋 오늘의 할 일", "color": bg},
-        {"type": "database_ref", "db_index": 0},
-        {"type": "divider"},
-        {"type": "toggle", "text": "💡 사용법", "children_text": "매일 아침 이 페이지를 열고, 완료한 항목에 체크하세요. 카테고리별로 필터링도 가능합니다."},
-    ]
+def _fallback_blueprint(user_message: str) -> dict[str, Any]:
+    """폴백: Mock 분석으로 기본 Blueprint"""
+    content = _mock_call(user_message)
+    skill_md = load_skill(content["skill"])
+    blueprint = _assemble_blueprint(content, skill_md)
+    blueprint["metadata"]["generation_method"] = "fallback"
+    return blueprint
 
 
-# ============================================================
-# 북마크
-# ============================================================
-
-def _build_bookmark(bp: dict, intent: IntentResult, bg: str, color: str) -> None:
-    categories = ["커리어", "쇼핑", "교육/툴", "뉴스", "엔터"]
-
-    bp["databases"].append({
-        "title": "북마크",
-        "is_inline": True,
-        "properties": {
-            "이름": "title",
-            "URL": "url",
-            "카테고리": {"type": "select", "options": [
-                {"name": "커리어", "color": "blue"},
-                {"name": "쇼핑", "color": "red"},
-                {"name": "교육/툴", "color": "green"},
-                {"name": "뉴스", "color": "orange"},
-                {"name": "엔터", "color": "purple"},
-            ]},
-            "즐겨찾기": "checkbox",
-            "메모": "rich_text",
-        },
-        "views": [
-            {"type": "gallery", "title": "갤러리"},
-        ],
-        "sample_items": [
-            {"이름": "Google", "icon": "🔍"},
-            {"이름": "GitHub", "icon": "🐙"},
-            {"이름": "Notion", "icon": "📓"},
-            {"이름": "Figma", "icon": "🎨"},
-            {"이름": "YouTube", "icon": "📺"},
-        ],
-    })
-
-    sidebar: list[dict] = [{"type": "heading_2", "text": "📂 Category", "color": bg}]
-    for cat in categories:
-        sidebar.append({"type": "bulleted_list", "text": cat})
-
-    main_content: list[dict] = [
-        {"type": "callout", "text": "즐겨찾기에 체크하면 자주 쓰는 사이트를 빠르게 찾을 수 있어요.", "icon": "⭐", "color": bg},
-        {"type": "divider"},
-        {"type": "heading_1", "text": "🔖 북마크", "color": bg},
-        {"type": "database_ref", "db_index": 0},
-    ]
-
-    bp["blocks"] = [
-        {"type": "column_list", "columns": [
-            {"blocks": sidebar},
-            {"blocks": main_content},
-        ]},
-    ]
-
-
-# ============================================================
-# 프로젝트
-# ============================================================
-
-def _build_project(bp: dict, intent: IntentResult, bg: str, color: str) -> None:
-    bp["databases"].append({
-        "title": "Tasks",
-        "is_inline": True,
-        "properties": {
-            "태스크": "title",
-            "상태": "status",
-            "담당자": "rich_text",
-            "우선순위": {"type": "select", "options": [
-                {"name": "높음", "color": "red"},
-                {"name": "중간", "color": "yellow"},
-                {"name": "낮음", "color": "green"},
-            ]},
-            "기한": "date",
-        },
-        "views": [
-            {"type": "board", "title": "칸반 보드"},
-            {"type": "timeline", "title": "타임라인"},
-        ],
-        "sample_items": [
-            {"태스크": "기획서 작성", "icon": "📝"},
-            {"태스크": "디자인 시안", "icon": "🎨"},
-            {"태스크": "백엔드 개발", "icon": "⚙️"},
-            {"태스크": "프론트 개발", "icon": "🖥️"},
-            {"태스크": "QA 테스트", "icon": "🧪"},
-        ],
-    })
-
-    bp["blocks"] = [
-        {"type": "callout", "text": "프로젝트 진행 현황을 한눈에 관리하세요.", "icon": "📊", "color": bg},
-        {"type": "divider"},
-        {"type": "heading_1", "text": "🗂️ 태스크 보드", "color": bg},
-        {"type": "database_ref", "db_index": 0},
-    ]
-
-
-# ============================================================
-# 노트 (Tea Note 스타일)
-# ============================================================
-
-def _build_note(bp: dict, intent: IntentResult, bg: str, color: str) -> None:
-    bp["databases"].append({
-        "title": intent.title or "기록",
-        "is_inline": True,
-        "properties": {
-            "이름": "title",
-            "종류": {"type": "select", "options": [
-                {"name": "기록", "color": "blue"},
-                {"name": "메모", "color": "green"},
-                {"name": "아이디어", "color": "purple"},
-            ]},
-            "즐겨찾기": "checkbox",
-            "평점": "number",
-            "날짜": "date",
-        },
-        "sample_items": [
-            {"이름": "첫 번째 기록", "icon": "📝"},
-            {"이름": "좋은 아이디어", "icon": "💡"},
-            {"이름": "메모 정리", "icon": "📋"},
-        ],
-    })
-
-    sidebar: list[dict] = [
-        {"type": "heading_2", "text": "Quick Action"},
-        {"type": "callout", "text": "새 기록 쓰기", "icon": "✏️", "color": bg},
-        {"type": "callout", "text": "일기 쓰기", "icon": "📓", "color": bg},
-        {"type": "divider"},
-        {"type": "heading_2", "text": "Menu"},
-        {"type": "bulleted_list", "text": "📦 인벤토리"},
-        {"type": "bulleted_list", "text": "📓 일기장"},
-    ]
-
-    main_content: list[dict] = [
-        {"type": "callout", "text": "사용 설명서를 읽고 시작해보세요!", "icon": "👀", "color": bg},
-        {"type": "divider"},
-        {"type": "heading_1", "text": "기록", "color": bg},
-        {"type": "database_ref", "db_index": 0},
-    ]
-
-    bp["blocks"] = [
-        {"type": "column_list", "columns": [
-            {"blocks": sidebar},
-            {"blocks": main_content},
-        ]},
-    ]
-
-    bp["sub_pages"] = [
-        {"title": "인벤토리", "icon": "📦", "blocks": [
-            {"type": "heading_1", "text": "📦 인벤토리", "color": bg},
-            {"type": "callout", "text": "아이템을 정리하세요.", "icon": "📌", "color": bg},
-        ]},
-        {"title": "일기장", "icon": "📓", "blocks": [
-            {"type": "heading_1", "text": "📓 일기장", "color": bg},
-            {"type": "callout", "text": "오늘의 이야기를 적어보세요.", "icon": "✏️", "color": bg},
-        ]},
-    ]
-
-
-# ============================================================
-# 온보딩
-# ============================================================
-
-def _build_onboarding(bp: dict, intent: IntentResult, bg: str, color: str) -> None:
-    bp["databases"].append({
-        "title": "인수인계 현황",
-        "is_inline": True,
-        "properties": {
-            "항목": "title",
-            "담당자": "rich_text",
-            "상태": "status",
-            "기한": "date",
-        },
-        "sample_items": [
-            {"항목": "DB 접근권한 발급", "icon": "🔑"},
-            {"항목": "코드리뷰 프로세스 안내", "icon": "📖"},
-            {"항목": "배포 프로세스 안내", "icon": "🚀"},
-        ],
-    })
-
-    blocks: list[dict] = [
-        {"type": "callout", "text": "환영합니다! 이 페이지는 신입사원 온보딩 가이드입니다.", "icon": "👋", "color": bg},
-        {"type": "divider"},
-    ]
-
-    weeks = [
-        ("1주차", ["계정 발급 (이메일, Slack, Jira)", "팀 미팅 참석", "개발환경 세팅"]),
-        ("2주차", ["코드베이스 탐색", "첫 PR 작성", "코드 리뷰 참여"]),
-        ("3주차", ["독립 태스크 수행", "문서 정리"]),
-        ("4주차", ["프로젝트 배정", "온보딩 회고"]),
-    ]
-    for week, items in weeks:
-        blocks.append({"type": "heading_2", "text": f"📋 {week}", "color": bg})
-        for item in items:
-            blocks.append({"type": "to_do", "text": item})
-
-    blocks.extend([
-        {"type": "divider"},
-        {"type": "heading_1", "text": "📊 인수인계 현황", "color": bg},
-        {"type": "database_ref", "db_index": 0},
-        {"type": "divider"},
-        {"type": "heading_2", "text": "💡 자주 묻는 질문", "color": bg},
-        {"type": "toggle", "text": "Wi-Fi 비밀번호는?", "children_text": "관리팀에 문의해주세요."},
-        {"type": "toggle", "text": "연차 신청 방법은?", "children_text": "HR 시스템에서 신청 가능합니다."},
-        {"type": "toggle", "text": "장비 요청은?", "children_text": "IT팀 Slack 채널에 요청하세요."},
-    ])
-
-    bp["blocks"] = blocks
-
-
-# ============================================================
-# CRM
-# ============================================================
-
-def _build_crm(bp: dict, intent: IntentResult, bg: str, color: str) -> None:
-    bp["databases"].append({
-        "title": "고객 목록",
-        "is_inline": True,
-        "properties": {
-            "고객명": "title",
-            "회사": "rich_text",
-            "상태": {"type": "select", "options": [
-                {"name": "리드", "color": "gray"},
-                {"name": "미팅", "color": "blue"},
-                {"name": "제안", "color": "orange"},
-                {"name": "계약", "color": "green"},
-            ]},
-            "연락처": "email",
-            "최근 연락": "date",
-            "메모": "rich_text",
-        },
-        "views": [
-            {"type": "board", "title": "파이프라인"},
-        ],
-        "sample_items": [
-            {"고객명": "김철수", "icon": "👤"},
-            {"고객명": "이영희", "icon": "👤"},
-            {"고객명": "박지수", "icon": "👤"},
-        ],
-    })
-
-    bp["blocks"] = [
-        {"type": "callout", "text": "고객 관리를 체계적으로!", "icon": "🤝", "color": bg},
-        {"type": "divider"},
-        {"type": "heading_1", "text": "📋 고객 목록", "color": bg},
-        {"type": "database_ref", "db_index": 0},
-    ]
-
-
-# ============================================================
-# 커스텀
-# ============================================================
-
-def _build_custom(bp: dict, intent: IntentResult, bg: str, color: str) -> None:
-    bp["blocks"] = [
-        {"type": "callout", "text": "원하는 내용을 자유롭게 구성하세요.", "icon": "⚡", "color": bg},
-        {"type": "divider"},
-        {"type": "heading_2", "text": "📌 시작하기"},
-        {"type": "paragraph", "text": "여기에 내용을 추가하세요."},
-    ]
-
-
-BUILDERS = {
-    "dashboard": _build_dashboard,
-    "tracker": _build_tracker,
-    "bookmark": _build_bookmark,
-    "project": _build_project,
-    "note": _build_note,
-    "onboarding": _build_onboarding,
-    "crm": _build_crm,
-    "custom": _build_custom,
+SKILL_BUILDERS = {
+    "track": _build_track,
+    "collect": _build_collect,
+    "manage": _build_manage,
+    "plan": _build_plan,
+    "organize": _build_organize,
+    "guide": _build_guide,
+    "hub": _build_hub,
 }
