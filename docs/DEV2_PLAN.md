@@ -61,3 +61,16 @@ skills/
 - agent/tools/* (8개 Tool)
 - routers/*, schemas/*, frontend/*
 - Docker, Makefile, tests/
+
+### Phase 4: 핵심 버그 수정 — ✅ 완료 (2026-03-30)
+- notion-client SDK 3.0 (2025-09-03)에서 DB properties 빈 객체 반환 문제
+- 해결: DB 생성/조회/항목 삽입을 Legacy API (2022-06-28)로 전환
+- 결과: 속성 7개 + 샘플 5개 + 뷰 3개 모두 정상 생성 확인
+
+---
+
+## 남은 것
+- ❌ 프론트엔드 디자인 레퍼런스 적용 (사용자 제공 대기)
+- ❌ 시연 영상 + 발표 자료 (사용자 직접 준비)
+- ❌ Vercel + Railway 배포
+- ❌ 새 스킬 추가 (필요시)

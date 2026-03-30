@@ -33,11 +33,22 @@ class NotionClient:
             from notion_client import AsyncClient
 
             self._real_client = AsyncClient(auth=self.token)
+            # 2025-09-03 버전 (Views API 등)
             self._http_client = httpx.AsyncClient(
                 base_url=NOTION_API_BASE,
                 headers={
                     "Authorization": f"Bearer {self.token}",
                     "Notion-Version": NOTION_VERSION,
+                    "Content-Type": "application/json",
+                },
+                timeout=30.0,
+            )
+            # 2022-06-28 버전 (DB 생성 시 속성이 정상 동작)
+            self._http_legacy = httpx.AsyncClient(
+                base_url=NOTION_API_BASE,
+                headers={
+                    "Authorization": f"Bearer {self.token}",
+                    "Notion-Version": "2022-06-28",
                     "Content-Type": "application/json",
                 },
                 timeout=30.0,
@@ -89,23 +100,45 @@ class NotionClient:
         if self.mock_mode:
             return self._mock_database(parent_id, title, properties)
 
+        # httpx로 직접 호출 (2022-06-28 버전 — 속성이 정상 생성됨)
+        # SDK 3.0 (2025-09-03)에서는 properties가 빈 객체로 반환되는 문제
         db_data = {
             "parent": {"type": "page_id", "page_id": parent_id},
             "title": [{"type": "text", "text": {"content": title}}],
             "is_inline": is_inline,
             "properties": properties,
         }
+        await self.rate_limiter.acquire()
         try:
-            return await self.rate_limiter.call_with_retry(self._real_client.databases.create, **db_data)
+            resp = await self._http_legacy.post("/databases", json=db_data)
+            if resp.status_code >= 400:
+                raise RuntimeError(f"DB 생성 API 에러 ({resp.status_code}): {resp.text[:200]}")
+            return resp.json()
+        except RuntimeError:
+            raise
         except Exception as e:
             raise RuntimeError(f"데이터베이스 '{title}' 생성 실패: {e}") from e
 
     async def get_database(self, database_id: str) -> dict[str, Any]:
+        """DB 정보 조회 (Legacy API — properties 포함)"""
         if self.mock_mode:
             return {"id": database_id, "properties": {}, "data_sources": [{"id": database_id}]}
-        return await self.rate_limiter.call_with_retry(
-            self._real_client.databases.retrieve, database_id=database_id
-        )
+        # Legacy API로 조회 (2022-06-28 — properties 정상 반환)
+        await self.rate_limiter.acquire()
+        resp = await self._http_legacy.get(f"/databases/{database_id}")
+        if resp.status_code >= 400:
+            return {"id": database_id, "properties": {}}
+        legacy_data = resp.json()
+        # data_sources는 최신 API에서만 반환되므로 별도 조회
+        try:
+            await self.rate_limiter.acquire()
+            new_resp = await self._http_client.get(f"/databases/{database_id}")
+            if new_resp.status_code == 200:
+                new_data = new_resp.json()
+                legacy_data["data_sources"] = new_data.get("data_sources", [])
+        except Exception:
+            pass
+        return legacy_data
 
     async def get_data_source_id(self, database_id: str) -> str:
         """DB의 data_source_id를 조회 (Views API에 필요)"""
@@ -159,7 +192,7 @@ class NotionClient:
             return self._mock_db_item(database_id, properties, icon)
 
         page_data: dict[str, Any] = {
-            "parent": {"type": "database_id", "database_id": database_id},
+            "parent": {"database_id": database_id},
             "properties": properties,
         }
         if icon:
@@ -167,8 +200,15 @@ class NotionClient:
         if cover_url:
             page_data["cover"] = {"type": "external", "external": {"url": cover_url}}
 
+        # Legacy API로 호출 (속성 호환성)
+        await self.rate_limiter.acquire()
         try:
-            return await self.rate_limiter.call_with_retry(self._real_client.pages.create, **page_data)
+            resp = await self._http_legacy.post("/pages", json=page_data)
+            if resp.status_code >= 400:
+                raise RuntimeError(f"DB 항목 추가 API 에러: {resp.text[:150]}")
+            return resp.json()
+        except RuntimeError:
+            raise
         except Exception as e:
             raise RuntimeError(f"DB 아이템 추가 실패 (db={database_id[:8]}...): {e}") from e
 

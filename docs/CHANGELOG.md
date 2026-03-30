@@ -23,6 +23,26 @@
 
 ---
 
+## [1.0.0] - 2026-03-30
+
+### Fixed (핵심 버그)
+- DB 속성 미생성 → Legacy API (2022-06-28) 사용으로 해결
+- 샘플 데이터 미삽입 → DB 조회 + 항목 삽입 모두 Legacy API로 전환
+- 원인: notion-client SDK 3.0 (2025-09-03)에서 properties 빈 객체 반환
+
+### Added
+- 스킬 개발 가이드 (docs/SKILL_GUIDE.md)
+- 시스템 프롬프트 샘플 데이터 필수 규칙 (BAD/GOOD 예시)
+- 스킬 자동 발견 (auto_discover_skills)
+- 7개 스킬 .md에 샘플 데이터 요구사항 섹션 추가
+
+### 검증 완료
+- DB 속성 7개 전부 생성 확인 (운동명, 종류, 시간, 칼로리, 날짜, 강도, 완료)
+- 샘플 데이터 5개 삽입 확인 (아이콘 + 모든 속성값)
+- 뷰 자동 생성 확인 (calendar + table + board)
+
+---
+
 ## [0.3.0] - 2026-03-29
 
 ### Added (Phase F: Notion API 전체 기능)
