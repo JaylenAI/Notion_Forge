@@ -10,12 +10,15 @@
 ```
 Notion API 74개 기능    [██████████] 100%
 AI 자유 설계 시스템      [██████████] 100%
+AI 프로 디자인 시스템    [██████████] 100%
 스킬 시스템 12개        [██████████] 100%
 프론트엔드 UI 5페이지   [██████████] 100%
 NotionRenderer 14블록  [██████████] 100%
 Library 자동 저장       [██████████] 100%
 테스트 39/39           [██████████] 100%
-프론트엔드 UI/UX 고도화 [████████░░]  80%
+프론트엔드 UI/UX 고도화 [█████████░]  90%
+페이지 전체 너비        [██████████] 100%
+링크드 DB 뷰           [██████████] 100%
 ```
 
 ---
@@ -30,11 +33,24 @@ Library 자동 저장       [██████████] 100%
 - ✅ 스마트 폴백 6개 (AI 실패 시 키워드 기반)
 - ✅ 실시간 스트리밍 (매 단계 WebSocket)
 
-### Notion API (74개)
+### AI 프로 디자인 시스템 (v5.1.0)
+- ✅ 시스템 프롬프트 전면 재작성 (Thomas Frank/Easlo 수준 디자인 규칙 50+개)
+- ✅ 색상 팔레트 2-3색 제한 규칙 (스킬별 추천 팔레트 7종)
+- ✅ 대시보드 컬럼 레이아웃 30/70 분할 필수화 (width_ratio 지원)
+- ✅ 정보 계층 구조 강제 (callout→spacing→columns→DB→toggle)
+- ✅ 아마추어 안티패턴 10가지 방지 규칙
+- ✅ DB 뷰-속성 자동 매칭 규칙 (status→board, date→calendar 등)
+- ✅ 커버 이미지 20개 (색상 10 + 카테고리 10: business/fitness/study 등)
+- ✅ 12개 스킬 전체에 Pro Design Guide 섹션 추가
+
+### Notion API (74개 + 확장)
 - ✅ 블록 30+ 종, 인라인 서식 전체, 미디어 전체
 - ✅ DB 뷰 10종 (Views API + data_source_id)
 - ✅ 샘플 데이터 자동 삽입 (5개+)
 - ✅ TYPE_ALIASES 17개, Legacy API 호환
+- ✅ 컬럼 width_ratio 지원 (30/70 대시보드 분할)
+- ✅ **페이지 전체 너비 자동 설정** (Internal API, token_v2)
+- ✅ **링크드 DB 뷰 생성** (Views API create_database)
 
 ### 프론트엔드 (기본)
 - ✅ 다크 테마 5페이지 (Dashboard/Library/Integrations/Profile/Support)
@@ -61,6 +77,7 @@ Library 자동 저장       [██████████] 100%
 - ✅ 커스텀 리사이저블 패널 (라이브러리 의존 제거, 순수 구현)
 - ✅ StatusBar 사이드바 오프셋 (사이드바에 가려지지 않음)
 - ✅ 사이드바 footer StatusBar 겹침 방지 (pb-14)
+- ✅ 미리보기 패널 오버플로우 수정
 
 ### 테스트
 - ✅ 39/39 통과 (28 unit + 10 integration + 1)

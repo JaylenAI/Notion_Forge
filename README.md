@@ -42,6 +42,10 @@ NOTION_PARENT_PAGE_ID=xxxxx      # 템플릿 생성할 부모 페이지 ID
 GEMINI_API_KEY=                  # Gemini API (무료, 기본)
 GROQ_API_KEY=gsk_xxxx            # https://console.groq.com/keys (무료)
 ANTHROPIC_API_KEY=               # Claude API (유료, 최고 품질)
+
+# 선택: 전체 너비 자동 설정 (설정하면 생성 페이지가 자동 전체 너비)
+# 브라우저 → F12 → Application → Cookies → notion.so → token_v2 값
+NOTION_TOKEN_V2=
 ```
 
 ### 3단계: 실행
@@ -85,17 +89,21 @@ make test       # 테스트 실행
 
 ### AI 자유 설계 시스템
 - **채팅 기반 생성**: 자연어 → AI가 blocks[] + databases[] 직접 설계 → Notion에 자동 생성
+- **프로 디자인 품질**: Thomas Frank/Easlo 수준 디자인 규칙 (2-3색 팔레트, 30/70 대시보드, 정보 계층)
 - **12개 스킬**: track, collect, manage, plan, organize, guide, hub, finance, journal, content, learn, crm
 - **4개 AI 프로바이더**: Gemini (기본) / Groq / Claude / OpenAI — 동적 모델 선택
 - **실시간 스트리밍**: 생성 과정을 단계별로 표시 (의도 분석 → 설계 → 페이지 → DB → 뷰 → 완료)
 - **스마트 폴백**: AI 실패 시 키워드 기반 6개 템플릿 자동 선택
 
-### Notion API 전체 지원 (74개 기능)
+### Notion API 전체 지원 (74개 기능 + 확장)
 - **블록 30+종**: heading, callout, toggle, quote, code, table, equation, tab, synced_block 등
 - **인라인 서식**: bold, italic, underline, strikethrough, code, link, 색상, 멘션
 - **미디어**: image, video, audio, file, pdf, bookmark, embed (Figma, GitHub, Loom 등 12개)
 - **DB 뷰 10개**: table, gallery, calendar, board, timeline, list, chart, form, map, dashboard
 - **DB 속성 전체**: select, multi_select, status, relation, rollup, formula, unique_id, people 등
+- **컬럼 너비 비율**: width_ratio로 30/70 대시보드 분할 지원
+- **페이지 전체 너비**: Internal API로 자동 전체 너비 설정 (token_v2 옵션)
+- **링크드 DB 뷰**: Views API로 기존 DB를 다른 페이지에 링크드 뷰로 삽입
 
 ### 프론트엔드
 - **다크/라이트 테마**: CSS 변수 기반 전체 테마 시스템 + 토글
@@ -171,7 +179,7 @@ NotionForge/
 |--------|------|
 | **Backend** | FastAPI + Python 3.11 + uv |
 | **AI** | Gemini 2.5 Flash (기본) / Groq / Claude / OpenAI |
-| **Notion** | notion-client 3.x + httpx (Legacy 2022-06-28 + Views 2025-09-03) |
+| **Notion** | notion-client 3.x + httpx (Legacy 2022-06-28 + Views 2025-09-03 + Internal API) |
 | **Frontend** | React 19 + Vite 7 + TailwindCSS 4 + Zustand 5 + react-markdown |
 | **컨테이너** | Docker + Docker Compose |
 | **CI/CD** | GitHub Actions |

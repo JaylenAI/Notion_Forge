@@ -6,6 +6,28 @@
 
 # Part 1: 변경 이력
 
+## [5.1.0] - 2026-04-01
+
+### Added (AI 프로 디자인 + Notion 확장 기능)
+- AI 시스템 프롬프트 전면 재작성 (Thomas Frank/Easlo 수준 디자인 규칙 50+개)
+- 색상 팔레트 2-3색 제한 규칙 (스킬별 추천 팔레트 7종)
+- 대시보드 컬럼 30/70 분할 필수화 (column width_ratio API 지원)
+- 정보 계층 구조 강제 + 아마추어 안티패턴 10가지 방지
+- DB 뷰-속성 자동 매칭 규칙 (status→board, date→calendar)
+- 커버 이미지 10→20개 확장 (카테고리별: business/fitness/study/finance 등)
+- 12개 스킬 전체에 Pro Design Guide 섹션 추가
+- 페이지 전체 너비 자동 설정 (Notion Internal API submitTransaction + token_v2)
+- 링크드 DB 뷰 생성 (공식 Views API create_database 파라미터)
+- 컬럼 width_ratio 지원 (block_builder + orchestrator)
+- NOTION_TOKEN_V2 환경변수 + .env.example 가이드
+
+### Fixed
+- 미리보기 패널 오버플로우 (블루프린트 렌더링 시 툴바 밀림)
+- 채팅 메시지 하단 정렬 (빈 공간 상단으로)
+- LivePreview 툴바 줄바꿈 방지 (whitespace-nowrap)
+
+---
+
 ## [5.0.0] - 2026-04-01
 
 ### Added (프론트엔드 UI/UX 대규모 고도화)
