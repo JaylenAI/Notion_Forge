@@ -82,3 +82,31 @@ EVERY generated template MUST include sample data with these rules:
 - Select values: spread across all categories and types
 - Type values: mix of 수입, 지출, and 투자
 - Checkbox: mix of recurring (true) and one-time (false) transactions
+
+## Pro Design Guide
+
+### Color Palette
+- Primary: green | Accent: yellow | Secondary: gray
+- Apply primary to: callout backgrounds, heading colors, select options
+- Apply accent to: stat callouts, highlight callouts only
+
+### Dashboard Layout (REQUIRED)
+Use column_list with 2 columns for every template:
+- LEFT (30%): stat callouts
+  - 💰 이번 달 수입 (callout, yellow_background)
+  - 💸 이번 달 지출 (callout, yellow_background)
+  - 💎 저축 목표 (callout, yellow_background)
+- RIGHT (70%): heading_2 + primary database_ref
+
+### Must-Have Blocks
+1. Welcome callout: "똑똑한 돈 관리의 시작! 수입과 지출을 한눈에 파악하세요 💰" (green_background)
+2. Empty paragraph (whitespace)
+3. Column dashboard layout
+4. Primary database with table view (기본, 전체 거래 내역), calendar view (월별)
+5. Empty paragraph (whitespace)
+6. Divider
+7. Toggle: "📖 사용 가이드" with numbered setup steps
+8. Toggle: "❓ 자주 묻는 질문" with 2-3 FAQs
+
+### Cover Image Category
+cover_category: "finance" (maps to themed Unsplash cover)

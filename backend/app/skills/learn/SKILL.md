@@ -84,3 +84,31 @@ EVERY generated template MUST include sample data with these rules:
 - Tags: mix of 개념, 실습, 퀴즈
 - Notes: realistic Korean study notes (변수와 자료형 개념 정리, 리스트 컴프리헨션 실습 완료, etc.)
 - Checkbox: some items flagged for review, some not
+
+## Pro Design Guide
+
+### Color Palette
+- Primary: blue | Accent: purple | Secondary: gray
+- Apply primary to: callout backgrounds, heading colors, select options
+- Apply accent to: stat callouts, highlight callouts only
+
+### Dashboard Layout (REQUIRED)
+Use column_list with 2 columns for every template:
+- LEFT (30%): stat callouts
+  - 📚 수강 중 (callout, purple_background)
+  - ✅ 수강 완료 (callout, purple_background)
+  - ⏱️ 총 학습 시간 (callout, purple_background)
+- RIGHT (70%): heading_2 + primary database_ref
+
+### Must-Have Blocks
+1. Welcome callout: "배움에는 끝이 없습니다! 오늘도 한 걸음 성장해보세요 📚" (blue_background)
+2. Empty paragraph (whitespace)
+3. Column dashboard layout
+4. Primary database with table view (기본, 진행률 추적), board view (학습 상태별)
+5. Empty paragraph (whitespace)
+6. Divider
+7. Toggle: "📖 사용 가이드" with numbered setup steps
+8. Toggle: "❓ 자주 묻는 질문" with 2-3 FAQs
+
+### Cover Image Category
+cover_category: "study" (maps to themed Unsplash cover)

@@ -121,3 +121,30 @@ EVERY generated template MUST include sample data with these rules:
 - Select values: use different options for variety
 - Number values: use realistic, varied numbers
 - Checkbox: mix of true and false
+
+## Pro Design Guide
+
+### Color Palette
+- Primary: gray | Accent: blue | Secondary: gray
+- Apply primary to: callout backgrounds, heading colors, select options
+- Apply accent to: stat callouts, highlight callouts only
+
+### Dashboard Layout (REQUIRED)
+Use column_list with 2 columns for every template:
+- LEFT (30%): stat callouts
+  - 📁 총 항목 (callout, blue_background)
+  - 🏷️ 카테고리 (callout, blue_background)
+- RIGHT (70%): heading_2 + primary database_ref
+
+### Must-Have Blocks
+1. Welcome callout: "깔끔하게 정리된 공간에서 원하는 정보를 바로 찾아보세요 🗂️" (gray_background)
+2. Empty paragraph (whitespace)
+3. Column dashboard layout
+4. Primary database with table view (기본, 필터/정렬 활용), list view (간단)
+5. Empty paragraph (whitespace)
+6. Divider
+7. Toggle: "📖 사용 가이드" with numbered setup steps
+8. Toggle: "❓ 자주 묻는 질문" with 2-3 FAQs
+
+### Cover Image Category
+cover_category: "minimal" (maps to themed Unsplash cover)

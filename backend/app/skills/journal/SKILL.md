@@ -81,3 +81,30 @@ EVERY generated template MUST include sample data with these rules:
 - Energy values: varied numbers between 1-10
 - Tags: mix of 감사, 성장, 도전, 일상
 - Checkbox: occasional highlight days marked true
+
+## Pro Design Guide
+
+### Color Palette
+- Primary: pink | Accent: purple | Secondary: gray
+- Apply primary to: callout backgrounds, heading colors, select options
+- Apply accent to: stat callouts, highlight callouts only
+
+### Dashboard Layout (REQUIRED)
+Use column_list with 2 columns for every template:
+- LEFT (30%): stat callouts
+  - 📝 총 기록 (callout, purple_background)
+  - 🌟 이번 달 기록 (callout, purple_background)
+- RIGHT (70%): heading_2 + primary database_ref
+
+### Must-Have Blocks
+1. Welcome callout: "오늘 하루는 어땠나요? 소중한 하루를 기록으로 남겨보세요 🌙" (pink_background)
+2. Empty paragraph (whitespace)
+3. Column dashboard layout
+4. Primary database with gallery view (기본, 카드형 일기장), calendar view (월별 기록)
+5. Empty paragraph (whitespace)
+6. Divider
+7. Toggle: "📖 사용 가이드" with numbered setup steps
+8. Toggle: "❓ 자주 묻는 질문" with 2-3 FAQs
+
+### Cover Image Category
+cover_category: "nature" (maps to themed Unsplash cover)

@@ -87,3 +87,31 @@ EVERY generated template MUST include sample data with these rules:
 - Priority values: mix of Hot, Warm, Cold
 - Contact: realistic Korean business contacts (김팀장, 이사업부장, 박대리, etc.)
 - Company names: realistic Korean company names (테크솔루션즈, 한빛금융, 그린유통, etc.)
+
+## Pro Design Guide
+
+### Color Palette
+- Primary: blue | Accent: orange | Secondary: gray
+- Apply primary to: callout backgrounds, heading colors, select options
+- Apply accent to: stat callouts, highlight callouts only
+
+### Dashboard Layout (REQUIRED)
+Use column_list with 2 columns for every template:
+- LEFT (30%): stat callouts
+  - 👥 총 고객 (callout, orange_background)
+  - 💼 진행 중 딜 (callout, orange_background)
+  - 💰 이번 달 매출 (callout, orange_background)
+- RIGHT (70%): heading_2 + primary database_ref
+
+### Must-Have Blocks
+1. Welcome callout: "고객과의 관계를 체계적으로 관리하세요! 모든 딜을 한눈에 🤝" (blue_background)
+2. Empty paragraph (whitespace)
+3. Column dashboard layout
+4. Primary database with board view (기본, 파이프라인 칸반), timeline view (딜 진행), table view (상세)
+5. Empty paragraph (whitespace)
+6. Divider
+7. Toggle: "📖 사용 가이드" with numbered setup steps
+8. Toggle: "❓ 자주 묻는 질문" with 2-3 FAQs
+
+### Cover Image Category
+cover_category: "business" (maps to themed Unsplash cover)
