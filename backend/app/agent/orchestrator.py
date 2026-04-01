@@ -544,7 +544,9 @@ class AgentOrchestrator:
                         pass
             col_blocks.append(col_children)
 
-        return bb.column_list(col_blocks) if col_blocks else None
+        # Apply width_ratios if AI specified them (e.g., [0.3, 0.7] for dashboard layout)
+        width_ratios = block.get("width_ratios")
+        return bb.column_list(col_blocks, width_ratios=width_ratios) if col_blocks else None
 
     def _collect_db_refs_in_columns(self, block: dict) -> list[int]:
         refs = []

@@ -333,17 +333,18 @@ def synced_block_duplicate(original_block_id: str) -> dict[str, Any]:
     }
 
 
-def column_list(columns: list[list[dict]]) -> dict[str, Any]:
-    """N단 칼럼 (2~5단)"""
+def column_list(columns: list[list[dict]], width_ratios: list[float] | None = None) -> dict[str, Any]:
+    """N단 칼럼 (2~5단). width_ratios로 비율 지정 가능 (예: [0.3, 0.7])"""
+    children = []
+    for i, col_blocks in enumerate(columns):
+        col: dict[str, Any] = {"children": col_blocks}
+        if width_ratios and i < len(width_ratios):
+            col["width_ratio"] = width_ratios[i]
+        children.append({"object": "block", "type": "column", "column": col})
     return {
         "object": "block",
         "type": "column_list",
-        "column_list": {
-            "children": [
-                {"object": "block", "type": "column", "column": {"children": col_blocks}}
-                for col_blocks in columns
-            ]
-        },
+        "column_list": {"children": children},
     }
 
 
