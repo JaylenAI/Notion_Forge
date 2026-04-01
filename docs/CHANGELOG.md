@@ -6,6 +6,36 @@
 
 # Part 1: 변경 이력
 
+## [4.0.0] - 2026-04-01
+
+### Added (스킬 확장 + 프론트엔드 고도화)
+- 새 스킬 5개 추가 (finance, journal, content, learn, crm) → 총 12개
+- 기존 스킬 7개 개선 (컬러 테마 가이드, 복잡도 레벨, 크로스 스킬 조합)
+- 프롬프트 스타터 카드 6개 (원클릭 생성)
+- NotionRenderer 블록 추가: quote, code, numbered_list, bookmark
+- NotionRenderer DB 뷰 분기: Board(칸반), Calendar(월간), Gallery(카드)
+- Library 자동 저장 (생성 완료 시 localStorage에 자동 보관)
+- Library 검색/스킬별 필터/4종 정렬 (최신/오래된/이름/즐겨찾기)
+- 완료 후 액션 버튼 (Open in Notion + Create Another)
+- 에러 상태 UI (빨간 아이콘 + Error 라벨)
+- Progress 단계별 아이콘 표시
+- Profile 페이지: 실제 연결 상태 + 템플릿 수 표시 (Mock 제거)
+- 폴백 템플릿 3개 → 6개 (가계부, 일기장, 콘텐츠 캘린더 추가)
+- 영어 키워드 폴백 매핑 (workout, budget, journal 등)
+- Status 색상 매핑 (시작전/진행중/완료)
+
+### Changed
+- UI 전체 영어 통일 (Integrations, LivePreview, AppLayout 한글→영어)
+- Profile 페이지: Mock 통계 제거 → 실제 데이터 연동
+- Integrations: Quick Actions 비기능 카드 제거
+- Library: Mock 템플릿 4개 제거 → 실제 생성 이력 기반
+- ModelBadge: 이모지 → 텍스트 약자 (G/A/O)
+- Support: GitHub URL 실제 레포로 수정
+
+### 테스트 현황: 39/39 통과 | Notion 실제 생성 QA 8건 성공
+
+---
+
 ## [0.4.0] - 2026-03-29
 
 ### Added (프로덕션 준비)

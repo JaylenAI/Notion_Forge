@@ -210,35 +210,13 @@ function IntegrationsPage() {
               </form>
             </div>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="glass-panel p-6 rounded-xl border border-[#424656]/10 group cursor-pointer hover:border-[#adc6ff]/20 transition-all">
-                <span className="material-symbols-outlined text-[#adc6ff] mb-3 block">
-                  auto_fix_high
-                </span>
-                <h4 className="font-bold text-[#e5e2e1] mb-1">Auto-Sync</h4>
-                <p className="text-xs text-[#c2c6d8]">
-                  Sync changes from Notion back to Forge in real-time.
-                </p>
-              </div>
-              <div className="glass-panel p-6 rounded-xl border border-[#424656]/10 group cursor-pointer hover:border-[#adc6ff]/20 transition-all">
-                <span className="material-symbols-outlined text-[#ffb59a] mb-3 block">
-                  history
-                </span>
-                <h4 className="font-bold text-[#e5e2e1] mb-1">Audit Log</h4>
-                <p className="text-xs text-[#c2c6d8]">
-                  View every template block created by the Alchemist.
-                </p>
-              </div>
-            </div>
-
             {/* AI Model Settings */}
             <div className="bg-[#1c1b1b] p-8 rounded-xl relative overflow-hidden">
               <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2 text-[#e5e2e1]">
                 <span className="material-symbols-outlined text-[#ffb59a]">
                   smart_toy
                 </span>
-                AI 모델 설정
+                AI Model Settings
               </h3>
 
               <div className="space-y-6">
@@ -264,8 +242,8 @@ function IntegrationsPage() {
                     </button>
                   </div>
                   <p className="text-[10px] text-[#c2c6d8]/60 italic">
-                    OpenAI, Anthropic, Groq, Google 중 하나의 API 키를 입력하세요.
-                    비워두면 서버 기본 설정을 사용합니다.
+                    Enter an API key from OpenAI, Anthropic, Groq, or Google.
+                    Leave empty to use the server default.
                   </p>
                 </div>
 
@@ -278,7 +256,7 @@ function IntegrationsPage() {
                     <span className="text-sm font-bold text-[#4edea3]">
                       {PROVIDER_LABELS[aiProvider] ?? aiProvider}
                     </span>
-                    <span className="text-xs text-[#4edea3]">감지됨</span>
+                    <span className="text-xs text-[#4edea3]">Detected</span>
                   </div>
                 )}
 
@@ -293,7 +271,7 @@ function IntegrationsPage() {
                     <span className="material-symbols-outlined text-lg">
                       search
                     </span>
-                    {aiDetecting ? "감지 중..." : "프로바이더 감지 및 모델 불러오기"}
+                    {aiDetecting ? "Detecting..." : "Detect Provider & Load Models"}
                   </button>
                 </div>
 
@@ -301,14 +279,14 @@ function IntegrationsPage() {
                 {aiModels.length > 0 && (
                   <div className="space-y-2">
                     <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffb59a]">
-                      AI 모델 선택
+                      Select AI Model
                     </label>
                     <select
                       value={aiModel}
                       onChange={(e) => setAiModel(e.target.value)}
                       className="w-full bg-[#201f1f] border border-[#424656]/30 py-3 px-3 text-[#e5e2e1] rounded-lg focus:ring-0 focus:border-[#ffb59a] transition-all outline-none"
                     >
-                      <option value="">기본 모델 사용</option>
+                      <option value="">Use Default Model</option>
                       {aiModels.map((m) => (
                         <option key={m.id} value={m.id}>
                           {m.name}
@@ -328,7 +306,7 @@ function IntegrationsPage() {
                     <span className="material-symbols-outlined text-lg">
                       save
                     </span>
-                    AI 설정 저장
+                    Save AI Settings
                   </button>
                 </div>
               </div>
@@ -399,14 +377,6 @@ function IntegrationsPage() {
                 </div>
               </div>
 
-              <div className="mt-10 rounded-xl overflow-hidden border border-[#424656]/20 group">
-                <div className="w-full h-32 bg-gradient-to-br from-[#006de6]/30 via-[#adc6ff]/10 to-[#131313] group-hover:from-[#006de6]/40 transition-all duration-700" />
-                <div className="p-4 bg-[#1c1b1b]">
-                  <p className="text-[10px] text-center font-medium uppercase tracking-[0.2em] text-[#c2c6d8]/40">
-                    Visualizing Data Bridge
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </div>

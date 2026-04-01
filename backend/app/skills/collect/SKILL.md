@@ -75,6 +75,10 @@ Each item: unique icon, varied categories, different ratings.
 **Restaurants**: Properties → location, cuisine type, price range, rating, last visited
 **Movies**: Properties → director, genre, rating, watched date, platform
 **Archives**: Properties → source type(article/video/podcast), tags, read status, URL
+**Music/Vinyl**: Properties → artist, album, genre, format(vinyl/CD/digital), rating, purchase date
+**Plants/Garden**: Properties → species, location(indoor/outdoor), watering schedule, last watered, health status
+**Travel Souvenirs**: Properties → country, city, item type, purchase price, memory/story
+**Coffee/Tea**: Properties → origin, roast level, brew method, flavor notes, rating
 
 ## Formatting Rules
 
@@ -82,6 +86,39 @@ Each item: unique icon, varied categories, different ratings.
 - Icon should match context (🍷🍺📚🍳🎬🎵📦)
 - Sub-pages should have relevant icons
 - Callout text should be warm and inviting
+
+## Color Theme Guide
+
+Recommended color combinations by context:
+- Wine/Spirits: red (warm, rich) — callout: red_background, headings: red
+- Books/Reading: blue (calm, intellectual) — callout: blue_background, headings: blue
+- Recipes/Cooking: orange (appetizing, warm) — callout: orange_background, headings: orange
+- Restaurants/Cafe: yellow (friendly, inviting) — callout: yellow_background, headings: yellow
+- Movies/TV: purple (cinematic, creative) — callout: purple_background, headings: purple
+- Music/Vinyl: pink (expressive, artistic) — callout: pink_background, headings: pink
+- Archives/Clippings: gray (neutral, organized) — callout: gray_background, headings: gray
+- Plants/Garden: green (natural, living) — callout: green_background, headings: green
+- Travel Souvenirs: orange (adventurous, energetic) — callout: orange_background, headings: orange
+- Default: gray (neutral, clean)
+
+## Complexity Levels
+
+### Simple (5-8 blocks): Quick collection
+callout → heading_1 → database_ref → toggle(usage tip)
+
+### Medium (10-15 blocks): Standard collection with sidebar
+callout → divider → column_list(quick action sidebar + main content) → database_ref → divider → toggle(usage) → toggle(FAQ)
+
+### Complex (20-30 blocks): Full collection system
+callout → quote(collection motto) → divider → column_list(quick action + menu sidebar + main content area) → heading_1 → database_ref → divider → heading_2(categories overview) → bulleted_list(category breakdown) → heading_2(rating guide) → numbered_list(criteria) → toggle(FAQ x3) → toggle(advanced search tips) → toggle(import/export guide)
+
+## Cross-Skill Combinations
+
+- collect + track: "독서하면서 독서 습관도 기록" — Use collect for book collection/reviews + track for daily reading minutes log
+- collect + organize: "레시피 수집 + 식재료 정리" — Use collect for recipe gallery + organize for pantry/ingredient inventory
+- collect + plan: "여행지 수집 + 여행 계획" — Use collect for destination/restaurant collection + plan for trip itinerary & checklist
+- collect + hub: "취미 아카이브 허브" — Use hub as central hobby dashboard + collect DBs for each hobby (wine, books, movies)
+- collect + guide: "와인 입문 가이드 + 테이스팅 기록" — Use guide for wine education doc + collect for personal tasting notes collection
 
 ## Sample Data Requirements
 

@@ -1,10 +1,11 @@
 import { create } from "zustand";
-import type { Message, Settings, ConnectionStatus, AiModel } from "../types";
+import type { Message, Settings, ConnectionStatus, AiModel, GeneratedTemplate } from "../types";
 
 const WS_URL = import.meta.env.VITE_WS_URL ?? "ws://localhost:9500";
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:9500";
 
 const SETTINGS_KEY = "notionforge_settings";
+const TEMPLATES_KEY = "notionforge_templates";
 
 function loadSettings(): Settings {
   try {
@@ -28,18 +29,21 @@ function saveSettings(settings: Settings): void {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-export type PageName = "dashboard" | "library" | "integrations" | "profile" | "support";
-
-export interface GeneratedTemplate {
-  readonly id: string;
-  readonly title: string;
-  readonly description: string;
-  readonly tag: string;
-  readonly tagColor: string;
-  readonly date: string;
-  readonly starred: boolean;
-  readonly notionUrl?: string;
+function loadTemplates(): GeneratedTemplate[] {
+  try {
+    const raw = localStorage.getItem(TEMPLATES_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return [];
 }
+
+function saveTemplates(templates: readonly GeneratedTemplate[]): void {
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+}
+
+export type PageName = "dashboard" | "library" | "integrations" | "profile" | "support";
 
 interface ChatState {
   messages: Message[];
@@ -63,8 +67,31 @@ interface ChatState {
   clearMessages: () => void;
   setPage: (page: PageName) => void;
   toggleTemplateStar: (id: string) => void;
+  deleteTemplate: (id: string) => void;
   setConnectionTested: (tested: boolean) => void;
   detectProvider: (apiKey: string) => Promise<void>;
+}
+
+function addTemplateFromMessage(state: ChatState, msg: Message): readonly GeneratedTemplate[] {
+  if (msg.metadata?.type !== "complete" || !msg.metadata?.notionUrl) return state.generatedTemplates;
+
+  const blueprint = state.messages.find((m) => m.metadata?.blueprint)?.metadata?.blueprint as Record<string, unknown> | undefined;
+  const meta = blueprint?.metadata as Record<string, unknown> | undefined;
+
+  const template: GeneratedTemplate = {
+    id: `tpl_${Date.now()}`,
+    title: (meta?.title as string) ?? "Untitled Template",
+    description: msg.content.split("\n")[0] ?? "",
+    skill: (meta?.template_type as string) ?? "custom",
+    date: new Date().toISOString().slice(0, 10),
+    starred: false,
+    notionUrl: msg.metadata.notionUrl,
+    blueprint: blueprint,
+  };
+
+  const updated = [template, ...state.generatedTemplates];
+  saveTemplates(updated);
+  return updated;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -80,44 +107,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   aiProvider: "",
   aiModels: [],
   aiDetecting: false,
-  generatedTemplates: [
-    {
-      id: "tpl_1",
-      title: "Deep Work Architect",
-      description: "A distraction-free operating system for high-output engineers and writers.",
-      tag: "Productivity",
-      tagColor: "tertiary",
-      date: "2024-10-24",
-      starred: false,
-    },
-    {
-      id: "tpl_2",
-      title: "Equity Ledger v2",
-      description: "Sophisticated portfolio tracking with integrated dividend schedules and risk maps.",
-      tag: "Finance",
-      tagColor: "secondary",
-      date: "2024-10-21",
-      starred: true,
-    },
-    {
-      id: "tpl_3",
-      title: "Culinary Nexus",
-      description: "Automated meal planning engine with macro tracking and grocery sync capabilities.",
-      tag: "Lifestyle",
-      tagColor: "primary",
-      date: "2024-10-19",
-      starred: false,
-    },
-    {
-      id: "tpl_4",
-      title: "Agile Forge Dashboard",
-      description: "High-performance project management with sprint burndown templates and team wiki.",
-      tag: "Management",
-      tagColor: "tertiary",
-      date: "2024-10-15",
-      starred: false,
-    },
-  ],
+  generatedTemplates: loadTemplates(),
 
   connect: () => {
     const { ws: existing } = get();
@@ -158,11 +148,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
             },
           };
 
-          set((state) => ({
-            messages: [...state.messages, msg],
-            isLoading: data.type === "progress",
-            currentStep: data.type === "progress" ? (data.step ?? "") : "",
-          }));
+          set((state) => {
+            const newTemplates = addTemplateFromMessage(state, msg);
+            return {
+              messages: [...state.messages, msg],
+              isLoading: data.type === "progress",
+              currentStep: data.type === "progress" ? (data.step ?? "") : "",
+              generatedTemplates: newTemplates,
+            };
+          });
         } catch {
           // ignore parse errors
         }
@@ -198,7 +192,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (ws && connectionStatus === "connected") {
       ws.send(JSON.stringify({ type: "message", content }));
     } else {
-      // WebSocket 없으면 REST API로 폴백
       fetch(`${API_URL}/api/templates/preview`, {
         method: "POST",
         headers: {
@@ -219,8 +212,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
             id: crypto.randomUUID(),
             role: "assistant",
             content: meta
-              ? `📄 ${meta.title} (${meta.template_type})\n🎨 색상: ${meta.color_theme}\n\n구조 미리보기가 생성되었습니다.`
-              : "요청을 처리했습니다.",
+              ? `${meta.title} (${meta.template_type})\nPreview generated successfully.`
+              : "Request processed.",
             timestamp: new Date(),
             metadata: {
               type: "blueprint_preview",
@@ -240,7 +233,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               {
                 id: crypto.randomUUID(),
                 role: "assistant" as const,
-                content: "서버 연결에 실패했습니다. 설정에서 서버 상태를 확인해주세요.",
+                content: "Failed to connect to server. Please check your connection settings.",
                 timestamp: new Date(),
                 metadata: { type: "error" },
               },
@@ -256,7 +249,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     saveSettings(newSettings);
     set({ settings: newSettings });
 
-    // 설정 변경 시 재연결
     const { ws } = get();
     if (ws) {
       ws.close();
@@ -277,11 +269,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   toggleTemplateStar: (id: string) => {
-    set((state) => ({
-      generatedTemplates: state.generatedTemplates.map((t) =>
+    set((state) => {
+      const updated = state.generatedTemplates.map((t) =>
         t.id === id ? { ...t, starred: !t.starred } : t
-      ),
-    }));
+      );
+      saveTemplates(updated);
+      return { generatedTemplates: updated };
+    });
+  },
+
+  deleteTemplate: (id: string) => {
+    set((state) => {
+      const updated = state.generatedTemplates.filter((t) => t.id !== id);
+      saveTemplates(updated);
+      return { generatedTemplates: updated };
+    });
   },
 
   setConnectionTested: (tested: boolean) => {

@@ -65,7 +65,7 @@ const DOC_LINKS: readonly DocLink[] = [
     title: "GitHub Repository",
     description: "View the source code, report issues, and contribute to the project.",
     icon: "code",
-    href: "https://github.com/notionforge/notionforge",
+    href: "https://github.com/JaylenAI/notion_ai_agent",
     external: true,
   },
 ];
@@ -166,7 +166,7 @@ function SupportPage() {
                   </div>
                 </a>
                 <a
-                  href="https://github.com/notionforge/notionforge/issues"
+                  href="https://github.com/JaylenAI/notion_ai_agent/issues"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="glass-panel p-4 rounded-xl border border-[#424656]/10 hover:border-[#adc6ff]/20 transition-all flex items-center gap-3"

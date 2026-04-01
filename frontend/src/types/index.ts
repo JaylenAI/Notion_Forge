@@ -25,3 +25,14 @@ export interface AiModel {
 }
 
 export type ConnectionStatus = "connected" | "disconnected" | "connecting";
+
+export interface GeneratedTemplate {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly skill: string;
+  readonly date: string;
+  readonly starred: boolean;
+  readonly notionUrl?: string;
+  readonly blueprint?: Record<string, unknown>;
+}

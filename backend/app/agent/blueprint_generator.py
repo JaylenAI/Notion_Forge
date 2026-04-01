@@ -402,10 +402,84 @@ FALLBACK_TEMPLATES: dict[str, dict[str, Any]] = {
     },
 }
 
+FALLBACK_TEMPLATES["가계부"] = {
+    "skill": "finance", "title": "가계부", "icon": "💰", "color": "green",
+    "blocks": [
+        {"type": "callout", "text": "수입과 지출을 체계적으로 기록하고 재정 목표를 달성하세요! 💰", "icon": "💰", "color": "green_background"},
+        {"type": "divider"},
+        {"type": "heading_1", "text": "💰 수입/지출 기록", "color": "green_background"},
+        {"type": "database_ref", "db_index": 0},
+        {"type": "divider"},
+        {"type": "toggle", "text": "💡 사용법", "children_text": "매일 지출을 기록하세요. 카테고리별로 필터링하면 어디서 돈이 빠져나가는지 한눈에 볼 수 있습니다."},
+    ],
+    "databases": [{"title": "가계부", "db_properties": {
+        "내역": "title", "금액": "number",
+        "구분": {"type": "select", "options": [{"name": "수입", "color": "green"}, {"name": "지출", "color": "red"}, {"name": "저축", "color": "blue"}]},
+        "카테고리": {"type": "select", "options": [{"name": "식비", "color": "orange"}, {"name": "교통", "color": "blue"}, {"name": "문화", "color": "purple"}, {"name": "생활", "color": "gray"}, {"name": "급여", "color": "green"}]},
+        "날짜": "date", "메모": "rich_text",
+    }, "views": ["table", "calendar"], "sample_items": [
+        {"내역": "카페라떼", "금액": 5800, "구분": "지출", "카테고리": "식비", "날짜": "2026-04-01", "메모": "스타벅스", "icon": "☕"},
+        {"내역": "월급", "금액": 3500000, "구분": "수입", "카테고리": "급여", "날짜": "2026-04-01", "메모": "4월 급여", "icon": "💵"},
+        {"내역": "지하철 정기권", "금액": 55000, "구분": "지출", "카테고리": "교통", "날짜": "2026-04-02", "메모": "1개월", "icon": "🚇"},
+        {"내역": "넷플릭스", "금액": 17000, "구분": "지출", "카테고리": "문화", "날짜": "2026-04-03", "메모": "월 구독", "icon": "🎬"},
+        {"내역": "비상금 저축", "금액": 500000, "구분": "저축", "카테고리": "생활", "날짜": "2026-04-05", "메모": "CMA 계좌", "icon": "🏦"},
+    ]}],
+    "sub_pages": [{"name": "월별 정산", "icon": "📊", "description": "월별 수입/지출 정리"}], "faq": [],
+}
+
+FALLBACK_TEMPLATES["일기"] = {
+    "skill": "journal", "title": "일기장", "icon": "📔", "color": "purple",
+    "blocks": [
+        {"type": "callout", "text": "오늘 하루를 기록하고 나를 돌아보는 시간을 가져보세요 ✨", "icon": "📔", "color": "purple_background"},
+        {"type": "quote", "text": "기록하지 않으면 기억나지 않는다."},
+        {"type": "divider"},
+        {"type": "heading_1", "text": "📔 나의 일기", "color": "purple_background"},
+        {"type": "database_ref", "db_index": 0},
+    ],
+    "databases": [{"title": "일기", "db_properties": {
+        "제목": "title", "날짜": "date",
+        "기분": {"type": "select", "options": [{"name": "최고", "color": "green"}, {"name": "좋음", "color": "blue"}, {"name": "보통", "color": "yellow"}, {"name": "우울", "color": "gray"}, {"name": "화남", "color": "red"}]},
+        "내용": "rich_text", "에너지": "number", "하이라이트": "checkbox",
+    }, "views": ["gallery", "calendar"], "sample_items": [
+        {"제목": "봄바람이 부는 날", "날짜": "2026-04-01", "기분": "최고", "내용": "점심에 산책했다. 벚꽃이 예뻤다.", "에너지": 9, "하이라이트": True, "icon": "🌸"},
+        {"제목": "코딩 마라톤", "날짜": "2026-04-02", "기분": "좋음", "내용": "새 프로젝트 시작. 집중이 잘 됐다.", "에너지": 7, "하이라이트": False, "icon": "💻"},
+        {"제목": "비 오는 오후", "날짜": "2026-04-03", "기분": "보통", "내용": "하루종일 비가 왔다. 집에서 영화 봤다.", "에너지": 5, "하이라이트": False, "icon": "🌧️"},
+        {"제목": "친구와 저녁", "날짜": "2026-04-04", "기분": "최고", "내용": "오랜만에 친구 만나서 맛있는 거 먹었다.", "에너지": 8, "하이라이트": True, "icon": "🍽️"},
+        {"제목": "월요일 출근", "날짜": "2026-04-05", "기분": "보통", "내용": "주말이 너무 빨리 끝났다.", "에너지": 4, "하이라이트": False, "icon": "😴"},
+    ]}],
+    "sub_pages": [{"name": "감사 목록", "icon": "🙏", "description": "매일 감사한 것 3가지"}], "faq": [],
+}
+
+FALLBACK_TEMPLATES["콘텐츠"] = {
+    "skill": "content", "title": "콘텐츠 캘린더", "icon": "📱", "color": "blue",
+    "blocks": [
+        {"type": "callout", "text": "콘텐츠 제작부터 발행까지 체계적으로 관리하세요! 📱", "icon": "📱", "color": "blue_background"},
+        {"type": "divider"},
+        {"type": "heading_1", "text": "📱 콘텐츠 파이프라인", "color": "blue_background"},
+        {"type": "database_ref", "db_index": 0},
+    ],
+    "databases": [{"title": "콘텐츠", "db_properties": {
+        "제목": "title", "상태": "status", "발행일": "date",
+        "플랫폼": {"type": "select", "options": [{"name": "블로그", "color": "blue"}, {"name": "인스타", "color": "pink"}, {"name": "유튜브", "color": "red"}, {"name": "뉴스레터", "color": "green"}]},
+        "형태": {"type": "select", "options": [{"name": "글", "color": "gray"}, {"name": "영상", "color": "orange"}, {"name": "이미지", "color": "purple"}]},
+        "설명": "rich_text",
+    }, "views": ["board", "calendar"], "sample_items": [
+        {"제목": "AI 도구 비교 리뷰", "발행일": "2026-04-07", "플랫폼": "블로그", "형태": "글", "설명": "ChatGPT vs Claude 비교", "icon": "📝"},
+        {"제목": "일상 브이로그", "발행일": "2026-04-10", "플랫폼": "유튜브", "형태": "영상", "설명": "주말 일상 촬영", "icon": "🎬"},
+        {"제목": "디자인 팁 카드뉴스", "발행일": "2026-04-12", "플랫폼": "인스타", "형태": "이미지", "설명": "피그마 단축키 모음", "icon": "🎨"},
+        {"제목": "주간 뉴스레터 #12", "발행일": "2026-04-14", "플랫폼": "뉴스레터", "형태": "글", "설명": "이번 주 테크 뉴스", "icon": "📬"},
+        {"제목": "코딩 튜토리얼", "발행일": "2026-04-15", "플랫폼": "유튜브", "형태": "영상", "설명": "React 19 새 기능", "icon": "💻"},
+    ]}],
+    "sub_pages": [{"name": "아이디어 뱅크", "icon": "💡", "description": "콘텐츠 아이디어 모음"}], "faq": [],
+}
+
 FALLBACK_KEYWORDS: dict[str, list[str]] = {
-    "운동": ["운동", "헬스", "피트니스", "트레이닝", "러닝", "조깅", "웨이트"],
-    "독서": ["독서", "책", "도서", "읽기", "서평", "북리뷰"],
-    "프로젝트": ["프로젝트", "태스크", "칸반", "스프린트", "업무", "관리", "보드", "일정", "스케줄", "캘린더", "계획", "준비", "여행", "결혼", "대시보드", "홈", "메인", "팀", "워크스페이스"],
+    "운동": ["운동", "헬스", "피트니스", "트레이닝", "러닝", "조깅", "웨이트", "요가", "수영", "체중", "workout", "exercise", "fitness", "gym", "health"],
+    "독서": ["독서", "책", "도서", "읽기", "서평", "북리뷰", "도서관", "book", "reading", "library"],
+    "가계부": ["가계부", "예산", "지출", "수입", "돈", "재정", "구독", "절약", "저축", "투자", "재테크", "금융", "카드", "budget", "expense", "finance", "money", "subscription"],
+    "일기": ["일기", "다이어리", "회고", "감사", "무드", "기분", "하루", "일상", "성찰", "journal", "diary", "mood", "gratitude", "reflection"],
+    "콘텐츠": ["콘텐츠", "블로그", "유튜브", "인스타", "SNS", "소셜", "마케팅", "뉴스레터", "포스팅", "content", "blog", "youtube", "instagram", "social media", "newsletter"],
+    "프로젝트": ["프로젝트", "태스크", "칸반", "스프린트", "업무", "보드", "일정", "스케줄", "캘린더", "계획", "준비", "여행", "결혼", "대시보드", "홈", "메인", "팀", "워크스페이스", "project", "task", "kanban", "sprint", "dashboard", "schedule", "plan", "travel", "crm", "고객", "영업", "리드"],
 }
 
 

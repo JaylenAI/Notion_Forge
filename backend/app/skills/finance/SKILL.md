@@ -1,0 +1,84 @@
+---
+name: finance
+description: Creates financial management templates for budgets, expenses, subscriptions, and investments. Number-driven with table view.
+---
+
+# Finance (가계부/재무)
+
+Creates templates for financial management including budgets, expense tracking, subscription management, and investment portfolios.
+
+## Quick Start
+
+1. **Identify financial context**: What does the user want to manage? (expenses, budget, investments, subscriptions)
+2. **Design properties**: Always include number(amount) + date + select(category). Add context-specific fields.
+3. **Set layout**: Two-column (left 30% summary callouts / right 70% DB)
+4. **Add table view**: Essential for financial data analysis
+5. **Generate samples**: 5+ items with realistic Korean financial data
+
+## Template Structure
+
+### Layout
+Two-column (left 30% summary callouts / right 70% database)
+
+### Block Order
+1. callout: Monthly summary message (theme color, context icon)
+2. column_list:
+   - Column 1 (30%): Budget overview callout + category chart callout
+   - Column 2 (70%): Main content area
+3. heading_1: Main title (theme color)
+4. database_ref: Inline database here
+5. divider
+6. toggle: "Tips for better financial management" with instructions
+
+### Database Design
+
+Required properties (always include):
+- title: Item name
+- number: Amount (currency format)
+- select: Category (식비/교통/문화/생활/의료/쇼핑)
+- date: Transaction date
+- select: Type (수입/지출/투자)
+
+Context-dependent properties (AI decides):
+- rich_text: Memo/notes
+- checkbox: Recurring transaction
+- url: Receipt link
+- select: Payment method (현금/카드/계좌이체)
+
+### Views
+- Required: table (PRIMARY - detailed financial overview with all columns)
+- Optional: calendar (monthly overview of transactions)
+
+### Sub-Pages
+- "월별 정산" (Monthly Settlement): Summary of monthly income/expenses
+- "저축 목표" (Savings Goals): Target amounts and progress tracking
+
+### Sample Data
+Generate 5+ items that represent realistic Korean financial transactions.
+Each item needs: relevant icon, filled amount, category, type, and date.
+
+## Content Adaptation Examples
+
+**Budget**: Properties → category(식비/교통/문화/생활), budget limit, spent amount, remaining
+**Subscription**: Properties → service name, monthly fee, billing date, auto-renewal, platform(Netflix/Spotify/gym)
+**Investment**: Properties → asset type(stock/fund/crypto), buy price, current price, return rate, quantity
+**Expense**: Properties → amount, category, payment method, receipt, daily/weekly/monthly
+
+## Formatting Rules
+
+- Callout icon should match context (💰 budget, 💳 expense, 📊 investment, 🔄 subscription)
+- Table view is the PRIMARY view (financial data needs columns)
+- Keep properties under 8 (focused, not overwhelming)
+- Number properties should use Korean Won format where applicable
+- Summary callouts should show key totals (monthly spend, budget remaining)
+
+## Sample Data Requirements
+
+EVERY generated template MUST include sample data with these rules:
+- Minimum 5 sample items per database
+- ALL property values must be filled (not just title and icon)
+- Date values: use realistic dates within ±2 weeks
+- Amount values: use realistic Korean Won amounts (카페라떼 5,800원, 월세 650,000원, 점심 식사 9,500원, 교통카드 충전 50,000원, 넷플릭스 17,000원)
+- Select values: spread across all categories and types
+- Type values: mix of 수입, 지출, and 투자
+- Checkbox: mix of recurring (true) and one-time (false) transactions

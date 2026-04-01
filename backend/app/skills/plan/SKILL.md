@@ -62,6 +62,11 @@ Generate 5 items with mix of completed (early items) and pending (later items).
 **Moving**: Phases → Before/During/After move, Properties → cost, deadline, assignee
 **Exam**: Phases → by subject or by week, Properties → study hours, confidence level, material
 **Event**: Phases → Preparation/Setup/Day-of/Follow-up, Properties → budget, assignee, deadline
+**Home Renovation**: Phases → Design/Demolition/Construction/Finishing/Inspection, Properties → contractor, cost, room, timeline
+**Fitness Challenge**: Phases → Week 1-4 progressive overload, Properties → target, actual, body measurement, diet plan
+**Product Launch**: Phases → Research/Design/Development/Beta/Launch, Properties → owner, status, budget, launch date
+**Party/Celebration**: Phases → Theme/Venue/Invitations/Food/Decorations/Day-of, Properties → budget, guest count, vendor
+**New Year Goals**: Phases → Q1/Q2/Q3/Q4, Properties → goal area(health/career/finance/personal), milestone, progress
 
 ## Formatting Rules
 
@@ -69,6 +74,39 @@ Generate 5 items with mix of completed (early items) and pending (later items).
 - Some to_do items should be pre-checked (show progress)
 - D-day or deadline should be prominent
 - Calendar view for timeline overview
+
+## Color Theme Guide
+
+Recommended color combinations by context:
+- Wedding: pink (romantic, celebratory) — callout: pink_background, headings: pink
+- Travel: orange (adventurous, exciting) — callout: orange_background, headings: orange
+- Moving: yellow (transition, new beginning) — callout: yellow_background, headings: yellow
+- Exam/Study: blue (focused, calm) — callout: blue_background, headings: blue
+- Event Planning: purple (creative, festive) — callout: purple_background, headings: purple
+- Goal Setting: green (growth, achievement) — callout: green_background, headings: green
+- Home Renovation: brown/yellow (construction, warmth) — callout: yellow_background, headings: yellow
+- Party/Celebration: red (festive, energetic) — callout: red_background, headings: red
+- Fitness Challenge: orange (motivation, energy) — callout: orange_background, headings: orange
+- Default: gray (neutral, clean)
+
+## Complexity Levels
+
+### Simple (5-8 blocks): Quick plan
+callout → heading_1 → to_do(items x3-4) → database_ref
+
+### Medium (10-15 blocks): Standard plan with phases
+callout → divider → heading_2(Phase 1) → to_do(items) → heading_2(Phase 2) → to_do(items) → divider → heading_1 → database_ref → toggle(tips)
+
+### Complex (20-30 blocks): Full planning system
+callout → quote(goal statement) → divider → column_list(D-day countdown sidebar + main plan) → heading_2(Phase 1) → to_do(items) → heading_2(Phase 2) → to_do(items) → heading_2(Phase 3) → to_do(items) → heading_2(Phase 4) → to_do(items) → divider → heading_1 → database_ref → divider → heading_2(budget summary) → numbered_list(cost breakdown) → toggle(FAQ x3) → toggle(contingency plan)
+
+## Cross-Skill Combinations
+
+- plan + track: "시험 계획 + 공부 기록" — Use plan for study schedule & milestones + track for daily study hours tracking
+- plan + collect: "여행 계획 + 맛집/명소 수집" — Use plan for trip itinerary & packing list + collect for destination/restaurant collection
+- plan + manage: "이벤트 계획 + 업무 관리" — Use plan for event timeline & checklist + manage for task assignment kanban board
+- plan + hub: "프로젝트 마스터 플랜" — Use hub as project home with navigation + plan for each milestone/phase planning page
+- plan + organize: "이사 계획 + 짐 정리" — Use plan for moving timeline & checklist + organize for inventory/belongings catalog
 
 ## Sample Data Requirements
 

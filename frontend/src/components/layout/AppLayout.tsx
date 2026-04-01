@@ -58,7 +58,7 @@ function HeaderActions({ setPage }: { readonly setPage: (page: PageName) => void
               <span className="material-symbols-outlined text-2xl text-gray-500 mb-2">
                 notifications_off
               </span>
-              <p className="text-sm text-gray-500">알림이 없습니다</p>
+              <p className="text-sm text-gray-500">No notifications</p>
             </div>
           </div>
         )}

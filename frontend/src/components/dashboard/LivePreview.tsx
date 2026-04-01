@@ -210,10 +210,10 @@ function EmptyState() {
         </span>
       </div>
       <p className="text-gray-400 text-sm mb-2">
-        AI가 템플릿을 설계하면 여기에 미리보기가 표시됩니다
+        Template preview will appear here once AI designs it
       </p>
       <p className="text-gray-500 text-xs">
-        채팅에서 원하는 Notion 템플릿을 설명해보세요
+        Describe the Notion template you want in the chat
       </p>
     </div>
   );
@@ -229,9 +229,9 @@ function CompleteBanner({ notionUrl }: { readonly notionUrl: string }) {
           </span>
         </div>
         <div>
-          <h3 className="font-bold text-white">템플릿 생성 완료</h3>
+          <h3 className="font-bold text-white">Template Created</h3>
           <p className="text-xs text-gray-400">
-            Notion 페이지가 성공적으로 생성되었습니다
+            Your Notion page has been successfully generated
           </p>
         </div>
       </div>
@@ -366,14 +366,7 @@ function LivePreview() {
               </span>
               Open in Notion
             </a>
-          ) : (
-            <button
-              type="button"
-              className="px-4 py-1.5 rounded-lg bg-[#adc6ff] text-[#002e69] text-xs font-label font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
-            >
-              Export to Notion
-            </button>
-          )}
+          ) : null}
         </div>
       </div>
 

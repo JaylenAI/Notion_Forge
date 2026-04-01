@@ -60,6 +60,11 @@ Each item needs: relevant icon, filled checkbox for some items (show mixed state
 **Habits**: Properties → category(health/learning/lifestyle), streak count
 **Diet**: Properties → meal type, calories, protein, carbs
 **Water intake**: Properties → time of day, amount(ml), goal reached
+**Sleep**: Properties → bedtime, wake time, duration(hrs), quality(1-5), notes
+**Mood/Mental Health**: Properties → mood(1-10), energy level, trigger, gratitude note
+**Medication**: Properties → medicine name, dosage, time taken, side effects, refill date
+**Reading**: Properties → book title, pages read, minutes, notes
+**Skincare**: Properties → routine(AM/PM), products used, skin condition, weather
 
 ## Formatting Rules
 
@@ -67,6 +72,38 @@ Each item needs: relevant icon, filled checkbox for some items (show mixed state
 - Calendar view is the PRIMARY view (user opens this daily)
 - Keep properties under 7 (focused, not overwhelming)
 - Sample data should show mixed completion states (some checked, some not)
+
+## Color Theme Guide
+
+Recommended color combinations by context:
+- Exercise/Sports: orange (energetic, warm) — callout: orange_background, headings: orange
+- Study/Learning: blue (calm, focused) — callout: blue_background, headings: blue
+- Habits/Lifestyle: purple (creative, mindful) — callout: purple_background, headings: purple
+- Diet/Nutrition: green (healthy, natural) — callout: green_background, headings: green
+- Water/Hydration: blue (refreshing, clean) — callout: blue_background, headings: blue
+- Sleep/Rest: purple (calming, nighttime) — callout: purple_background, headings: purple
+- Mental Health/Mood: pink (gentle, emotional) — callout: pink_background, headings: pink
+- Finance/Spending: yellow (attention, money) — callout: yellow_background, headings: yellow
+- Default: gray (neutral, clean)
+
+## Complexity Levels
+
+### Simple (5-8 blocks): Quick tracker
+callout → heading_1 → database_ref → toggle(usage tip)
+
+### Medium (10-15 blocks): Standard tracker
+callout → divider → heading_2(intro) → paragraph → heading_1 → database_ref → divider → toggle(usage) → toggle(FAQ)
+
+### Complex (20-30 blocks): Full tracking system
+callout → quote(motivational motto) → divider → column_list(weekly stats sidebar + main tracker) → heading_1 → database_ref → divider → heading_2(guide) → numbered_list(steps) → to_do(daily checklist) → toggle(FAQ x3) → toggle(advanced tips) → toggle(milestone rewards)
+
+## Cross-Skill Combinations
+
+- track + collect: "운동하면서 식단도 기록" — Use track for daily exercise log DB + collect for meal/recipe collection DB
+- track + plan: "시험 준비 + 공부 기록" — Use plan for study schedule & milestones + track for daily study hours log
+- track + hub: "여러 습관을 한 곳에서" — Use hub as central dashboard + track DBs for each habit area (exercise, reading, meditation)
+- track + manage: "팀 운동 챌린지" — Use manage for challenge pipeline/status + track for individual daily check-ins
+- track + guide: "습관 만들기 가이드 + 추적" — Use guide for habit-building onboarding doc + track for the actual daily tracker
 
 ## Sample Data Requirements
 

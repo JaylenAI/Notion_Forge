@@ -60,6 +60,11 @@ Generate 5 items spread across ALL statuses (not all "not started").
 **Sales**: Status → Lead/Meeting/Proposal/Contract, Properties → company, deal size, contact
 **Bug tracking**: Status → Open/In progress/Fixed/Closed, Properties → severity, component, reporter
 **Content pipeline**: Status → Idea/Draft/Review/Published, Properties → type, author, publish date
+**Customer support**: Status → New/Assigned/In progress/Resolved/Closed, Properties → priority, category, assignee, SLA deadline
+**Event management**: Status → Planning/Confirmed/In progress/Completed, Properties → event type, venue, budget, attendees
+**Inventory orders**: Status → Requested/Approved/Ordered/Shipped/Received, Properties → item, quantity, supplier, cost
+**Sprint board**: Status → Backlog/To do/In progress/Review/Done, Properties → story points, assignee, epic, sprint number
+**Partnership pipeline**: Status → Outreach/Negotiation/Agreement/Active, Properties → partner company, contact, deal value, renewal date
 
 ## Formatting Rules
 
@@ -67,6 +72,38 @@ Generate 5 items spread across ALL statuses (not all "not started").
 - Status options should have logical progression
 - Sample data should cover ALL statuses (show the pipeline)
 - Priority colors: High=red, Medium=yellow, Low=green
+
+## Color Theme Guide
+
+Recommended color combinations by context:
+- Project Management: blue (professional, structured) — callout: blue_background, headings: blue
+- Hiring/Recruitment: purple (people-focused, growth) — callout: purple_background, headings: purple
+- Sales Pipeline: green (money, success) — callout: green_background, headings: green
+- Bug Tracking: red (urgent, attention) — callout: red_background, headings: red
+- Content Pipeline: orange (creative, productive) — callout: orange_background, headings: orange
+- Sprint/Agile: blue (tech, systematic) — callout: blue_background, headings: blue
+- Customer Support: yellow (approachable, helpful) — callout: yellow_background, headings: yellow
+- Event Management: pink (festive, organized) — callout: pink_background, headings: pink
+- Default: gray (neutral, clean)
+
+## Complexity Levels
+
+### Simple (5-8 blocks): Quick board
+callout → heading_1 → database_ref → toggle(status guide)
+
+### Medium (10-15 blocks): Standard management board
+callout → divider → heading_2(overview) → paragraph(description) → heading_1 → database_ref → divider → toggle(how to use) → toggle(status guide) → toggle(FAQ)
+
+### Complex (20-30 blocks): Full management system
+callout → quote(team motto) → divider → column_list(KPI stats sidebar + main board) → heading_1 → database_ref → divider → heading_2(process guide) → numbered_list(workflow steps) → heading_2(status definitions) → bulleted_list(status descriptions) → to_do(weekly review checklist) → toggle(escalation policy) → toggle(FAQ x3) → toggle(retrospective template)
+
+## Cross-Skill Combinations
+
+- manage + track: "팀 프로젝트 + 개인 업무 기록" — Use manage for project kanban board + track for individual daily task completion log
+- manage + plan: "제품 출시 관리 + 출시 계획" — Use manage for feature pipeline board + plan for launch timeline & checklist
+- manage + hub: "팀 홈 + 프로젝트 보드" — Use hub as team dashboard with navigation + manage for each project's kanban board
+- manage + guide: "신입 온보딩 + 업무 배정" — Use guide for onboarding documentation + manage for task assignment & status tracking
+- manage + organize: "고객 관리 + 거래처 정리" — Use manage for sales pipeline + organize for customer/contact directory
 
 ## Sample Data Requirements
 
