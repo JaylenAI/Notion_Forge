@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
+import toast from "react-hot-toast";
 import { useChatStore } from "../../stores/chatStore";
 import NotionRenderer, { type NotionBlueprintData } from "./NotionRenderer";
 
@@ -23,6 +24,8 @@ interface BlueprintData {
   }>;
 }
 
+const ZOOM_LEVELS = [50, 75, 100, 125, 150] as const;
+
 function BlueprintPreview({ blueprint }: { readonly blueprint: BlueprintData }) {
   const meta = blueprint.metadata;
   const databases = blueprint.databases ?? [];
@@ -33,7 +36,7 @@ function BlueprintPreview({ blueprint }: { readonly blueprint: BlueprintData }) 
       {/* Page Header */}
       <div className="bg-[#1e1e1e] rounded-2xl p-6 border border-[#333]">
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-3xl">{meta?.icon ?? "📄"}</span>
+          <span className="text-3xl">{meta?.icon ?? "\u{1F4C4}"}</span>
           <div>
             <h2 className="text-2xl font-extrabold tracking-tight text-white">
               {meta?.title ?? "Untitled"}
@@ -183,7 +186,7 @@ function BlueprintPreview({ blueprint }: { readonly blueprint: BlueprintData }) 
                 key={page.title ?? i}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#252525] border border-[#333]"
               >
-                <span className="text-sm">{page.icon ?? "📄"}</span>
+                <span className="text-sm">{page.icon ?? "\u{1F4C4}"}</span>
                 <span className="text-sm text-gray-300">
                   {page.title ?? "Untitled"}
                 </span>
@@ -220,6 +223,12 @@ function EmptyState() {
 }
 
 function CompleteBanner({ notionUrl }: { readonly notionUrl: string }) {
+  const handleCopy = () => {
+    navigator.clipboard.writeText(notionUrl).then(() => {
+      toast.success("URL copied!");
+    });
+  };
+
   return (
     <div className="bg-[#1e1e1e] rounded-2xl p-6 border border-[#4edea3]/30">
       <div className="flex items-center gap-3 mb-3">
@@ -235,15 +244,25 @@ function CompleteBanner({ notionUrl }: { readonly notionUrl: string }) {
           </p>
         </div>
       </div>
-      <a
-        href={notionUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-3 w-full flex items-center justify-center gap-2 bg-[#4edea3] text-[#003824] font-bold text-sm py-3 rounded-xl hover:opacity-90 transition-opacity"
-      >
-        <span className="material-symbols-outlined text-sm">open_in_new</span>
-        Notion에서 열기
-      </a>
+      <div className="flex gap-2 mt-3">
+        <a
+          href={notionUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 flex items-center justify-center gap-2 bg-[#4edea3] text-[#003824] font-bold text-sm py-3 rounded-xl hover:opacity-90 transition-opacity"
+        >
+          <span className="material-symbols-outlined text-sm">open_in_new</span>
+          Notion\uC5D0\uC11C \uC5F4\uAE30
+        </a>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="px-4 py-3 rounded-xl bg-[#2a2a2a] text-[#c2c6d8] hover:bg-[#353534] transition-colors flex items-center gap-2"
+          title="Copy URL"
+        >
+          <span className="material-symbols-outlined text-sm">content_copy</span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -262,7 +281,7 @@ function CreationStepper() {
 
   return (
     <div className="bg-[#1e1e1e] rounded-xl p-4 border border-[#333]/30">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         {steps.map((step, i) => (
           <div key={step.label} className="flex items-center gap-2">
             {i > 0 && <div className="w-6 h-px bg-[#333]" />}
@@ -304,6 +323,21 @@ function CreationStepper() {
 function LivePreview() {
   const messages = useChatStore((s) => s.messages);
   const [previewMode, setPreviewMode] = useState(true);
+  const [zoomIndex, setZoomIndex] = useState(2); // Default 100%
+
+  const zoomLevel = ZOOM_LEVELS[zoomIndex] ?? 100;
+
+  const zoomIn = useCallback(() => {
+    setZoomIndex((prev) => Math.min(prev + 1, ZOOM_LEVELS.length - 1));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setZoomIndex((prev) => Math.max(prev - 1, 0));
+  }, []);
+
+  const resetZoom = useCallback(() => {
+    setZoomIndex(2);
+  }, []);
 
   const { blueprint, notionUrl, isComplete } = useMemo(() => {
     const reversed = [...messages].reverse();
@@ -322,31 +356,59 @@ function LivePreview() {
   const showStepper = isLoading || hasBlueprint;
 
   return (
-    <section className="flex-1 flex flex-col bg-[#131313] rounded-2xl border border-[#333]/30 overflow-hidden relative">
-      {/* Toolbar */}
-      <div className="h-14 flex items-center justify-between px-6 bg-[#1e1e1e]/80 border-b border-[#333]/30 backdrop-blur-md">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#ffb59a]">
-              description
-            </span>
-            <span className="text-sm font-semibold tracking-wide text-white">
-              Live Preview
-            </span>
-          </div>
-          <span className="h-4 w-px bg-[#333]" />
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+    <section className="flex-1 flex flex-col bg-[var(--preview-bg,#131313)] rounded-2xl border border-[#333]/30 overflow-hidden relative">
+      {/* Toolbar — nowrap to prevent line-break on narrow panels */}
+      <div className="h-14 flex items-center justify-between px-3 sm:px-6 bg-[#1e1e1e]/80 border-b border-[#333]/30 backdrop-blur-md overflow-hidden shrink-0">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0 overflow-hidden">
+          <span className="material-symbols-outlined text-[#ffb59a] shrink-0">
+            description
+          </span>
+          <span className="text-sm font-semibold tracking-wide text-white whitespace-nowrap hidden lg:inline">
+            Live Preview
+          </span>
+          <span className="h-4 w-px bg-[#333] hidden lg:block shrink-0" />
+          <div className="hidden lg:flex items-center gap-2 text-xs text-gray-500 whitespace-nowrap">
             <span className="material-symbols-outlined text-xs">
               {hasBlueprint ? "cloud_done" : "cloud_off"}
             </span>
-            {hasBlueprint ? "Blueprint loaded" : "Waiting for input"}
+            {hasBlueprint ? "Blueprint loaded" : "Waiting"}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Zoom controls */}
+          <div className="flex items-center gap-1 bg-[#252525] rounded-lg border border-[#333]/50 px-1">
+            <button
+              type="button"
+              onClick={zoomOut}
+              disabled={zoomIndex === 0}
+              className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Zoom Out"
+            >
+              <span className="material-symbols-outlined text-sm">remove</span>
+            </button>
+            <button
+              type="button"
+              onClick={resetZoom}
+              className="px-2 h-7 text-[10px] text-gray-400 hover:text-white font-mono transition-colors"
+              title="Reset Zoom"
+            >
+              {zoomLevel}%
+            </button>
+            <button
+              type="button"
+              onClick={zoomIn}
+              disabled={zoomIndex === ZOOM_LEVELS.length - 1}
+              className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Zoom In"
+            >
+              <span className="material-symbols-outlined text-sm">add</span>
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={() => setPreviewMode((prev) => !prev)}
-            className={`px-4 py-1.5 rounded-lg border text-xs font-label uppercase tracking-wider transition-colors ${
+            className={`px-3 sm:px-4 py-1.5 rounded-lg border text-xs font-label uppercase tracking-wider transition-colors whitespace-nowrap ${
               previewMode && hasBlueprint
                 ? "border-[#adc6ff] text-[#adc6ff] bg-[#adc6ff]/10"
                 : "border-[#333] text-gray-400 hover:bg-[#2a2a2a]"
@@ -359,20 +421,23 @@ function LivePreview() {
               href={notionUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-1.5 rounded-lg bg-[#4edea3] text-[#003824] text-xs font-label font-bold uppercase tracking-wider hover:opacity-90 transition-opacity inline-flex items-center gap-1"
+              className="px-3 sm:px-4 py-1.5 rounded-lg bg-[#4edea3] text-[#003824] text-xs font-label font-bold uppercase tracking-wider hover:opacity-90 transition-opacity inline-flex items-center gap-1"
             >
               <span className="material-symbols-outlined text-xs">
                 open_in_new
               </span>
-              Open in Notion
+              <span className="hidden sm:inline">Open in Notion</span>
             </a>
           ) : null}
         </div>
       </div>
 
       {/* Live Canvas Area */}
-      <div className="flex-1 blueprint-bg p-8 overflow-y-auto">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex-1 blueprint-bg p-4 sm:p-8 overflow-auto">
+        <div
+          className="max-w-4xl mx-auto space-y-6 transition-transform duration-200 origin-top-left"
+          style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top center" }}
+        >
           {isComplete && notionUrl && <CompleteBanner notionUrl={notionUrl} />}
 
           {hasBlueprint ? (

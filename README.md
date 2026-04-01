@@ -98,11 +98,20 @@ make test       # 테스트 실행
 - **DB 속성 전체**: select, multi_select, status, relation, rollup, formula, unique_id, people 등
 
 ### 프론트엔드
-- **다크 테마 UI**: Dashboard, Library, Integrations, Profile, Support 5개 페이지
+- **다크/라이트 테마**: CSS 변수 기반 전체 테마 시스템 + 토글
+- **5개 페이지**: Dashboard, Library, Integrations, Profile, Support
 - **프롬프트 스타터**: 6개 추천 템플릿 원클릭 생성
+- **프롬프트 라이브러리**: 4개 카테고리 × 18개 프롬프트 템플릿 (Business/Personal/Content/Learning)
 - **노션 스타일 렌더러**: 14개 블록 + 4개 DB 뷰 (Table/Board/Calendar/Gallery) 미리보기
 - **Library 자동 저장**: 생성된 템플릿 자동 보관 + 검색/필터/정렬
 - **AI 모델 선택**: 프로바이더 자동 감지 + 모델 목록 API
+- **채팅 마크다운 렌더링**: AI 응답에 bold, 리스트, 코드블록, 테이블 등 렌더링
+- **채팅 세션 관리**: 세션 자동저장/복원/삭제, 최대 50개 히스토리
+- **키보드 단축키**: ⌘N 새 템플릿, ⌘K 커맨드 팔레트
+- **미리보기 줌**: 50%~150% 줌 인/아웃
+- **모바일 반응형**: 768px 이하 탭 전환 UI, 오버레이 사이드바
+- **토스트 알림**: 저장/연결/에러 시 피드백
+- **생성 취소**: 진행 중인 템플릿 생성 취소 가능
 
 ---
 
@@ -143,7 +152,13 @@ NotionForge/
     │   │   ├── profile/           # 연결 상태 + 통계
     │   │   ├── support/           # FAQ + 문서
     │   │   └── layout/            # AppLayout (사이드바 + 상단 네비)
-    │   ├── stores/chatStore.ts    # Zustand + WebSocket + localStorage
+    │   ├── stores/
+    │   │   ├── chatStore.ts       # Zustand + WebSocket + 세션 관리
+    │   │   └── themeStore.ts      # 다크/라이트 테마 상태
+    │   ├── lib/
+    │   │   ├── api.ts             # API 유틸
+    │   │   ├── utils.ts           # 공통 유틸
+    │   │   └── timeago.ts         # 상대시간 ("3분 전")
     │   └── types/index.ts
     └── ...
 ```
@@ -157,7 +172,7 @@ NotionForge/
 | **Backend** | FastAPI + Python 3.11 + uv |
 | **AI** | Gemini 2.5 Flash (기본) / Groq / Claude / OpenAI |
 | **Notion** | notion-client 3.x + httpx (Legacy 2022-06-28 + Views 2025-09-03) |
-| **Frontend** | React 19 + Vite 7 + TailwindCSS 4 + Zustand 5 |
+| **Frontend** | React 19 + Vite 7 + TailwindCSS 4 + Zustand 5 + react-markdown |
 | **컨테이너** | Docker + Docker Compose |
 | **CI/CD** | GitHub Actions |
 
@@ -213,7 +228,13 @@ NotionForge/
 - [ ] AI 블록 다양성 강화 (quote, code, column_list 등 적극 활용)
 - [ ] AI 모델 업그레이드 (Claude/GPT-4o = 더 복잡한 구조)
 
-### 우선순위 MEDIUM
+### 우선순위 MEDIUM — UI/UX
+- [ ] 드래그 앤 드롭 블루프린트 재배치 (LivePreview에서 DB/서브페이지 순서 변경)
+- [ ] 즐겨찾기 퀵 액세스 (사이드바에 starred 템플릿 바로가기)
+- [ ] 블루프린트 JSON 내보내기/가져오기 (Export/Import 버튼)
+- [ ] 실시간 연결 품질 모니터 (WebSocket ping/pong latency 실측)
+
+### 우선순위 MEDIUM — 인프라
 - [ ] Vercel (FE) + Railway (BE) 프로덕션 배포
 - [ ] 스킬 간 크로스 조합 지원
 

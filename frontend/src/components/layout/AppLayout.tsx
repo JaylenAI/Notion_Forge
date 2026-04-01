@@ -1,12 +1,13 @@
 import { type ReactNode, useCallback, useState, useRef, useEffect } from "react";
+import toast from "react-hot-toast";
 import { useChatStore, type PageName } from "../../stores/chatStore";
+import { useThemeStore } from "../../stores/themeStore";
 import StatusBar from "../common/StatusBar";
 
 interface SideNavItem {
   readonly id: PageName | "new-template";
   readonly icon: string;
   readonly label: string;
-  readonly filled?: boolean;
 }
 
 const NAV_ITEMS: readonly SideNavItem[] = [
@@ -25,6 +26,8 @@ const TOP_NAV: readonly { id: PageName; label: string }[] = [
 function HeaderActions({ setPage }: { readonly setPage: (page: PageName) => void }) {
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggleTheme);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -39,18 +42,29 @@ function HeaderActions({ setPage }: { readonly setPage: (page: PageName) => void
   }, [showNotifDropdown]);
 
   return (
-    <div className="flex items-center gap-4">
-      {/* Notifications */}
+    <div className="flex items-center gap-2 sm:gap-4">
+      {/* Theme toggle */}
+      <button
+        type="button"
+        onClick={toggleTheme}
+        className="text-[var(--text-primary,#e5e2e1)]/60 hover:text-[#adc6ff] transition-colors"
+        title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      >
+        <span className="material-symbols-outlined">
+          {theme === "dark" ? "light_mode" : "dark_mode"}
+        </span>
+      </button>
+
       <div className="relative" ref={notifRef}>
         <button
           type="button"
           onClick={() => setShowNotifDropdown((prev) => !prev)}
-          className="text-[#e5e2e1]/60 hover:text-[#adc6ff] transition-colors"
+          className="text-[var(--text-primary,#e5e2e1)]/60 hover:text-[#adc6ff] transition-colors"
         >
           <span className="material-symbols-outlined">notifications</span>
         </button>
         {showNotifDropdown && (
-          <div className="absolute right-0 top-full mt-2 w-64 bg-[#1e1e1e] border border-[#333] rounded-xl shadow-2xl p-4 z-50">
+          <div className="absolute right-0 top-full mt-2 w-64 bg-[var(--surface-container-low,#1e1e1e)] border border-[var(--border-color,#333)] rounded-xl shadow-2xl p-4 z-50">
             <p className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">
               Notifications
             </p>
@@ -63,24 +77,104 @@ function HeaderActions({ setPage }: { readonly setPage: (page: PageName) => void
           </div>
         )}
       </div>
-      {/* Settings */}
       <button
         type="button"
         onClick={() => setPage("integrations")}
-        className="text-[#e5e2e1]/60 hover:text-[#adc6ff] transition-colors"
+        className="text-[var(--text-primary,#e5e2e1)]/60 hover:text-[#adc6ff] transition-colors hidden sm:block"
       >
         <span className="material-symbols-outlined">settings</span>
       </button>
-      {/* Profile */}
       <button
         type="button"
         onClick={() => setPage("profile")}
-        className="w-8 h-8 rounded-full overflow-hidden border border-[#424656]/30 bg-[#353534] flex items-center justify-center hover:border-[#adc6ff]/50 transition-colors"
+        className="w-8 h-8 rounded-full overflow-hidden border border-[var(--border-color,#424656)]/30 bg-[var(--surface-variant,#353534)] flex items-center justify-center hover:border-[#adc6ff]/50 transition-colors"
       >
-        <span className="material-symbols-outlined text-[#c2c6d8] text-sm">
+        <span className="material-symbols-outlined text-[var(--text-muted,#c2c6d8)] text-sm">
           person
         </span>
       </button>
+    </div>
+  );
+}
+
+/* ─── Command Palette (Cmd+K) ─── */
+function CommandPalette({ open, onClose }: { readonly open: boolean; readonly onClose: () => void }) {
+  const setPage = useChatStore((s) => s.setPage);
+  const newSession = useChatStore((s) => s.newSession);
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setQuery("");
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [open]);
+
+  const commands = [
+    { icon: "auto_awesome", label: "New Template", shortcut: "\u2318N", action: () => { newSession(); setPage("dashboard"); } },
+    { icon: "grid_view", label: "Library", action: () => setPage("library") },
+    { icon: "api", label: "Integrations", action: () => setPage("integrations") },
+    { icon: "person", label: "Profile", action: () => setPage("profile") },
+    { icon: "help", label: "Support", action: () => setPage("support") },
+    { icon: "dashboard", label: "Dashboard", action: () => setPage("dashboard") },
+  ];
+
+  const filtered = query
+    ? commands.filter((c) => c.label.toLowerCase().includes(query.toLowerCase()))
+    : commands;
+
+  const handleSelect = (action: () => void) => {
+    action();
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-md bg-[var(--surface-container,#201f1f)] border border-[var(--border-color,#424656)] rounded-2xl shadow-2xl overflow-hidden animate-fade-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-color,#424656)]/30">
+          <span className="material-symbols-outlined text-[var(--text-muted,#c2c6d8)]/40 text-lg">search</span>
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="flex-1 bg-transparent text-sm text-[var(--text-primary,#e5e2e1)] placeholder:text-[var(--text-muted,#c2c6d8)]/40 outline-none"
+            placeholder="Search commands..."
+            onKeyDown={(e) => {
+              if (e.key === "Escape") onClose();
+              if (e.key === "Enter" && filtered.length > 0 && filtered[0]) handleSelect(filtered[0].action);
+            }}
+          />
+          <kbd className="text-[10px] text-[var(--text-muted,#c2c6d8)]/30 border border-[var(--border-color,#424656)]/30 rounded px-1.5 py-0.5">ESC</kbd>
+        </div>
+        <div className="py-2 max-h-64 overflow-y-auto">
+          {filtered.map((cmd) => (
+            <button
+              key={cmd.label}
+              type="button"
+              onClick={() => handleSelect(cmd.action)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--surface-container-high,#2a2a2a)] transition-colors text-left"
+            >
+              <span className="material-symbols-outlined text-[var(--text-muted,#c2c6d8)]/60 text-lg">{cmd.icon}</span>
+              <span className="text-sm text-[var(--text-primary,#e5e2e1)]">{cmd.label}</span>
+              {cmd.shortcut && (
+                <kbd className="ml-auto text-[10px] text-[var(--text-muted,#c2c6d8)]/30 border border-[var(--border-color,#424656)]/30 rounded px-1.5 py-0.5">
+                  {cmd.shortcut}
+                </kbd>
+              )}
+            </button>
+          ))}
+          {filtered.length === 0 && (
+            <p className="px-4 py-6 text-sm text-[var(--text-muted,#c2c6d8)]/40 text-center">No results</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -93,33 +187,63 @@ function AppLayout({ children }: AppLayoutProps) {
   const currentPage = useChatStore((s) => s.currentPage);
   const setPage = useChatStore((s) => s.setPage);
   const clearMessages = useChatStore((s) => s.clearMessages);
+  const newSession = useChatStore((s) => s.newSession);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" && window.innerWidth < 768);
+
+  /* ─── Keyboard Shortcuts ─── */
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const meta = e.metaKey || e.ctrlKey;
+
+      // Cmd+K — Command palette
+      if (meta && e.key === "k") {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+      // Cmd+N — New template
+      if (meta && e.key === "n") {
+        e.preventDefault();
+        newSession();
+        setPage("dashboard");
+        toast.success("New template session started");
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [newSession, setPage]);
+
+  /* Track screen size + auto-collapse sidebar on small screens */
+  useEffect(() => {
+    function handleResize() {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setSidebarCollapsed(true);
+      }
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleSideNav = useCallback(
     (id: SideNavItem["id"]) => {
       if (id === "new-template") {
         clearMessages();
         setPage("dashboard");
+        setMobileMenuOpen(false);
         return;
       }
       setPage(id);
+      setMobileMenuOpen(false);
     },
     [setPage, clearMessages]
   );
 
-  const getActiveClass = useCallback(
-    (id: SideNavItem["id"]) => {
-      if (id === "new-template" && currentPage === "dashboard") {
-        return "flex items-center gap-3 bg-[#1c1b1b] text-[#adc6ff] rounded-lg px-4 py-3 transition-all duration-200 translate-x-1";
-      }
-      if (id === currentPage) {
-        return "flex items-center gap-3 bg-[#1c1b1b] text-[#adc6ff] rounded-lg px-4 py-3 transition-all duration-200 translate-x-1";
-      }
-      return "flex items-center gap-3 text-[#e5e2e1]/50 px-4 py-3 hover:bg-[#1c1b1b] hover:text-[#e5e2e1] transition-all rounded-lg cursor-pointer";
-    },
-    [currentPage]
-  );
-
-  const isItemFilled = useCallback(
+  const isActive = useCallback(
     (id: SideNavItem["id"]) => {
       if (id === "new-template" && currentPage === "dashboard") return true;
       return id === currentPage;
@@ -127,15 +251,36 @@ function AppLayout({ children }: AppLayoutProps) {
     [currentPage]
   );
 
+  /* Determine if we're showing expanded labels in sidebar */
+  const showLabels = mobileMenuOpen || !sidebarCollapsed;
+
+  /* Compute sidebar pixel width for main content offset */
+  const sidebarPx = sidebarCollapsed ? 68 : 256;
+
   return (
-    <div className="min-h-screen bg-[#131313] text-[#e5e2e1] font-body selection:bg-[#adc6ff] selection:text-[#002e69]">
+    <div className="min-h-screen bg-[var(--bg,#131313)] text-[var(--text-primary,#e5e2e1)] font-body selection:bg-[#adc6ff] selection:text-[#002e69]">
       {/* TopNavBar */}
-      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#131313] shadow-[0_0_48px_0_rgba(173,198,255,0.06)]">
-        <div className="flex items-center gap-8">
-          <span className="text-xl font-bold tracking-tighter text-[#e5e2e1] font-headline">
+      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 sm:px-6 h-14 bg-[var(--bg,#131313)]/95 backdrop-blur-sm border-b border-[var(--border-color,#333)]/20">
+        <div className="flex items-center gap-3 sm:gap-6">
+          <button
+            type="button"
+            onClick={() => {
+              if (isMobile) {
+                setMobileMenuOpen((p) => !p);
+              } else {
+                setSidebarCollapsed((prev) => !prev);
+              }
+            }}
+            className="text-[var(--text-primary,#e5e2e1)]/50 hover:text-[#adc6ff] transition-colors"
+          >
+            <span className="material-symbols-outlined text-xl">
+              {mobileMenuOpen ? "close" : sidebarCollapsed ? "menu" : "menu_open"}
+            </span>
+          </button>
+          <span className="text-lg font-bold tracking-tighter text-[var(--text-primary,#e5e2e1)] font-headline">
             NotionForge
           </span>
-          <nav className="hidden md:flex gap-6 items-center">
+          <nav className="hidden md:flex gap-5 items-center">
             {TOP_NAV.map((item) => (
               <button
                 key={item.id}
@@ -143,114 +288,150 @@ function AppLayout({ children }: AppLayoutProps) {
                 onClick={() => setPage(item.id)}
                 className={
                   currentPage === item.id
-                    ? "text-[#adc6ff] border-b-2 border-[#adc6ff] pb-1 font-label text-sm uppercase tracking-widest"
-                    : "text-[#e5e2e1]/60 hover:text-[#adc6ff] transition-colors duration-200 font-label text-sm uppercase tracking-widest"
+                    ? "text-[#adc6ff] border-b-2 border-[#adc6ff] pb-0.5 font-label text-xs uppercase tracking-widest"
+                    : "text-[var(--text-primary,#e5e2e1)]/50 hover:text-[#adc6ff] transition-colors duration-200 font-label text-xs uppercase tracking-widest"
                 }
               >
                 {item.label}
               </button>
             ))}
           </nav>
+          {/* Keyboard shortcut hint */}
+          <button
+            type="button"
+            onClick={() => setCommandPaletteOpen(true)}
+            className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--surface-container,#201f1f)] border border-[var(--border-color,#424656)]/20 text-[var(--text-muted,#c2c6d8)]/30 hover:text-[var(--text-muted,#c2c6d8)]/60 hover:border-[var(--border-color,#424656)]/40 transition-colors"
+          >
+            <span className="material-symbols-outlined text-sm">search</span>
+            <span className="text-xs">Search</span>
+            <kbd className="text-[10px] border border-[var(--border-color,#424656)]/20 rounded px-1 py-0.5 ml-2">{"\u2318K"}</kbd>
+          </button>
         </div>
         <HeaderActions setPage={setPage} />
       </header>
 
-      {/* SideNavBar */}
-      <aside className="fixed left-0 top-0 h-full flex flex-col py-8 z-40 bg-[#0e0e0e] w-64 pt-20">
-        <div className="px-6 mb-8">
+      {/* Mobile overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* SideNavBar — always flex, translate to show/hide on mobile */}
+      <aside
+        className="fixed left-0 top-0 h-full flex flex-col z-40 bg-[var(--sidebar-bg,#0e0e0e)] pt-14 transition-all duration-200 ease-out"
+        style={{
+          width: mobileMenuOpen ? 256 : sidebarPx,
+          transform: isMobile && !mobileMenuOpen ? "translateX(-100%)" : "translateX(0)",
+        }}
+      >
+        {/* Logo */}
+        <div className={`${showLabels ? "px-5" : "px-3"} py-5`}>
           <button
             type="button"
-            onClick={() => setPage("dashboard")}
+            onClick={() => { setPage("dashboard"); setMobileMenuOpen(false); }}
             className="flex items-center gap-3 w-full text-left hover:opacity-80 transition-opacity"
           >
-            <div className="w-10 h-10 bg-[#006de6] rounded-xl flex items-center justify-center">
+            <div className="w-9 h-9 bg-[#006de6] rounded-xl flex items-center justify-center shrink-0">
               <span
-                className="material-symbols-outlined text-white"
+                className="material-symbols-outlined text-white text-lg"
                 style={{ fontVariationSettings: "'FILL' 1" }}
               >
                 auto_awesome
               </span>
             </div>
-            <div>
-              <h2 className="text-lg font-black text-[#adc6ff] font-headline leading-tight">
-                NotionForge
-              </h2>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[#c2c6d8]/50">
-                AI Alchemist
-              </p>
-            </div>
+            {showLabels && (
+              <div className="overflow-hidden">
+                <h2 className="text-base font-black text-[#adc6ff] font-headline leading-tight">
+                  NotionForge
+                </h2>
+                <p className="text-[9px] uppercase tracking-[0.15em] text-[var(--text-muted,#c2c6d8)]/40">
+                  AI Alchemist
+                </p>
+              </div>
+            )}
           </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => handleSideNav(item.id)}
-              className={getActiveClass(item.id)}
-            >
-              <span
-                className="material-symbols-outlined"
-                style={
-                  isItemFilled(item.id)
-                    ? { fontVariationSettings: "'FILL' 1" }
-                    : undefined
-                }
+        {/* Nav — flex-1 pushes footer down */}
+        <nav className={`flex-1 ${showLabels ? "px-3" : "px-2"} space-y-1`}>
+          {NAV_ITEMS.map((item) => {
+            const active = isActive(item.id);
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleSideNav(item.id)}
+                title={!showLabels ? item.label : undefined}
+                className={`flex items-center gap-3 w-full rounded-lg transition-all duration-150 ${
+                  !showLabels ? "justify-center px-2 py-2.5" : "px-3 py-2.5"
+                } ${
+                  active
+                    ? "bg-[var(--surface-container-low,#1c1b1b)] text-[#adc6ff]"
+                    : "text-[var(--text-primary,#e5e2e1)]/40 hover:bg-[var(--surface-container-low,#1c1b1b)] hover:text-[var(--text-primary,#e5e2e1)]"
+                }`}
               >
-                {item.icon}
-              </span>
-              <span className="font-label text-sm uppercase tracking-wider">
-                {item.label}
-              </span>
-            </button>
-          ))}
+                <span
+                  className="material-symbols-outlined text-xl"
+                  style={active ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                >
+                  {item.icon}
+                </span>
+                {showLabels && (
+                  <span className="font-label text-xs uppercase tracking-wider truncate">
+                    {item.label}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </nav>
 
-        <div className="px-4 mt-auto space-y-4">
-          <div className="bg-[#2a2a2a] rounded-xl p-4 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#ffb59a]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <p className="text-xs text-[#ffb59a] font-bold mb-1">PRO PLAN</p>
-            <p className="text-[10px] text-[#c2c6d8] mb-3">
-              Unlock unlimited AI alchemy.
-            </p>
+        {/* Footer — always at bottom, pb-14 accounts for 40px StatusBar + spacing */}
+        <div className={`${showLabels ? "px-3" : "px-2"} pb-14 space-y-3 mt-auto`}>
+          {showLabels && (
+            <div className="bg-[var(--surface-container,#2a2a2a)] rounded-xl p-3 relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#ffb59a]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <p className="text-[10px] text-[#ffb59a] font-bold mb-0.5">PRO PLAN</p>
+              <p className="text-[9px] text-[var(--text-muted,#c2c6d8)] mb-2">Unlimited AI alchemy.</p>
+              <button
+                type="button"
+                className="w-full py-1.5 bg-[#ffb59a] text-[#5a1b00] font-bold text-[10px] rounded-lg transition-transform active:scale-95"
+              >
+                Upgrade
+              </button>
+            </div>
+          )}
+          <div className="space-y-0.5">
             <button
               type="button"
-              className="w-full py-2 bg-[#ffb59a] text-[#5a1b00] font-bold text-xs rounded-lg transition-transform active:scale-95"
+              onClick={() => { setPage("support"); setMobileMenuOpen(false); }}
+              title={!showLabels ? "Support" : undefined}
+              className={`flex items-center gap-2 text-[var(--text-primary,#e5e2e1)]/25 hover:text-[var(--text-primary,#e5e2e1)]/60 transition-all text-xs w-full ${
+                !showLabels ? "justify-center py-2" : "px-3 py-1.5"
+              }`}
             >
-              Upgrade to Pro
-            </button>
-          </div>
-          <div className="space-y-1">
-            <button
-              type="button"
-              onClick={() => setPage("support")}
-              className="flex items-center gap-3 text-[#e5e2e1]/30 px-4 py-2 hover:text-[#e5e2e1] transition-all text-xs w-full"
-            >
-              <span className="material-symbols-outlined scale-75">help</span>
-              <span>Support</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPage("support")}
-              className="flex items-center gap-3 text-[#e5e2e1]/30 px-4 py-2 hover:text-[#e5e2e1] transition-all text-xs w-full"
-            >
-              <span className="material-symbols-outlined scale-75">
-                description
-              </span>
-              <span>Documentation</span>
+              <span className="material-symbols-outlined text-lg">help</span>
+              {showLabels && <span>Support</span>}
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="pl-64 pt-16 h-screen flex flex-col">
+      {/* Main Content — offset by sidebar width on desktop */}
+      <main
+        className="pt-14 h-screen flex flex-col transition-all duration-200 ease-out"
+        style={{ paddingLeft: isMobile ? 0 : sidebarPx }}
+      >
         {children}
       </main>
 
-      {/* StatusBar */}
-      <StatusBar />
+      {/* StatusBar — offset by sidebar width so it doesn't hide behind sidebar */}
+      <StatusBar sidebarWidth={isMobile ? 0 : sidebarPx} />
+
+      {/* Command Palette */}
+      <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
     </div>
   );
 }

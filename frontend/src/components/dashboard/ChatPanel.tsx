@@ -1,13 +1,18 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import toast from "react-hot-toast";
 import { useChatStore } from "../../stores/chatStore";
+import { timeAgo } from "../../lib/timeago";
+import PromptLibrary from "./PromptLibrary";
 
 const STARTER_PROMPTS = [
-  { icon: "🏋️", title: "Workout Tracker", prompt: "운동 기록 일지 만들어줘", color: "orange" },
-  { icon: "📊", title: "Project Board", prompt: "프로젝트 관리 대시보드 만들어줘", color: "blue" },
-  { icon: "📚", title: "Reading Log", prompt: "독서 기록장 만들어줘", color: "green" },
-  { icon: "💰", title: "Budget Manager", prompt: "가계부 만들어줘", color: "yellow" },
-  { icon: "📝", title: "Content Calendar", prompt: "콘텐츠 캘린더 만들어줘", color: "purple" },
-  { icon: "✈️", title: "Travel Planner", prompt: "여행 계획표 만들어줘", color: "red" },
+  { icon: "\u{1F3CB}\uFE0F", title: "Workout Tracker", prompt: "\uC6B4\uB3D9 \uAE30\uB85D \uC77C\uC9C0 \uB9CC\uB4E4\uC5B4\uC918", color: "orange" },
+  { icon: "\u{1F4CA}", title: "Project Board", prompt: "\uD504\uB85C\uC81D\uD2B8 \uAD00\uB9AC \uB300\uC2DC\uBCF4\uB4DC \uB9CC\uB4E4\uC5B4\uC918", color: "blue" },
+  { icon: "\u{1F4DA}", title: "Reading Log", prompt: "\uB3C5\uC11C \uAE30\uB85D\uC7A5 \uB9CC\uB4E4\uC5B4\uC918", color: "green" },
+  { icon: "\u{1F4B0}", title: "Budget Manager", prompt: "\uAC00\uACC4\uBD80 \uB9CC\uB4E4\uC5B4\uC918", color: "yellow" },
+  { icon: "\u{1F4DD}", title: "Content Calendar", prompt: "\uCF58\uD150\uCE20 \uCE98\uB9B0\uB354 \uB9CC\uB4E4\uC5B4\uC918", color: "purple" },
+  { icon: "\u2708\uFE0F", title: "Travel Planner", prompt: "\uC5EC\uD589 \uACC4\uD68D\uD45C \uB9CC\uB4E4\uC5B4\uC918", color: "red" },
 ];
 
 const STARTER_COLOR_MAP: Record<string, string> = {
@@ -23,12 +28,19 @@ function ChatPanel() {
   const messages = useChatStore((s) => s.messages);
   const isLoading = useChatStore((s) => s.isLoading);
   const sendMessage = useChatStore((s) => s.sendMessage);
+  const cancelGeneration = useChatStore((s) => s.cancelGeneration);
   const connectionStatus = useChatStore((s) => s.connectionStatus);
   const connect = useChatStore((s) => s.connect);
   const settings = useChatStore((s) => s.settings);
   const aiProvider = useChatStore((s) => s.aiProvider);
+  const sessions = useChatStore((s) => s.sessions);
+  const loadSession = useChatStore((s) => s.loadSession);
+  const deleteSession = useChatStore((s) => s.deleteSession);
+  const newSession = useChatStore((s) => s.newSession);
 
   const [input, setInput] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
+  const [showPromptLibrary, setShowPromptLibrary] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -75,28 +87,89 @@ function ChatPanel() {
   const hasMessages = messages.length > 0;
 
   return (
-    <section className="w-1/3 min-w-[320px] flex flex-col bg-[#0e0e0e] rounded-2xl overflow-hidden border border-[#424656]/10">
+    <section className="h-full flex flex-col bg-[var(--chat-bg,#0e0e0e)] rounded-2xl overflow-hidden border border-[var(--border-color,#424656)]/10">
       {/* Header */}
-      <div className="p-6 border-b border-[#424656]/10 flex items-center justify-between">
-        <div>
-          <h3 className="font-headline font-bold text-lg">Alchemist Chat</h3>
+      <div className="p-4 sm:p-6 border-b border-[var(--border-color,#424656)]/10 flex items-center justify-between">
+        <div className="min-w-0">
+          <h3 className="font-headline font-bold text-base sm:text-lg">Alchemist Chat</h3>
           <div className="flex items-center gap-1.5 mt-0.5">
             <ModelBadge model={settings.aiModel} provider={aiProvider} />
           </div>
         </div>
-        <span
-          className={`flex h-2 w-2 rounded-full ${
-            connectionStatus === "connected"
-              ? "bg-[#4edea3] animate-pulse"
-              : connectionStatus === "connecting"
-                ? "bg-[#adc6ff] animate-pulse"
-                : "bg-[#ffb4ab]"
-          }`}
-        />
+        <div className="flex items-center gap-2">
+          {/* Session history toggle */}
+          <button
+            type="button"
+            onClick={() => setShowHistory((p) => !p)}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted,#c2c6d8)]/60 hover:text-[#adc6ff] hover:bg-[#adc6ff]/10 transition-colors"
+            title="Chat History"
+          >
+            <span className="material-symbols-outlined text-sm">history</span>
+          </button>
+          {/* New session */}
+          <button
+            type="button"
+            onClick={newSession}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted,#c2c6d8)]/60 hover:text-[#adc6ff] hover:bg-[#adc6ff]/10 transition-colors"
+            title="New Chat"
+          >
+            <span className="material-symbols-outlined text-sm">add</span>
+          </button>
+          <span
+            className={`flex h-2 w-2 rounded-full shrink-0 ${
+              connectionStatus === "connected"
+                ? "bg-[#4edea3] animate-pulse"
+                : connectionStatus === "connecting"
+                  ? "bg-[#adc6ff] animate-pulse"
+                  : "bg-[#ffb4ab]"
+            }`}
+          />
+        </div>
       </div>
 
+      {/* Session History Drawer */}
+      {showHistory && (
+        <div className="border-b border-[var(--border-color,#424656)]/10 bg-[var(--surface-low,#1c1b1b)] max-h-52 overflow-y-auto animate-fade-in">
+          <div className="p-3">
+            <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted,#c2c6d8)]/50 mb-2 font-bold">
+              Recent Sessions ({sessions.length})
+            </p>
+            {sessions.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted,#c2c6d8)]/40 py-2">No saved sessions</p>
+            ) : (
+              <div className="space-y-1">
+                {sessions.slice(0, 20).map((session) => (
+                  <div
+                    key={session.id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--surface-container,#2a2a2a)] transition-colors group"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => { loadSession(session.id); setShowHistory(false); }}
+                      className="flex-1 text-left min-w-0"
+                    >
+                      <p className="text-xs text-[var(--text-primary,#e5e2e1)] truncate">{session.title}</p>
+                      <p className="text-[10px] text-[var(--text-muted,#c2c6d8)]/40">
+                        {timeAgo(session.updatedAt)} · {session.messages.length} messages
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteSession(session.id)}
+                      className="opacity-0 group-hover:opacity-100 text-[#ffb4ab] hover:bg-[#ffb4ab]/10 rounded p-1 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-xs">delete</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         {!hasMessages && (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <span
@@ -105,10 +178,10 @@ function ChatPanel() {
             >
               auto_awesome
             </span>
-            <p className="text-sm text-[#c2c6d8] opacity-60 mb-1">
+            <p className="text-sm text-[var(--text-muted,#c2c6d8)] opacity-60 mb-1">
               Describe the Notion template you want to create.
             </p>
-            <p className="text-xs text-[#c2c6d8]/40 mb-6">
+            <p className="text-xs text-[var(--text-muted,#c2c6d8)]/40 mb-6">
               Or pick a starter below
             </p>
 
@@ -123,7 +196,7 @@ function ChatPanel() {
                   className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border bg-transparent text-left transition-all duration-200 disabled:opacity-40 ${STARTER_COLOR_MAP[s.color] ?? ""}`}
                 >
                   <span className="text-lg">{s.icon}</span>
-                  <span className="text-xs text-[#c2c6d8] font-medium truncate">{s.title}</span>
+                  <span className="text-xs text-[var(--text-muted,#c2c6d8)] font-medium truncate">{s.title}</span>
                 </button>
               ))}
             </div>
@@ -133,15 +206,18 @@ function ChatPanel() {
         <div className="flex flex-col gap-4">
           {messages.map((msg) =>
             msg.role === "user" ? (
-              <div key={msg.id} className="flex justify-end animate-fade-in">
-                <div className="bg-[#2a2a2a] text-[#e5e2e1] max-w-[85%] rounded-2xl rounded-tr-none px-4 py-3 text-sm break-words overflow-hidden">
+              <div key={msg.id} className="flex justify-end animate-fade-in group">
+                <div className="bg-[var(--surface-container,#2a2a2a)] text-[var(--text-primary,#e5e2e1)] max-w-[85%] rounded-2xl rounded-tr-none px-4 py-3 text-sm break-words overflow-hidden">
                   <p className="whitespace-pre-wrap break-words max-w-full">{msg.content}</p>
+                  <p className="text-[10px] text-[var(--text-muted,#c2c6d8)]/30 mt-1.5 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                    {timeAgo(msg.timestamp)}
+                  </p>
                 </div>
               </div>
             ) : (
               <div
                 key={msg.id}
-                className="flex justify-start gap-3 animate-fade-in"
+                className="flex justify-start gap-3 animate-fade-in group"
               >
                 <div className="w-8 h-8 rounded-lg bg-[#adc6ff]/20 flex items-center justify-center shrink-0">
                   <span
@@ -151,7 +227,7 @@ function ChatPanel() {
                     auto_awesome
                   </span>
                 </div>
-                <div className="glass-panel text-[#c2c6d8] max-w-[85%] rounded-2xl rounded-tl-none px-4 py-3 text-sm border-l-2 border-[#adc6ff] break-words overflow-hidden">
+                <div className="glass-panel text-[var(--text-muted,#c2c6d8)] max-w-[85%] rounded-2xl rounded-tl-none px-4 py-3 text-sm border-l-2 border-[#adc6ff] break-words overflow-hidden">
                   {msg.metadata?.type === "progress" && (
                     <ProgressIndicator step={msg.metadata.step} />
                   )}
@@ -161,28 +237,21 @@ function ChatPanel() {
                       <span className="text-xs font-medium">Error</span>
                     </div>
                   )}
-                  <p className="whitespace-pre-wrap break-words max-w-full">{msg.content}</p>
+                  {/* Markdown rendering for assistant messages */}
+                  <div className="markdown-body">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
                   {msg.metadata?.type === "complete" && msg.metadata.notionUrl && (
                     <CompletionActions notionUrl={msg.metadata.notionUrl} />
                   )}
                   {msg.metadata?.notionUrl && msg.metadata?.type !== "complete" && (
-                    <a
-                      href={msg.metadata.notionUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 inline-flex items-center gap-1 text-xs text-[#adc6ff] hover:underline max-w-full"
-                      title={msg.metadata.notionUrl}
-                    >
-                      <span className="material-symbols-outlined text-xs shrink-0">
-                        open_in_new
-                      </span>
-                      <span className="truncate">
-                        {msg.metadata.notionUrl.length > 40
-                          ? `${msg.metadata.notionUrl.slice(0, 40)}...`
-                          : msg.metadata.notionUrl}
-                      </span>
-                    </a>
+                    <NotionUrlLink url={msg.metadata.notionUrl} />
                   )}
+                  <p className="text-[10px] text-[var(--text-muted,#c2c6d8)]/30 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {timeAgo(msg.timestamp)}
+                  </p>
                 </div>
               </div>
             )
@@ -198,14 +267,23 @@ function ChatPanel() {
                   auto_awesome
                 </span>
               </div>
-              <div className="glass-panel text-[#c2c6d8] rounded-2xl rounded-tl-none px-4 py-3 text-sm border-l-2 border-[#adc6ff]">
+              <div className="glass-panel text-[var(--text-muted,#c2c6d8)] rounded-2xl rounded-tl-none px-4 py-3 text-sm border-l-2 border-[#adc6ff]">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-[#adc6ff] animate-pulse-dot" />
                   <div className="w-2 h-2 rounded-full bg-[#adc6ff] animate-pulse-dot-delay-1" />
                   <div className="w-2 h-2 rounded-full bg-[#adc6ff] animate-pulse-dot-delay-2" />
-                  <span className="ml-2 text-xs italic text-[#c2c6d8]/60">
+                  <span className="ml-2 text-xs italic text-[var(--text-muted,#c2c6d8)]/60">
                     Transmuting...
                   </span>
+                  {/* Cancel button */}
+                  <button
+                    type="button"
+                    onClick={cancelGeneration}
+                    className="ml-auto px-2.5 py-1 rounded-lg bg-[#ffb4ab]/15 text-[#ffb4ab] text-[10px] font-medium hover:bg-[#ffb4ab]/25 transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-xs">close</span>
+                    Cancel
+                  </button>
                 </div>
               </div>
             </div>
@@ -214,15 +292,31 @@ function ChatPanel() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Prompt Library Modal */}
+      <PromptLibrary
+        open={showPromptLibrary}
+        onClose={() => setShowPromptLibrary(false)}
+        onSelect={handleSend}
+      />
+
       {/* Input Area */}
-      <div className="p-4 bg-[#1c1b1b] border-t border-[#424656]/10">
-        <div className="relative">
+      <div className="p-3 sm:p-4 bg-[var(--surface-low,#1c1b1b)] border-t border-[var(--border-color,#424656)]/10">
+        <div className="flex items-end gap-2">
+          <button
+            type="button"
+            onClick={() => setShowPromptLibrary(true)}
+            className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text-muted,#c2c6d8)]/50 hover:text-[#adc6ff] hover:bg-[#adc6ff]/10 transition-colors mb-0.5"
+            title="Prompt Library"
+          >
+            <span className="material-symbols-outlined text-lg">library_books</span>
+          </button>
+          <div className="relative flex-1">
           <textarea
             ref={textareaRef}
             value={input}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
-            className="w-full bg-[#353534] border-none rounded-xl text-sm text-[#e5e2e1] placeholder:text-[#c2c6d8]/40 focus:ring-1 focus:ring-[#adc6ff] py-3 pl-4 pr-12 resize-none outline-none"
+            className="w-full bg-[var(--surface-variant,#353534)] border-none rounded-xl text-sm text-[var(--text-primary,#e5e2e1)] placeholder:text-[var(--text-muted,#c2c6d8)]/40 focus:ring-1 focus:ring-[#adc6ff] py-3 pl-4 pr-12 resize-none outline-none"
             placeholder="Describe the template you want to create..."
             rows={2}
           />
@@ -234,11 +328,14 @@ function ChatPanel() {
           >
             <span className="material-symbols-outlined text-sm">send</span>
           </button>
+          </div>
         </div>
       </div>
     </section>
   );
 }
+
+/* ─── Sub-components ─── */
 
 function ProgressIndicator({ step }: { readonly step?: string }) {
   const STEP_ICONS: Record<string, string> = {
@@ -261,11 +358,50 @@ function ProgressIndicator({ step }: { readonly step?: string }) {
   );
 }
 
+function NotionUrlLink({ url }: { readonly url: string }) {
+  const handleCopy = () => {
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success("URL copied!");
+    });
+  };
+
+  return (
+    <div className="mt-2 flex items-center gap-1.5 max-w-full">
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-xs text-[#adc6ff] hover:underline min-w-0"
+        title={url}
+      >
+        <span className="material-symbols-outlined text-xs shrink-0">open_in_new</span>
+        <span className="truncate">
+          {url.length > 35 ? `${url.slice(0, 35)}...` : url}
+        </span>
+      </a>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="shrink-0 w-6 h-6 rounded flex items-center justify-center text-[#adc6ff]/60 hover:text-[#adc6ff] hover:bg-[#adc6ff]/10 transition-colors"
+        title="Copy URL"
+      >
+        <span className="material-symbols-outlined text-xs">content_copy</span>
+      </button>
+    </div>
+  );
+}
+
 function CompletionActions({ notionUrl }: { readonly notionUrl: string }) {
   const clearMessages = useChatStore((s) => s.clearMessages);
 
+  const handleCopy = () => {
+    navigator.clipboard.writeText(notionUrl).then(() => {
+      toast.success("Notion URL copied!");
+    });
+  };
+
   return (
-    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#424656]/20">
+    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--border-color,#424656)]/20 flex-wrap">
       <a
         href={notionUrl}
         target="_blank"
@@ -277,8 +413,16 @@ function CompletionActions({ notionUrl }: { readonly notionUrl: string }) {
       </a>
       <button
         type="button"
+        onClick={handleCopy}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#adc6ff]/10 text-[#adc6ff] text-xs font-medium hover:bg-[#adc6ff]/20 transition-colors"
+      >
+        <span className="material-symbols-outlined text-xs">content_copy</span>
+        Copy URL
+      </button>
+      <button
+        type="button"
         onClick={clearMessages}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#353534] text-[#c2c6d8] text-xs font-medium hover:bg-[#424656] transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--surface-variant,#353534)] text-[var(--text-muted,#c2c6d8)] text-xs font-medium hover:bg-[var(--border-color,#424656)] transition-colors"
       >
         <span className="material-symbols-outlined text-xs">add</span>
         Create Another

@@ -6,6 +6,37 @@
 
 # Part 1: 변경 이력
 
+## [5.0.0] - 2026-04-01
+
+### Added (프론트엔드 UI/UX 대규모 고도화)
+- 채팅 메시지 마크다운 렌더링 (react-markdown + remark-gfm)
+- 메시지 타임스탬프 (hover 시 "3분 전" 한글 상대시간)
+- 채팅 히스토리 세션 관리 (자동저장/복원, 최대 50개, 삭제)
+- 다크/라이트 모드 토글 (CSS 변수 기반 전체 테마 시스템)
+- 모바일 반응형 레이아웃 (768px 이하: 탭 전환, 오버레이 사이드바)
+- 키보드 단축키 (⌘N 새 템플릿, ⌘K 커맨드 팔레트)
+- 커맨드 팔레트 (검색 + 네비게이션 + 단축키 힌트)
+- 생성 중 취소 버튼 (AbortController + WebSocket cancel 메시지)
+- 토스트 알림 시스템 (react-hot-toast — 저장/연결/에러/복사 피드백)
+- 미리보기 줌 인/아웃 (50%~150%, 5단계, 리셋 버튼)
+- Notion URL 복사 버튼 (클립보드 복사 + 토스트 확인)
+- 프롬프트 템플릿 라이브러리 (Business/Personal/Content/Learning 4개 카테고리, 18개 프롬프트)
+- 테마 스토어 (Zustand + localStorage 영속)
+- 상대시간 유틸리티 (lib/timeago.ts)
+
+### Changed
+- 커스텀 리사이저블 패널로 교체 (react-resizable-panels 라이브러리 제거 → 순수 CSS+mouseEvent 구현, localStorage 캐시 문제 근본 해결)
+- StatusBar 사이드바 오프셋 적용 (사이드바에 가려지지 않도록 left 동적 계산)
+- 사이드바 footer에 pb-14 적용 (StatusBar 겹침 방지)
+- 사이드바 CSS를 인라인 style로 전환 (Tailwind 클래스 충돌 해결)
+- LivePreview 툴바 줄바꿈 방지 (whitespace-nowrap + lg breakpoint 반응형)
+- 채팅 입력란에 프롬프트 라이브러리 버튼 추가
+
+### Removed
+- react-resizable-panels 패키지 의존성 제거
+
+---
+
 ## [4.0.0] - 2026-04-01
 
 ### Added (스킬 확장 + 프론트엔드 고도화)

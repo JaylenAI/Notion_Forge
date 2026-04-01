@@ -6,6 +6,7 @@ import IntegrationsPage from "./components/integrations/IntegrationsPage";
 import ProfilePage from "./components/profile/ProfilePage";
 import SupportPage from "./components/support/SupportPage";
 import ErrorBoundary from "./components/common/ErrorBoundary";
+import ToastProvider from "./components/common/Toast";
 
 function PageRouter() {
   const currentPage = useChatStore((s) => s.currentPage);
@@ -31,6 +32,7 @@ function App() {
       <AppLayout>
         <PageRouter />
       </AppLayout>
+      <ToastProvider />
     </ErrorBoundary>
   );
 }

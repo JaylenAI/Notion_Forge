@@ -6,6 +6,16 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:9500";
 
 const SETTINGS_KEY = "notionforge_settings";
 const TEMPLATES_KEY = "notionforge_templates";
+const SESSIONS_KEY = "notionforge_sessions";
+
+/* ─── Chat Session ─── */
+export interface ChatSession {
+  readonly id: string;
+  readonly title: string;
+  readonly messages: readonly Message[];
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
 
 function loadSettings(): Settings {
   try {
@@ -43,6 +53,20 @@ function saveTemplates(templates: readonly GeneratedTemplate[]): void {
   localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
 }
 
+function loadSessions(): ChatSession[] {
+  try {
+    const raw = localStorage.getItem(SESSIONS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+function saveSessions(sessions: readonly ChatSession[]): void {
+  localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+}
+
 export type PageName = "dashboard" | "library" | "integrations" | "profile" | "support";
 
 interface ChatState {
@@ -59,9 +83,15 @@ interface ChatState {
   aiProvider: string;
   aiModels: AiModel[];
   aiDetecting: boolean;
+  /* Session management */
+  sessions: readonly ChatSession[];
+  currentSessionId: string | null;
+  /* Abort controller for cancel */
+  abortController: AbortController | null;
   connect: () => void;
   disconnect: () => void;
   sendMessage: (content: string) => void;
+  cancelGeneration: () => void;
   updateSettings: (settings: Settings) => void;
   toggleSettings: () => void;
   clearMessages: () => void;
@@ -70,6 +100,11 @@ interface ChatState {
   deleteTemplate: (id: string) => void;
   setConnectionTested: (tested: boolean) => void;
   detectProvider: (apiKey: string) => Promise<void>;
+  /* Session methods */
+  saveCurrentSession: () => void;
+  loadSession: (sessionId: string) => void;
+  deleteSession: (sessionId: string) => void;
+  newSession: () => void;
 }
 
 function addTemplateFromMessage(state: ChatState, msg: Message): readonly GeneratedTemplate[] {
@@ -94,6 +129,13 @@ function addTemplateFromMessage(state: ChatState, msg: Message): readonly Genera
   return updated;
 }
 
+function deriveSessionTitle(messages: readonly Message[]): string {
+  const userMsg = messages.find((m) => m.role === "user");
+  if (!userMsg) return "New Chat";
+  const text = userMsg.content.slice(0, 40);
+  return text.length < userMsg.content.length ? `${text}...` : text;
+}
+
 export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   isLoading: false,
@@ -108,6 +150,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   aiModels: [],
   aiDetecting: false,
   generatedTemplates: loadTemplates(),
+  sessions: loadSessions(),
+  currentSessionId: null,
+  abortController: null,
 
   connect: () => {
     const { ws: existing } = get();
@@ -192,6 +237,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (ws && connectionStatus === "connected") {
       ws.send(JSON.stringify({ type: "message", content }));
     } else {
+      const controller = new AbortController();
+      set({ abortController: controller });
+
       fetch(`${API_URL}/api/templates/preview`, {
         method: "POST",
         headers: {
@@ -204,6 +252,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           prompt: content,
           parent_page_id: settings.pageId,
         }),
+        signal: controller.signal,
       })
         .then((r) => r.json())
         .then((data) => {
@@ -224,9 +273,28 @@ export const useChatStore = create<ChatState>((set, get) => ({
             messages: [...state.messages, aiMsg],
             isLoading: false,
             currentStep: "",
+            abortController: null,
           }));
         })
-        .catch(() => {
+        .catch((err) => {
+          if (err.name === "AbortError") {
+            set((state) => ({
+              messages: [
+                ...state.messages,
+                {
+                  id: crypto.randomUUID(),
+                  role: "assistant" as const,
+                  content: "Generation cancelled.",
+                  timestamp: new Date(),
+                  metadata: { type: "cancelled" },
+                },
+              ],
+              isLoading: false,
+              currentStep: "",
+              abortController: null,
+            }));
+            return;
+          }
           set((state) => ({
             messages: [
               ...state.messages,
@@ -240,9 +308,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
             ],
             isLoading: false,
             currentStep: "",
+            abortController: null,
           }));
         });
     }
+  },
+
+  cancelGeneration: () => {
+    const { abortController, ws } = get();
+    if (abortController) {
+      abortController.abort();
+    }
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "cancel" }));
+    }
+    set({ isLoading: false, currentStep: "", abortController: null });
   },
 
   updateSettings: (newSettings: Settings) => {
@@ -261,7 +341,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   clearMessages: () => {
-    set({ messages: [], isLoading: false, currentStep: "" });
+    const { messages, currentSessionId } = get();
+    // Auto-save current session before clearing
+    if (messages.length > 0 && !currentSessionId) {
+      get().saveCurrentSession();
+    }
+    set({ messages: [], isLoading: false, currentStep: "", currentSessionId: null });
   },
 
   setPage: (page: PageName) => {
@@ -309,5 +394,72 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } finally {
       set({ aiDetecting: false });
     }
+  },
+
+  /* ─── Session Methods ─── */
+  saveCurrentSession: () => {
+    const { messages, sessions, currentSessionId } = get();
+    if (messages.length === 0) return;
+
+    const now = new Date().toISOString();
+
+    if (currentSessionId) {
+      // Update existing session
+      const updated = sessions.map((s) =>
+        s.id === currentSessionId
+          ? { ...s, messages, updatedAt: now, title: deriveSessionTitle(messages) }
+          : s
+      );
+      saveSessions(updated);
+      set({ sessions: updated });
+    } else {
+      // Create new session
+      const session: ChatSession = {
+        id: `session_${Date.now()}`,
+        title: deriveSessionTitle(messages),
+        messages,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const updated = [session, ...sessions].slice(0, 50); // Keep max 50 sessions
+      saveSessions(updated);
+      set({ sessions: updated, currentSessionId: session.id });
+    }
+  },
+
+  loadSession: (sessionId: string) => {
+    const { sessions, messages, currentSessionId } = get();
+    // Auto-save current before loading another
+    if (messages.length > 0 && !currentSessionId) {
+      get().saveCurrentSession();
+    }
+    const session = sessions.find((s) => s.id === sessionId);
+    if (session) {
+      set({
+        messages: [...session.messages],
+        currentSessionId: sessionId,
+        isLoading: false,
+        currentStep: "",
+      });
+    }
+  },
+
+  deleteSession: (sessionId: string) => {
+    set((state) => {
+      const updated = state.sessions.filter((s) => s.id !== sessionId);
+      saveSessions(updated);
+      return {
+        sessions: updated,
+        currentSessionId: state.currentSessionId === sessionId ? null : state.currentSessionId,
+      };
+    });
+  },
+
+  newSession: () => {
+    const { messages } = get();
+    if (messages.length > 0) {
+      get().saveCurrentSession();
+    }
+    set({ messages: [], isLoading: false, currentStep: "", currentSessionId: null });
   },
 }));

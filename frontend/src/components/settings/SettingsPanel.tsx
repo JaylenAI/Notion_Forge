@@ -1,4 +1,5 @@
 import { useState } from "react";
+import toast from "react-hot-toast";
 import { useChatStore } from "../../stores/chatStore";
 
 export default function SettingsPanel() {
@@ -16,6 +17,7 @@ export default function SettingsPanel() {
   const handleSave = () => {
     updateSettings({ ...settings, notionKey, pageId });
     toggleSettings();
+    toast.success("Settings saved!");
   };
 
   const handleTest = async () => {
@@ -32,17 +34,20 @@ export default function SettingsPanel() {
       const resp = await fetch(`${API_URL}/health`);
       if (resp.ok) {
         setTestResult({ ok: true, message: "서버 연결 성공!" });
+        toast.success("Connection successful!");
       } else {
         setTestResult({
           ok: false,
           message: `서버 응답 오류 (${resp.status})`,
         });
+        toast.error("Connection failed");
       }
     } catch {
       setTestResult({
         ok: false,
         message: "서버에 연결할 수 없습니다. 백엔드가 실행 중인지 확인해주세요.",
       });
+      toast.error("Cannot reach server");
     } finally {
       setTesting(false);
     }
