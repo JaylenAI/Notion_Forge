@@ -393,6 +393,123 @@ class NotionClient:
             return []
 
     # ========================================
+    # Linked Database View (Views API)
+    # ========================================
+
+    async def create_linked_view(
+        self,
+        source_database_id: str,
+        target_page_id: str,
+        view_type: str = "table",
+        title: str = "",
+        filters: dict | None = None,
+        sorts: list[dict] | None = None,
+    ) -> dict[str, Any]:
+        """기존 DB를 다른 페이지에 링크드 뷰로 삽입 (Views API create_database)
+
+        공식 API — POST /v1/views with create_database parameter.
+        source DB를 target 페이지에 링크드 뷰로 보여줌 (복사 아님).
+        """
+        if self.mock_mode:
+            return {"id": self._mock_id(), "type": view_type, "name": title, "linked": True}
+
+        data_source_id = await self.get_data_source_id(source_database_id)
+
+        body: dict[str, Any] = {
+            "create_database": {
+                "parent": {
+                    "type": "page_id",
+                    "page_id": target_page_id,
+                },
+            },
+            "data_source_id": data_source_id,
+            "name": title or view_type,
+            "type": view_type,
+        }
+        if filters:
+            body["filter"] = filters
+        if sorts:
+            body["sort"] = sorts
+
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.post("/views", json=body)
+            if resp.status_code >= 400:
+                print(f"[Linked View API {resp.status_code}] {resp.text[:200]}")
+                return {"id": self._mock_id(), "type": view_type, "name": title, "fallback": True}
+            return resp.json()
+        except Exception as e:
+            print(f"[Linked View API 에러] {e}")
+            return {"id": self._mock_id(), "type": view_type, "name": title, "fallback": True}
+
+    # ========================================
+    # Page Full Width (Internal API)
+    # ========================================
+
+    async def set_page_full_width(
+        self,
+        page_id: str,
+        full_width: bool = True,
+        small_text: bool = False,
+        token_v2: str = "",
+    ) -> bool:
+        """페이지를 전체 너비로 설정 (Notion Internal API)
+
+        공식 API에서 지원하지 않는 기능.
+        Notion 내부 API (submitTransaction)를 사용하며,
+        token_v2 브라우저 쿠키가 필요함.
+
+        token_v2 획득 방법:
+        1. 브라우저에서 notion.so 로그인
+        2. 개발자도구 (F12) → Application → Cookies → notion.so
+        3. token_v2 값 복사
+        """
+        if self.mock_mode:
+            return True
+
+        t2 = token_v2 or settings.notion_token_v2
+        if not t2:
+            print("[Full Width] token_v2가 없어서 전체 너비를 설정할 수 없습니다.")
+            return False
+
+        # page_id에서 하이픈 제거 (내부 API는 하이픈 없는 UUID 사용)
+        clean_id = page_id.replace("-", "")
+
+        payload = {
+            "operations": [
+                {
+                    "id": clean_id,
+                    "path": ["format"],
+                    "args": {
+                        "page_full_width": full_width,
+                        "page_small_text": small_text,
+                    },
+                    "command": "update",
+                    "table": "block",
+                }
+            ]
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(
+                    "https://www.notion.so/api/v3/submitTransaction",
+                    json=payload,
+                    headers={
+                        "Cookie": f"token_v2={t2}",
+                        "Content-Type": "application/json",
+                    },
+                )
+                if resp.status_code == 200:
+                    print(f"[Full Width] 페이지 전체 너비 설정 완료: {page_id[:8]}...")
+                    return True
+                print(f"[Full Width] 실패 ({resp.status_code}): {resp.text[:200]}")
+                return False
+        except Exception as e:
+            print(f"[Full Width] 에러: {e}")
+            return False
+
+    # ========================================
     # Mock 응답
     # ========================================
 

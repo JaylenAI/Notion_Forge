@@ -169,9 +169,9 @@ function ChatPanel() {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 flex flex-col">
         {!hasMessages && (
-          <div className="flex flex-col items-center justify-center h-full text-center">
+          <div className="flex flex-col items-center justify-center flex-1 text-center">
             <span
               className="material-symbols-outlined text-4xl text-[#adc6ff] mb-4 opacity-40"
               style={{ fontVariationSettings: "'FILL' 1" }}
@@ -203,7 +203,7 @@ function ChatPanel() {
           </div>
         )}
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 mt-auto">
           {messages.map((msg) =>
             msg.role === "user" ? (
               <div key={msg.id} className="flex justify-end animate-fade-in group">
