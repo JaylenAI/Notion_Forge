@@ -21,3 +21,13 @@ class TemplatePreviewRequest(BaseModel):
 
 class TemplatePreviewResponse(BaseModel):
     blueprint: dict
+
+
+class DetectProviderRequest(BaseModel):
+    api_key: str = ""
+
+
+class DetectProviderResponse(BaseModel):
+    provider: str
+    models: list[dict] = []
+    error: str | None = None

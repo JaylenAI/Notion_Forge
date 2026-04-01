@@ -27,6 +27,8 @@ async def websocket_chat(websocket: WebSocket):
                 agent = AgentOrchestrator(
                     notion_token=data.get("notion_token", ""),
                     parent_page_id=data.get("parent_page_id", ""),
+                    ai_key=data.get("ai_key", ""),
+                    ai_model=data.get("ai_model", ""),
                 )
                 await websocket.send_json({"type": "system", "content": "연결 완료! 어떤 템플릿을 만들어드릴까요?"})
                 continue

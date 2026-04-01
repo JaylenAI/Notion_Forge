@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Message, Settings, ConnectionStatus } from "../types";
+import type { Message, Settings, ConnectionStatus, AiModel } from "../types";
 
 const WS_URL = import.meta.env.VITE_WS_URL ?? "ws://localhost:9500";
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:9500";
@@ -14,12 +14,14 @@ function loadSettings(): Settings {
       return {
         notionKey: parsed.notionKey ?? "",
         pageId: parsed.pageId ?? "",
+        aiKey: parsed.aiKey ?? "",
+        aiModel: parsed.aiModel ?? "",
       };
     }
   } catch {
     // ignore
   }
-  return { notionKey: "", pageId: "" };
+  return { notionKey: "", pageId: "", aiKey: "", aiModel: "" };
 }
 
 function saveSettings(settings: Settings): void {
@@ -50,6 +52,9 @@ interface ChatState {
   currentPage: PageName;
   generatedTemplates: readonly GeneratedTemplate[];
   connectionTested: boolean;
+  aiProvider: string;
+  aiModels: AiModel[];
+  aiDetecting: boolean;
   connect: () => void;
   disconnect: () => void;
   sendMessage: (content: string) => void;
@@ -59,6 +64,7 @@ interface ChatState {
   setPage: (page: PageName) => void;
   toggleTemplateStar: (id: string) => void;
   setConnectionTested: (tested: boolean) => void;
+  detectProvider: (apiKey: string) => Promise<void>;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -71,6 +77,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   currentStep: "",
   currentPage: "dashboard",
   connectionTested: false,
+  aiProvider: "",
+  aiModels: [],
+  aiDetecting: false,
   generatedTemplates: [
     {
       id: "tpl_1",
@@ -127,6 +136,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
             type: "init",
             notion_token: settings.notionKey,
             parent_page_id: settings.pageId,
+            ai_key: settings.aiKey,
+            ai_model: settings.aiModel,
           })
         );
       };
@@ -275,5 +286,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setConnectionTested: (tested: boolean) => {
     set({ connectionTested: tested });
+  },
+
+  detectProvider: async (apiKey: string) => {
+    if (!apiKey.trim()) return;
+    set({ aiDetecting: true, aiModels: [], aiProvider: "" });
+    try {
+      const resp = await fetch(`${API_URL}/api/templates/ai/detect-provider`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ api_key: apiKey }),
+      });
+      const data = await resp.json();
+      set({
+        aiProvider: data.provider ?? "",
+        aiModels: data.models ?? [],
+      });
+    } catch {
+      set({ aiProvider: "", aiModels: [] });
+    } finally {
+      set({ aiDetecting: false });
+    }
   },
 }));

@@ -15,6 +15,13 @@ export interface Message {
 export interface Settings {
   notionKey: string;
   pageId: string;
+  aiKey: string;
+  aiModel: string;
+}
+
+export interface AiModel {
+  id: string;
+  name: string;
 }
 
 export type ConnectionStatus = "connected" | "disconnected" | "connecting";

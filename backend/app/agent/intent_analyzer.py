@@ -98,7 +98,7 @@ async def _gemini_analyze(message: str) -> IntentResult:
 
         client = genai.Client(api_key=settings.gemini_api_key)
         response = await client.aio.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=f"{SYSTEM_PROMPT}\n\n사용자 요청: {message}",
         )
 

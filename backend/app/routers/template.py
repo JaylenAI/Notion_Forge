@@ -1,6 +1,6 @@
 """템플릿 생성 REST API 라우터"""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Body
 
 from app.agent.blueprint_generator import generate_blueprint
 from app.agent.orchestrator import AgentOrchestrator
@@ -53,6 +53,93 @@ async def preview_template(req: TemplatePreviewRequest):
     """Blueprint 미리보기 (생성 없이 구조만 확인)"""
     blueprint = await generate_blueprint(req.prompt)
     return TemplatePreviewResponse(blueprint=blueprint)
+
+
+@router.post("/ai/detect-provider")
+async def detect_provider(api_key: str = Body("", embed=True)):
+    """API 키로 프로바이더 감지 + 모델 목록 조회"""
+    if not api_key:
+        return {"provider": "unknown", "models": [], "error": "API 키가 필요합니다."}
+
+    # 키 접두사로 프로바이더 감지
+    provider = "unknown"
+    if api_key.startswith("sk-ant-"):
+        provider = "anthropic"
+    elif api_key.startswith("sk-proj-") or api_key.startswith("sk-"):
+        provider = "openai"
+    elif api_key.startswith("gsk_"):
+        provider = "groq"
+    elif api_key.startswith("AIza"):
+        provider = "google"
+
+    if provider == "unknown":
+        return {"provider": "unknown", "models": [], "error": "알 수 없는 API 키 형식입니다."}
+
+    # 프로바이더별 모델 목록 조회
+    models: list[dict] = []
+    try:
+        if provider == "openai":
+            import httpx
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    "https://api.openai.com/v1/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=10.0,
+                )
+                data = resp.json()
+                models = [
+                    {"id": m["id"], "name": m["id"]}
+                    for m in data.get("data", [])
+                    if "gpt" in m["id"]
+                ]
+
+        elif provider == "groq":
+            import httpx
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    "https://api.groq.com/openai/v1/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=10.0,
+                )
+                data = resp.json()
+                models = [
+                    {"id": m["id"], "name": m["id"]}
+                    for m in data.get("data", [])
+                ]
+
+        elif provider == "anthropic":
+            import httpx
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    "https://api.anthropic.com/v1/models",
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                    },
+                    timeout=10.0,
+                )
+                data = resp.json()
+                models = [
+                    {"id": m["id"], "name": m["id"]}
+                    for m in data.get("data", [])
+                ]
+
+        elif provider == "google":
+            from google import genai
+            client = genai.Client(api_key=api_key)
+            model_list = []
+            for model in client.models.list():
+                if "gemini" in model.name.lower():
+                    model_list.append({
+                        "id": model.name,
+                        "name": model.display_name or model.name,
+                    })
+            models = model_list
+
+    except Exception as e:
+        return {"provider": provider, "models": [], "error": f"모델 목록 조회 실패: {str(e)[:200]}"}
+
+    return {"provider": provider, "models": models}
 
 
 @router.get("/patterns")

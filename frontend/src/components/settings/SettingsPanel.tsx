@@ -14,7 +14,7 @@ export default function SettingsPanel() {
   >(null);
 
   const handleSave = () => {
-    updateSettings({ notionKey, pageId });
+    updateSettings({ ...settings, notionKey, pageId });
     toggleSettings();
   };
 

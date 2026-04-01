@@ -3,16 +3,37 @@ import { useChatStore } from "../../stores/chatStore";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:9500";
 
+const PROVIDER_LABELS: Record<string, string> = {
+  anthropic: "Anthropic (Claude)",
+  openai: "OpenAI",
+  groq: "Groq",
+  google: "Google (Gemini)",
+};
+
+const PROVIDER_ICONS: Record<string, string> = {
+  anthropic: "\uD83D\uDFE3",
+  openai: "\uD83D\uDFE2",
+  groq: "\uD83D\uDFE0",
+  google: "\uD83D\uDD35",
+};
+
 function IntegrationsPage() {
   const settings = useChatStore((s) => s.settings);
   const updateSettings = useChatStore((s) => s.updateSettings);
   const connectionStatus = useChatStore((s) => s.connectionStatus);
   const connectionTested = useChatStore((s) => s.connectionTested);
   const setConnectionTested = useChatStore((s) => s.setConnectionTested);
+  const aiProvider = useChatStore((s) => s.aiProvider);
+  const aiModels = useChatStore((s) => s.aiModels);
+  const aiDetecting = useChatStore((s) => s.aiDetecting);
+  const detectProvider = useChatStore((s) => s.detectProvider);
 
   const [notionKey, setNotionKey] = useState(settings.notionKey);
   const [pageId, setPageId] = useState(settings.pageId);
+  const [aiKey, setAiKey] = useState(settings.aiKey);
+  const [aiModel, setAiModel] = useState(settings.aiModel);
   const [showToken, setShowToken] = useState(false);
+  const [showAiKey, setShowAiKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(
     null
@@ -21,10 +42,18 @@ function IntegrationsPage() {
   const handleSave = useCallback(
     (e: FormEvent) => {
       e.preventDefault();
-      updateSettings({ notionKey, pageId });
+      updateSettings({ notionKey, pageId, aiKey, aiModel });
     },
-    [notionKey, pageId, updateSettings]
+    [notionKey, pageId, aiKey, aiModel, updateSettings]
   );
+
+  const handleAiSave = useCallback(() => {
+    updateSettings({ ...settings, aiKey, aiModel });
+  }, [settings, aiKey, aiModel, updateSettings]);
+
+  const handleDetect = useCallback(async () => {
+    await detectProvider(aiKey);
+  }, [aiKey, detectProvider]);
 
   const handleTest = useCallback(async () => {
     if (!notionKey.trim()) return;
@@ -200,6 +229,108 @@ function IntegrationsPage() {
                 <p className="text-xs text-[#c2c6d8]">
                   View every template block created by the Alchemist.
                 </p>
+              </div>
+            </div>
+
+            {/* AI Model Settings */}
+            <div className="bg-[#1c1b1b] p-8 rounded-xl relative overflow-hidden">
+              <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2 text-[#e5e2e1]">
+                <span className="material-symbols-outlined text-[#ffb59a]">
+                  smart_toy
+                </span>
+                AI 모델 설정
+              </h3>
+
+              <div className="space-y-6">
+                {/* AI API Key */}
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffb59a]">
+                    AI API Key
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showAiKey ? "text" : "password"}
+                      value={aiKey}
+                      onChange={(e) => setAiKey(e.target.value)}
+                      className="w-full bg-transparent border-0 border-b border-[#424656]/30 py-3 text-[#e5e2e1] focus:ring-0 focus:border-[#ffb59a] transition-all placeholder:text-[#424656] outline-none"
+                      placeholder="sk-ant-..., sk-proj-..., gsk_..., AIza..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAiKey((prev) => !prev)}
+                      className="absolute right-0 top-3 material-symbols-outlined text-[#424656] hover:text-[#ffb59a] cursor-pointer transition-colors"
+                    >
+                      {showAiKey ? "visibility_off" : "visibility"}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-[#c2c6d8]/60 italic">
+                    OpenAI, Anthropic, Groq, Google 중 하나의 API 키를 입력하세요.
+                    비워두면 서버 기본 설정을 사용합니다.
+                  </p>
+                </div>
+
+                {/* Provider Badge */}
+                {aiProvider && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">
+                      {PROVIDER_ICONS[aiProvider] ?? ""}
+                    </span>
+                    <span className="text-sm font-bold text-[#4edea3]">
+                      {PROVIDER_LABELS[aiProvider] ?? aiProvider}
+                    </span>
+                    <span className="text-xs text-[#4edea3]">감지됨</span>
+                  </div>
+                )}
+
+                {/* Detect & Load Models Button */}
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={handleDetect}
+                    disabled={aiDetecting || !aiKey.trim()}
+                    className="flex items-center gap-2 border border-[#424656]/30 text-[#c2c6d8] px-6 py-3 rounded-lg font-bold text-sm hover:bg-[#3a3939] transition-all disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      search
+                    </span>
+                    {aiDetecting ? "감지 중..." : "프로바이더 감지 및 모델 불러오기"}
+                  </button>
+                </div>
+
+                {/* Model Select */}
+                {aiModels.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffb59a]">
+                      AI 모델 선택
+                    </label>
+                    <select
+                      value={aiModel}
+                      onChange={(e) => setAiModel(e.target.value)}
+                      className="w-full bg-[#201f1f] border border-[#424656]/30 py-3 px-3 text-[#e5e2e1] rounded-lg focus:ring-0 focus:border-[#ffb59a] transition-all outline-none"
+                    >
+                      <option value="">기본 모델 사용</option>
+                      {aiModels.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Save Button */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleAiSave}
+                    className="flex items-center gap-2 bg-gradient-to-r from-[#ff8a65] to-[#ffb59a] text-[#1c1b1b] px-8 py-3 rounded-lg font-bold text-sm hover:shadow-[0_0_24px_rgba(255,181,154,0.3)] transition-all active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      save
+                    </span>
+                    AI 설정 저장
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -18,7 +18,7 @@ from app.schemas.blueprint import IntentResult
 
 
 class AgentOrchestrator:
-    def __init__(self, notion_token: str = "", parent_page_id: str = ""):
+    def __init__(self, notion_token: str = "", parent_page_id: str = "", ai_key: str = "", ai_model: str = ""):
         from app.config import settings
 
         self.client = NotionClient(
@@ -28,6 +28,8 @@ class AgentOrchestrator:
         self.parent_page_id = parent_page_id or settings.notion_parent_page_id
         self.add_blocks_tool = AddBlocksTool(self.client)
         self.add_items_tool = AddDatabaseItemsTool(self.client)
+        self.ai_key = ai_key
+        self.ai_model = ai_model
 
         # 대화 맥락 유지
         self._conversation: list[dict[str, str]] = []
@@ -35,44 +37,178 @@ class AgentOrchestrator:
         self._last_result: dict[str, Any] | None = None
 
     async def process(self, message: str) -> AsyncGenerator[dict[str, Any], None]:
-        """메인 처리 파이프라인"""
+        """메인 처리 파이프라인 — 실시간 스트리밍"""
 
-        # 대화 히스토리에 유저 메시지 추가
         self._conversation.append({"role": "user", "content": message})
 
-        yield {"type": "progress", "step": "intent_analysis", "message": "요청을 분석하고 있어요..."}
+        # ① 의도 분석
+        yield {"type": "progress", "step": "intent_analysis", "message": "🔍 요청을 분석하고 있어요..."}
         intent = await analyze_intent(message)
+        yield {"type": "progress", "step": "intent_done", "message": f"✅ 의도 파악: {intent.intent} ({intent.template_type})"}
 
-        # MODIFY 의도 + 이전 결과 있으면 수정 모드
         if intent.intent == "MODIFY" and self._last_result:
             async for event in self._handle_modify(message, intent):
                 yield event
             return
 
-        # QUESTION 의도
         if intent.intent == "QUESTION":
             yield {"type": "ai_response", "content": self._answer_question(message)}
             return
 
-        # confidence 낮으면 질문
         if intent.confidence < 0.5 and intent.missing_info:
             yield {"type": "question", "content": self._build_question(intent), "intent": intent.model_dump()}
             return
 
-        # AI가 스킬 선택 + 맥락 맞춤 내용 생성
-        yield {"type": "progress", "step": "skill_selection", "message": "AI가 스킬을 선택하고 맞춤 내용을 생성하고 있어요..."}
-        blueprint = await generate_blueprint(message)
+        # ② AI 설계
+        yield {"type": "progress", "step": "designing", "message": "🎨 AI가 템플릿을 설계하고 있어요..."}
+        blueprint = await generate_blueprint(message, ai_key=self.ai_key, ai_model=self.ai_model)
+
+        method = blueprint.get("metadata", {}).get("generation_method", "?")
+        skill = blueprint.get("metadata", {}).get("skill_used", "?")
+        num_blocks = len(blueprint.get("blocks", []))
+        num_dbs = len(blueprint.get("databases", []))
+        yield {"type": "progress", "step": "design_done", "message": f"✅ 설계 완료: {skill} 스킬, 블록 {num_blocks}개, DB {num_dbs}개 ({method})"}
 
         yield {"type": "blueprint_preview", "content": self._format_preview(blueprint), "blueprint": blueprint}
 
-        yield {"type": "progress", "step": "generating", "message": "노션에 생성 중..."}
-        result = await self._execute_blueprint(blueprint)
+        # ③ Notion 생성 (실시간 스트리밍)
+        yield {"type": "progress", "step": "creating", "message": "🏗️ 노션에 생성을 시작합니다..."}
 
-        # 결과 저장 (후속 수정용)
+        result: dict[str, Any] = {"pages": [], "databases": [], "blocks": 0}
+        main = blueprint["main_page"]
+
+        # 페이지 생성
+        yield {"type": "progress", "step": "page", "message": f"📄 페이지 생성 중: {main.get('icon','')} {main['title']}"}
+        try:
+            page = await self.client.create_page(
+                parent_id=self.parent_page_id,
+                title=main["title"],
+                icon=main.get("icon"),
+                cover_url=main.get("cover_url"),
+            )
+            main_page_id = page["id"]
+            result["pages"].append({"id": main_page_id, "title": main["title"], "url": page.get("url", "")})
+            result["main_url"] = page.get("url", "")
+            yield {"type": "progress", "step": "page_done", "message": f"✅ 페이지 생성됨: {main.get('icon','')} {main['title']}"}
+        except Exception as e:
+            yield {"type": "progress", "step": "error", "message": f"❌ 페이지 생성 실패: {str(e)[:50]}"}
+            raise RuntimeError(f"메인 페이지 생성 실패: {e}") from e
+
+        # 하위 페이지
+        sub_page_map: dict[str, str] = {}
+        for sub in blueprint.get("sub_pages", []):
+            yield {"type": "progress", "step": "sub_page", "message": f"📁 하위 페이지: {sub.get('icon','')} {sub['title']}"}
+            try:
+                sub_page = await self.client.create_page(parent_id=main_page_id, title=sub["title"], icon=sub.get("icon"))
+                sub_page_map[sub["title"]] = sub_page["id"]
+                result["pages"].append({"id": sub_page["id"], "title": sub["title"]})
+                yield {"type": "progress", "step": "sub_page_done", "message": f"✅ {sub.get('icon','')} {sub['title']} 생성됨"}
+            except Exception as e:
+                yield {"type": "progress", "step": "warning", "message": f"⚠️ {sub['title']} 스킵됨"}
+
+        # 블록 + DB 삽입
+        blocks = blueprint.get("blocks", [])
+        databases = blueprint.get("databases", [])
+        db_index = 0
+
+        for i, block in enumerate(blocks):
+            block_type = block.get("type", "?")
+            try:
+                if block_type == "database_ref":
+                    if db_index < len(databases):
+                        db_spec = databases[db_index]
+                        db_title = db_spec.get("title", db_spec.get("db_name", "DB"))
+                        yield {"type": "progress", "step": "database", "message": f"📊 데이터베이스 생성 중: {db_title}"}
+
+                        try:
+                            db_result = await self._create_database_with_data(parent_id=main_page_id, db_spec=db_spec)
+                            result["databases"].append(db_result)
+
+                            # 속성 수
+                            num_props = len(db_spec.get("db_properties", db_spec.get("properties", {})))
+                            yield {"type": "progress", "step": "db_created", "message": f"✅ {db_title} DB 생성됨 (속성 {num_props}개)"}
+
+                            # 샘플 데이터
+                            samples = db_spec.get("sample_items", [])
+                            if samples:
+                                yield {"type": "progress", "step": "samples", "message": f"📝 샘플 데이터 {len(samples)}개 추가 중..."}
+                                for j, item in enumerate(samples[:3]):
+                                    icon = item.get("icon", "")
+                                    title_val = next((v for k, v in item.items() if k != "icon" and isinstance(v, str)), f"항목 {j+1}")
+                                    yield {"type": "progress", "step": "sample_item", "message": f"  {icon} {title_val}"}
+
+                            # 뷰
+                            views = db_spec.get("views", [])
+                            for view in views:
+                                view_type = view if isinstance(view, str) else view.get("type", "?")
+                                view_icons = {"table": "📋", "gallery": "🖼️", "board": "📊", "calendar": "📅", "timeline": "📈", "list": "📝"}
+                                yield {"type": "progress", "step": "view", "message": f"  {view_icons.get(view_type, '📋')} {view_type} 뷰 추가됨"}
+
+                        except Exception as e:
+                            yield {"type": "progress", "step": "warning", "message": f"⚠️ DB 생성 스킵: {str(e)[:50]}"}
+                        db_index += 1
+
+                elif block_type == "column_list":
+                    yield {"type": "progress", "step": "block", "message": "🔲 칼럼 레이아웃 생성 중..."}
+                    db_refs_in_col = self._collect_db_refs_in_columns(block)
+                    for _ in db_refs_in_col:
+                        if db_index < len(databases):
+                            try:
+                                db_result = await self._create_database_with_data(parent_id=main_page_id, db_spec=databases[db_index])
+                                result["databases"].append(db_result)
+                            except Exception:
+                                pass
+                            db_index += 1
+                    column_block = await self._build_column_with_db(block, main_page_id, sub_page_map, result)
+                    if column_block:
+                        try:
+                            await self.client.add_blocks(main_page_id, [column_block])
+                            result["blocks"] += 1
+                        except Exception:
+                            pass
+                    yield {"type": "progress", "step": "block_done", "message": "✅ 칼럼 레이아웃 생성됨"}
+
+                else:
+                    # 일반 블록 (주요 블록만 로그)
+                    if block_type in ("callout", "heading_1", "heading_2"):
+                        text = block.get("text", "")[:30]
+                        yield {"type": "progress", "step": "block", "message": f"🧱 {block_type}: {text}"}
+
+                    notion_block = spec_to_block(block)
+                    try:
+                        await self.client.add_blocks(main_page_id, [notion_block])
+                        result["blocks"] += 1
+                    except Exception as e:
+                        print(f"[블록 스킵] {block_type}: {str(e)[:80]}")
+
+            except Exception as e:
+                print(f"[블록 처리 오류] {block_type}: {str(e)[:80]}")
+
+        # 남은 DB
+        while db_index < len(databases):
+            try:
+                db_result = await self._create_database_with_data(parent_id=main_page_id, db_spec=databases[db_index])
+                result["databases"].append(db_result)
+            except Exception:
+                pass
+            db_index += 1
+
+        # 하위 페이지 블록
+        for sub in blueprint.get("sub_pages", []):
+            sub_id = sub_page_map.get(sub["title"])
+            if sub_id and sub.get("blocks"):
+                try:
+                    notion_blocks = [spec_to_block(b) for b in sub["blocks"] if b.get("type") != "database_ref"]
+                    if notion_blocks:
+                        await self.client.add_blocks(sub_id, notion_blocks)
+                except Exception:
+                    pass
+
+        # 결과 저장
         self._last_intent = intent
         self._last_result = result
 
-        # 완료 메시지 + 사용 안내
+        # ④ 완료
         yield {"type": "complete", "content": self._format_complete(result), "result": result}
 
     async def _handle_modify(self, message: str, intent: IntentResult) -> AsyncGenerator[dict[str, Any], None]:

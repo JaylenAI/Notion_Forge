@@ -27,13 +27,13 @@ class Settings(BaseSettings):
 
     @property
     def ai_provider(self) -> str:
-        """사용할 AI 프로바이더 결정 (우선순위: Claude > Groq > Gemini > Mock)"""
+        """사용할 AI 프로바이더 결정 (우선순위: Claude > Gemini > Groq > Mock)"""
         if self.anthropic_api_key:
             return "claude"
-        if self.groq_api_key:
-            return "groq"
         if self.gemini_api_key:
             return "gemini"
+        if self.groq_api_key:
+            return "groq"
         return "mock"
 
     @property

@@ -7,6 +7,8 @@ function ChatPanel() {
   const sendMessage = useChatStore((s) => s.sendMessage);
   const connectionStatus = useChatStore((s) => s.connectionStatus);
   const connect = useChatStore((s) => s.connect);
+  const settings = useChatStore((s) => s.settings);
+  const aiProvider = useChatStore((s) => s.aiProvider);
 
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -60,9 +62,9 @@ function ChatPanel() {
       <div className="p-6 border-b border-[#424656]/10 flex items-center justify-between">
         <div>
           <h3 className="font-headline font-bold text-lg">Alchemist Chat</h3>
-          <p className="text-xs text-[#c2c6d8]/60">
-            Define your Notion architecture
-          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <ModelBadge model={settings.aiModel} provider={aiProvider} />
+          </div>
         </div>
         <span
           className={`flex h-2 w-2 rounded-full ${
@@ -194,6 +196,25 @@ function ChatPanel() {
         </div>
       </div>
     </section>
+  );
+}
+
+function ModelBadge({ model, provider }: { model: string; provider: string }) {
+  const providerConfig: Record<string, { emoji: string; color: string; label: string }> = {
+    google: { emoji: "🔵", color: "text-blue-400", label: "Gemini" },
+    groq: { emoji: "🟠", color: "text-orange-400", label: "Groq" },
+    anthropic: { emoji: "🟣", color: "text-purple-400", label: "Claude" },
+    openai: { emoji: "🟢", color: "text-green-400", label: "OpenAI" },
+  };
+
+  const displayModel = model || "(기본 모델)";
+  const config = providerConfig[provider] || { emoji: "⚪", color: "text-gray-400", label: "Mock" };
+
+  return (
+    <span className={`inline-flex items-center gap-1 text-[11px] ${config.color} bg-[#353534]/60 px-2 py-0.5 rounded-full`}>
+      <span>{config.emoji}</span>
+      <span className="font-medium">{displayModel}</span>
+    </span>
   );
 }
 

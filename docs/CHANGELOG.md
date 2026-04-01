@@ -23,6 +23,43 @@
 
 ---
 
+## [3.1.0] - 2026-04-01
+
+### Added
+- 실시간 스트리밍: 템플릿 생성 과정을 단계별로 실시간 표시
+  (의도 분석 → 설계 → 페이지 생성 → DB 생성 → 샘플 추가 → 뷰 추가 → 완료)
+- 시스템 프롬프트 대폭 개선: 다양한 블록 조합 강제 규칙 14개
+  (column_list, to_do, quote, toggle, numbered_list 등 적극 활용)
+
+### Changed
+- AI 자유 설계: 하드코딩 빌더 7개 삭제 → AI가 blocks[] 직접 생성
+- max_tokens: 2048 → 4096 (복잡한 템플릿 지원)
+
+---
+
+## [3.0.0] - 2026-04-01
+
+### Changed (핵심: AI 자유 설계)
+- 하드코딩 빌더 7개 함수 삭제 (_build_track, _build_collect 등)
+- AI가 blocks[] 배열도 직접 생성 → 유저 요청 복잡도에 비례하는 결과
+- 기본 Gemini 모델: gemini-2.0-flash → gemini-2.5-flash
+
+### Added
+- AI 모델 선택 UI (Integrations 페이지)
+- 프로바이더 자동 감지 (키 접두사) + 모델 목록 API 조회
+- 4개 프로바이더 지원 (Gemini/Groq/Claude/OpenAI)
+- 채팅 헤더에 현재 모델 배지
+- AI 우선순위: Claude > Gemini > Groq > Mock
+- OpenAI 프로바이더 추가
+- 노션 스타일 렌더러 (NotionRenderer.tsx)
+- Profile/Support 페이지, 상단 아이콘, 로고 홈 이동
+
+### Fixed
+- DB 400 에러: TYPE_ALIASES 17개 별칭
+- Gemini 2.0-flash 할당량 0 → 2.5-flash로 변경
+
+---
+
 ## [2.0.0] - 2026-03-30
 
 ### Added (프론트엔드 전면 리뉴얼)
