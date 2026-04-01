@@ -100,33 +100,13 @@ interface ChatState {
   deleteTemplate: (id: string) => void;
   setConnectionTested: (tested: boolean) => void;
   detectProvider: (apiKey: string) => Promise<void>;
+  /* Library save */
+  saveToLibrary: () => boolean;
   /* Session methods */
   saveCurrentSession: () => void;
   loadSession: (sessionId: string) => void;
   deleteSession: (sessionId: string) => void;
   newSession: () => void;
-}
-
-function addTemplateFromMessage(state: ChatState, msg: Message): readonly GeneratedTemplate[] {
-  if (msg.metadata?.type !== "complete" || !msg.metadata?.notionUrl) return state.generatedTemplates;
-
-  const blueprint = state.messages.find((m) => m.metadata?.blueprint)?.metadata?.blueprint as Record<string, unknown> | undefined;
-  const meta = blueprint?.metadata as Record<string, unknown> | undefined;
-
-  const template: GeneratedTemplate = {
-    id: `tpl_${Date.now()}`,
-    title: (meta?.title as string) ?? "Untitled Template",
-    description: msg.content.split("\n")[0] ?? "",
-    skill: (meta?.template_type as string) ?? "custom",
-    date: new Date().toISOString().slice(0, 10),
-    starred: false,
-    notionUrl: msg.metadata.notionUrl,
-    blueprint: blueprint,
-  };
-
-  const updated = [template, ...state.generatedTemplates];
-  saveTemplates(updated);
-  return updated;
 }
 
 function deriveSessionTitle(messages: readonly Message[]): string {
@@ -193,15 +173,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
             },
           };
 
-          set((state) => {
-            const newTemplates = addTemplateFromMessage(state, msg);
-            return {
-              messages: [...state.messages, msg],
-              isLoading: data.type === "progress",
-              currentStep: data.type === "progress" ? (data.step ?? "") : "",
-              generatedTemplates: newTemplates,
-            };
-          });
+          set((state) => ({
+            messages: [...state.messages, msg],
+            isLoading: data.type === "progress",
+            currentStep: data.type === "progress" ? (data.step ?? "") : "",
+          }));
         } catch {
           // ignore parse errors
         }
@@ -351,6 +327,37 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setPage: (page: PageName) => {
     set({ currentPage: page });
+  },
+
+  saveToLibrary: () => {
+    const { messages, generatedTemplates } = get();
+    const completeMsg = [...messages].reverse().find(
+      (m) => m.metadata?.type === "complete" && m.metadata?.notionUrl
+    );
+    if (!completeMsg || !completeMsg.metadata?.notionUrl) return false;
+
+    // Check if already saved
+    const url = completeMsg.metadata.notionUrl;
+    if (generatedTemplates.some((t) => t.notionUrl === url)) return false;
+
+    const blueprint = messages.find((m) => m.metadata?.blueprint)?.metadata?.blueprint as Record<string, unknown> | undefined;
+    const meta = blueprint?.metadata as Record<string, unknown> | undefined;
+
+    const template: GeneratedTemplate = {
+      id: `tpl_${Date.now()}`,
+      title: (meta?.title as string) ?? "Untitled Template",
+      description: completeMsg.content.split("\n")[0] ?? "",
+      skill: (meta?.template_type as string) ?? "custom",
+      date: new Date().toISOString().slice(0, 10),
+      starred: false,
+      notionUrl: url,
+      blueprint: blueprint,
+    };
+
+    const updated = [template, ...generatedTemplates];
+    saveTemplates(updated);
+    set({ generatedTemplates: updated });
+    return true;
   },
 
   toggleTemplateStar: (id: string) => {

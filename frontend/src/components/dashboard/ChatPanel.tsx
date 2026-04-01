@@ -393,11 +393,23 @@ function NotionUrlLink({ url }: { readonly url: string }) {
 
 function CompletionActions({ notionUrl }: { readonly notionUrl: string }) {
   const clearMessages = useChatStore((s) => s.clearMessages);
+  const saveToLibrary = useChatStore((s) => s.saveToLibrary);
+  const templates = useChatStore((s) => s.generatedTemplates);
+  const alreadySaved = templates.some((t) => t.notionUrl === notionUrl);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(notionUrl).then(() => {
       toast.success("Notion URL copied!");
     });
+  };
+
+  const handleSaveToLibrary = () => {
+    const saved = saveToLibrary();
+    if (saved) {
+      toast.success("Library에 저장됨!");
+    } else {
+      toast.error("이미 저장된 템플릿입니다");
+    }
   };
 
   return (
@@ -411,6 +423,19 @@ function CompletionActions({ notionUrl }: { readonly notionUrl: string }) {
         <span className="material-symbols-outlined text-xs">open_in_new</span>
         Open in Notion
       </a>
+      <button
+        type="button"
+        onClick={handleSaveToLibrary}
+        disabled={alreadySaved}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+          alreadySaved
+            ? "bg-[var(--surface-variant,#353534)] text-[var(--text-muted,#c2c6d8)]/40 cursor-not-allowed"
+            : "bg-[#ffb59a]/20 text-[#ffb59a] hover:bg-[#ffb59a]/30"
+        }`}
+      >
+        <span className="material-symbols-outlined text-xs">{alreadySaved ? "check" : "bookmark_add"}</span>
+        {alreadySaved ? "Saved" : "Save to Library"}
+      </button>
       <button
         type="button"
         onClick={handleCopy}

@@ -15,6 +15,7 @@ const NAV_ITEMS: readonly SideNavItem[] = [
   { id: "library", icon: "grid_view", label: "Library" },
   { id: "integrations", icon: "api", label: "Integrations" },
   { id: "profile", icon: "person", label: "Profile" },
+  { id: "support", icon: "help", label: "Support" },
 ];
 
 const TOP_NAV: readonly { id: PageName; label: string }[] = [
@@ -388,35 +389,8 @@ function AppLayout({ children }: AppLayoutProps) {
           })}
         </nav>
 
-        {/* Footer — always at bottom, pb-14 accounts for 40px StatusBar + spacing */}
-        <div className={`${showLabels ? "px-3" : "px-2"} pb-14 space-y-3 mt-auto`}>
-          {showLabels && (
-            <div className="bg-[var(--surface-container,#2a2a2a)] rounded-xl p-3 relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#ffb59a]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <p className="text-[10px] text-[#ffb59a] font-bold mb-0.5">PRO PLAN</p>
-              <p className="text-[9px] text-[var(--text-muted,#c2c6d8)] mb-2">Unlimited AI alchemy.</p>
-              <button
-                type="button"
-                className="w-full py-1.5 bg-[#ffb59a] text-[#5a1b00] font-bold text-[10px] rounded-lg transition-transform active:scale-95"
-              >
-                Upgrade
-              </button>
-            </div>
-          )}
-          <div className="space-y-0.5">
-            <button
-              type="button"
-              onClick={() => { setPage("support"); setMobileMenuOpen(false); }}
-              title={!showLabels ? "Support" : undefined}
-              className={`flex items-center gap-2 text-[var(--text-primary,#e5e2e1)]/25 hover:text-[var(--text-primary,#e5e2e1)]/60 transition-all text-xs w-full ${
-                !showLabels ? "justify-center py-2" : "px-3 py-1.5"
-              }`}
-            >
-              <span className="material-symbols-outlined text-lg">help</span>
-              {showLabels && <span>Support</span>}
-            </button>
-          </div>
-        </div>
+        {/* Bottom spacer for StatusBar */}
+        <div className="pb-14" />
       </aside>
 
       {/* Main Content — offset by sidebar width on desktop */}
