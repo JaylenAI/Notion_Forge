@@ -91,7 +91,7 @@ function DashboardPage() {
   return (
     <div ref={containerRef} className="flex-1 overflow-hidden p-4 pb-12 flex gap-0">
       {/* Chat Panel */}
-      <div style={{ width: `${chatWidth}%` }} className="shrink-0 h-full">
+      <div style={{ width: `${chatWidth}%` }} className="shrink-0 h-full overflow-hidden">
         <ChatPanel />
       </div>
 
@@ -103,8 +103,8 @@ function DashboardPage() {
         <div className="w-[3px] h-10 rounded-full bg-[#333] group-hover:bg-[#adc6ff]/50 transition-colors" />
       </div>
 
-      {/* Preview Panel */}
-      <div className="flex-1 h-full min-w-0">
+      {/* Preview Panel — flex container so LivePreview's flex-1 works */}
+      <div className="flex-1 h-full min-w-0 flex flex-col overflow-hidden">
         <LivePreview />
       </div>
     </div>

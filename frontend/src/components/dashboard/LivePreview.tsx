@@ -356,7 +356,7 @@ function LivePreview() {
   const showStepper = isLoading || hasBlueprint;
 
   return (
-    <section className="flex-1 flex flex-col bg-[var(--preview-bg,#131313)] rounded-2xl border border-[#333]/30 overflow-hidden relative">
+    <section className="h-full flex flex-col bg-[var(--preview-bg,#131313)] rounded-2xl border border-[#333]/30 overflow-hidden relative">
       {/* Toolbar — nowrap to prevent line-break on narrow panels */}
       <div className="h-14 flex items-center justify-between px-3 sm:px-6 bg-[#1e1e1e]/80 border-b border-[#333]/30 backdrop-blur-md overflow-hidden shrink-0">
         <div className="flex items-center gap-2 sm:gap-4 min-w-0 overflow-hidden">
