@@ -14,7 +14,7 @@ AI 프로 디자인 시스템    [██████████] 100%
 스킬 시스템 12개        [██████████] 100%
 프론트엔드 UI 5페이지   [██████████] 100%
 NotionRenderer 14블록  [██████████] 100%
-Library 자동 저장       [██████████] 100%
+Library 수동 저장       [██████████] 100%
 테스트 39/39           [██████████] 100%
 프론트엔드 UI/UX 고도화 [█████████░]  90%
 페이지 전체 너비        [██████████] 100%
@@ -56,8 +56,8 @@ Library 자동 저장       [██████████] 100%
 - ✅ 다크 테마 5페이지 (Dashboard/Library/Integrations/Profile/Support)
 - ✅ 프롬프트 스타터 카드 6개 (원클릭 생성)
 - ✅ NotionRenderer: 14개 블록 + 4개 DB 뷰 (Table/Board/Calendar/Gallery)
-- ✅ Library 자동 저장 + 스킬별 필터 + 정렬
-- ✅ 완료 후 액션 버튼 (Open in Notion + Create Another)
+- ✅ Library 수동 저장 (Save to Library 버튼, 중복 방지)
+- ✅ 완료 후 액션 버튼 (Open in Notion + Save to Library + Copy URL + Create Another)
 - ✅ 에러 상태 UI
 - ✅ UI 영어 통일
 - ✅ Mock 데이터 완전 제거 → 실제 데이터 연동
@@ -78,6 +78,8 @@ Library 자동 저장       [██████████] 100%
 - ✅ StatusBar 사이드바 오프셋 (사이드바에 가려지지 않음)
 - ✅ 사이드바 footer StatusBar 겹침 방지 (pb-14)
 - ✅ 미리보기 패널 오버플로우 수정
+- ✅ PRO PLAN 카드 제거, Support를 nav 항목으로 이동
+- ✅ Library 자동 저장 → 수동 저장 (Save to Library 버튼)
 
 ### 테스트
 - ✅ 39/39 통과 (28 unit + 10 integration + 1)

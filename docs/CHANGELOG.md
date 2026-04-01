@@ -6,6 +6,16 @@
 
 # Part 1: 변경 이력
 
+## [5.2.0] - 2026-04-01
+
+### Changed
+- Library 저장 방식: 자동 저장 → 수동 저장 (Save to Library 버튼)
+- 이미 저장된 템플릿은 "Saved" 상태로 비활성화 + 중복 방지
+- 사이드바: PRO PLAN 카드 제거
+- 사이드바: Support를 nav 항목으로 이동 (Profile 아래)
+
+---
+
 ## [5.1.0] - 2026-04-01
 
 ### Added (AI 프로 디자인 + Notion 확장 기능)
