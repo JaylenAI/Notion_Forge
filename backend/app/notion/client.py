@@ -120,7 +120,18 @@ class NotionClient:
         try:
             resp = await self._http_legacy.post("/databases", json=db_data)
             if resp.status_code >= 400:
-                raise RuntimeError(f"DB 생성 API 에러 ({resp.status_code}): {resp.text[:200]}")
+                error_text = resp.text[:500]
+                print(f"[DB 생성 에러 상세] {error_text}")
+                # 속성 문제로 실패 시, 기본 속성만으로 재시도
+                if "validation" in error_text.lower() or "property" in error_text.lower():
+                    print("[DB 생성] 속성 문제 → 기본 속성(title만)으로 재시도")
+                    db_data["properties"] = {"이름": {"title": {}}}
+                    await self.rate_limiter.acquire()
+                    resp2 = await self._http_legacy.post("/databases", json=db_data)
+                    if resp2.status_code < 400:
+                        print("[DB 생성] 기본 속성으로 재시도 성공")
+                        return resp2.json()
+                raise RuntimeError(f"DB 생성 API 에러 ({resp.status_code}): {error_text[:200]}")
             return resp.json()
         except RuntimeError:
             raise

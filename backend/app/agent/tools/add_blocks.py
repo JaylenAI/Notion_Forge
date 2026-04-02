@@ -52,9 +52,14 @@ def spec_to_block(spec: dict) -> dict:
         children = [spec_to_block(c) for c in spec["children"]] if spec.get("children") else None
         return bb.callout(spec.get("text", ""), icon=spec.get("icon", "📌"), color=spec.get("color", "default"), children=children)
     elif t == "toggle":
-        children = [bb.paragraph(spec["children_text"])] if "children_text" in spec else None
-        if spec.get("children") and not children:
+        children = None
+        if "children_text" in spec and spec["children_text"]:
+            children = [bb.paragraph(str(spec["children_text"]))]
+        elif spec.get("children"):
             children = [spec_to_block(c) for c in spec["children"]]
+        # toggle은 반드시 children이 필요 — 없으면 빈 paragraph
+        if not children:
+            children = [bb.paragraph("")]
         return bb.toggle(spec.get("text", ""), children=children, color=spec.get("color", "default"))
     elif t == "to_do":
         return bb.to_do(spec.get("text", ""), checked=spec.get("checked", False))
@@ -103,11 +108,19 @@ def spec_to_block(spec: dict) -> dict:
         children = [spec_to_block(c) for c in spec.get("children", [])] if spec.get("children") else [bb.paragraph("")]
         return bb.synced_block_original(children)
     elif t == "column_list":
-        cols = [
-            [spec_to_block(b) for b in c.get("blocks", []) if b.get("type") != "database_ref"]
-            for c in spec.get("columns", [])
-        ]
-        return bb.column_list(cols)
+        cols = []
+        for c in spec.get("columns", []):
+            if isinstance(c, list):
+                col_blocks = [spec_to_block(b) for b in c if isinstance(b, dict) and b.get("type") != "database_ref"]
+            elif isinstance(c, dict):
+                col_blocks = [spec_to_block(b) for b in c.get("blocks", []) if b.get("type") != "database_ref"]
+            else:
+                continue
+            if not col_blocks:
+                col_blocks = [bb.paragraph("")]
+            cols.append(col_blocks)
+        width_ratios = spec.get("width_ratios")
+        return bb.column_list(cols, width_ratios=width_ratios)
     elif t == "tab":
         return bb.tab_block(spec.get("tabs", []))
     elif t == "link_to_page":

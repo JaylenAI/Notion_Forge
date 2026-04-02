@@ -101,8 +101,9 @@ class AgentOrchestrator:
             else:
                 yield {"type": "progress", "step": "page_done", "message": f"✅ 페이지 생성됨: {main.get('icon','')} {main['title']}"}
         except Exception as e:
-            yield {"type": "progress", "step": "error", "message": f"❌ 페이지 생성 실패: {str(e)[:50]}"}
-            raise RuntimeError(f"메인 페이지 생성 실패: {e}") from e
+            yield {"type": "progress", "step": "error", "message": f"❌ 페이지 생성 실패: {str(e)[:100]}"}
+            yield {"type": "error", "content": f"메인 페이지 생성 실패: {str(e)[:200]}"}
+            return
 
         # 하위 페이지
         sub_page_map: dict[str, str] = {}
@@ -390,7 +391,8 @@ class AgentOrchestrator:
                 cover_url=main.get("cover_url"),
             )
         except Exception as e:
-            raise RuntimeError(f"메인 페이지 생성 실패: {e}") from e
+            print(f"[MODIFY 페이지 생성 실패] {e}")
+            return result
 
         main_page_id = page["id"]
         result["pages"].append({"id": main_page_id, "title": main["title"], "url": page.get("url", "")})
@@ -541,7 +543,16 @@ class AgentOrchestrator:
 
         for col in columns_data:
             col_children = []
-            for b in col.get("blocks", []):
+            # AI가 columns를 두 가지 형태로 생성할 수 있음:
+            # 형식 A: {"blocks": [...]}  (dict)
+            # 형식 B: [block1, block2, ...]  (list — 바로 블록 배열)
+            if isinstance(col, list):
+                col_items = col
+            elif isinstance(col, dict):
+                col_items = col.get("blocks", [])
+            else:
+                continue
+            for b in col_items:
                 if b.get("type") == "database_ref":
                     col_children.append(bb.callout("위 데이터베이스를 확인하세요", icon="📊"))
                 elif b.get("type") == "bulleted_list" and any(name in b.get("text", "") for name in sub_page_map):
@@ -567,7 +578,8 @@ class AgentOrchestrator:
     def _collect_db_refs_in_columns(self, block: dict) -> list[int]:
         refs = []
         for col in block.get("columns", []):
-            for b in col.get("blocks", []):
+            col_items = col if isinstance(col, list) else col.get("blocks", []) if isinstance(col, dict) else []
+            for b in col_items:
                 if b.get("type") == "database_ref":
                     refs.append(len(refs))
         return refs
