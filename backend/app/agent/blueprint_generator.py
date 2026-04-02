@@ -76,8 +76,13 @@ Every template MUST follow this visual hierarchy:
 ### 🏗️ MANDATORY DASHBOARD COLUMN LAYOUT
 For ANY template with a database, use column_list with 2 columns:
 - LEFT column (30%): 2-3 callout blocks as "stat cards" or "quick links" (small, colored, with icon)
-- RIGHT column (70%): heading + database_ref (main workspace)
-This creates the "dashboard feel" that premium templates always have.
+- RIGHT column (70%): heading + paragraph/callout (descriptions, tips — NO database_ref here!)
+Then place database_ref OUTSIDE the column_list, directly at page level.
+
+⚠️ CRITICAL RULE: NEVER put database_ref inside column_list!
+database_ref must ALWAYS be at the page level (outside any column).
+Correct: column_list[stats | heading] → database_ref(0)
+Wrong: column_list[stats | database_ref(0)]
 
 ## ═══════════════════════════════════════════
 ## BLOCK TYPES & WHEN TO USE EACH
@@ -112,8 +117,8 @@ This creates the "dashboard feel" that premium templates always have.
 ### Pattern A: Dashboard (most common, best for tracking/managing)
 callout(welcome) → paragraph(empty) → column_list[
   column(30%): callout(stat1) + callout(stat2) + callout(quick-links),
-  column(70%): heading_2(main section) + database_ref(0)
-] → paragraph(empty) → divider → toggle(📖 사용 가이드) → toggle(❓ FAQ)
+  column(70%): heading_2(section title) + paragraph(description)
+] → database_ref(0) → paragraph(empty) → divider → toggle(📖 사용 가이드) → toggle(❓ FAQ)
 
 ### Pattern B: Guided Setup (best for plans/guides)
 callout(welcome) → paragraph(empty) → quote(mission/goal) → divider →
@@ -123,10 +128,11 @@ toggle(tips) → toggle(FAQ)
 
 ### Pattern C: Multi-DB Hub (best for hub/CRM)
 callout(welcome) → paragraph(empty) → column_list[
-  column(30%): callout(nav-link1) + callout(nav-link2) + callout(nav-link3),
-  column(70%): heading_2(primary) + database_ref(0)
-] → paragraph(empty) → heading_1(secondary) → database_ref(1) →
-paragraph(empty) → divider → toggle(guide) → toggle(FAQ)
+  column(30%): callout(nav1) + callout(nav2) + callout(nav3),
+  column(70%): heading_2(overview) + paragraph(description)
+] → heading_1(primary DB) → database_ref(0) → paragraph(empty) →
+heading_1(secondary DB) → database_ref(1) → paragraph(empty) →
+divider → toggle(guide) → toggle(FAQ)
 
 ### Pattern D: Collection/Gallery (best for collect/journal)
 callout(welcome) → paragraph(empty) → heading_1(collection) →
@@ -186,6 +192,7 @@ You MUST use diverse blocks. Do NOT repeat the same callout→column→toggle pa
 - NEVER forget the usage guide toggle (users need instructions)
 - NEVER leave sample data empty (minimum 5 realistic items per DB)
 - NEVER use divider between every block (only between MAJOR sections)
+- NEVER put database_ref inside column_list (Notion API cannot render DB inside columns)
 
 ## ═══════════════════════════════════════════
 ## DATABASE DESIGN RULES
@@ -218,9 +225,11 @@ ALL text content MUST be in Korean.
     {{"type": "callout", "text": "환영 메시지", "icon": "emoji", "color": "color_background"}},
     {{"type": "paragraph", "text": ""}},
     {{"type": "column_list", "columns": [
-      [{{"type": "callout", "text": "📊 통계", "icon": "📊", "color": "blue_background"}}],
-      [{{"type": "heading_2", "text": "메인 섹션"}}, {{"type": "database_ref", "db_index": 0}}]
+      [{{"type": "callout", "text": "📊 통계1", "icon": "📊", "color": "blue_background"}}, {{"type": "callout", "text": "🎯 통계2", "icon": "🎯", "color": "blue_background"}}],
+      [{{"type": "heading_2", "text": "메인 섹션"}}, {{"type": "paragraph", "text": "섹션 설명"}}]
     ]}},
+    {{"type": "heading_1", "text": "데이터베이스"}},
+    {{"type": "database_ref", "db_index": 0}},
     {{"type": "paragraph", "text": ""}},
     {{"type": "divider"}},
     {{"type": "toggle", "text": "📖 사용 가이드", "children_text": "사용법 설명"}}
