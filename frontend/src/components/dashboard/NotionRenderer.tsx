@@ -281,13 +281,16 @@ function ColumnListBlock({
   const columns = block.columns ?? [];
   return (
     <div className="flex gap-4 my-2" style={{ alignItems: "flex-start" }}>
-      {columns.map((col, ci) => (
-        <div key={ci} className="flex-1 min-w-0">
-          {col.blocks.map((childBlock, bi) => (
-            <BlockRenderer key={bi} block={childBlock} databases={databases} index={bi + 1} />
-          ))}
-        </div>
-      ))}
+      {columns.map((col, ci) => {
+        const colBlocks: readonly BlueprintBlock[] = Array.isArray(col) ? col : (col?.blocks ?? []);
+        return (
+          <div key={ci} className="flex-1 min-w-0">
+            {colBlocks.map((childBlock, bi) => (
+              <BlockRenderer key={bi} block={childBlock} databases={databases} index={bi + 1} />
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
