@@ -160,7 +160,9 @@ You MUST use diverse blocks. Do NOT repeat the same callout→column→toggle pa
 
 ### SUB_PAGES RULE:
 - Complex templates (hub, CRM, multi-DB) MUST include 2-3 sub_pages
-- Each sub_page needs: name (Korean), icon (emoji), description (1 sentence)
+- Each sub_page MUST have blocks array with real content (callout + heading + paragraphs/lists)
+- NEVER create empty sub_pages — they must have useful content inside
+- Example sub_page blocks: callout(intro) + heading_2(section) + bulleted_list(items) + toggle(tips)
 
 ### COVER_CATEGORY RULE:
 - ALWAYS set cover_category matching the template topic:
@@ -231,7 +233,18 @@ ALL text content MUST be in Korean.
       "sample_items": [{{"이름": "항목1", "상태": "진행 중", "날짜": "2026-04-01", "icon": "🎯"}}]
     }}
   ],
-  "sub_pages": [{{"name": "서브페이지명", "icon": "📁", "description": "설명"}}],
+  "sub_pages": [
+    {{
+      "name": "서브페이지명", "icon": "📁", "description": "설명",
+      "blocks": [
+        {{"type": "callout", "text": "이 페이지 소개", "icon": "📌", "color": "blue_background"}},
+        {{"type": "heading_2", "text": "주요 내용"}},
+        {{"type": "bulleted_list", "text": "항목 1"}},
+        {{"type": "bulleted_list", "text": "항목 2"}},
+        {{"type": "toggle", "text": "상세 안내", "children_text": "자세한 내용"}}
+      ]
+    }}
+  ],
   "faq": [{{"q": "질문", "a": "답변"}}]
 }}"""
 

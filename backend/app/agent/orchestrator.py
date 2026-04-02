@@ -225,15 +225,41 @@ class AgentOrchestrator:
             db_index += 1
 
         # 하위 페이지 블록
+        from app.notion import block_builder as bb
         for sub in blueprint.get("sub_pages", []):
             sub_id = sub_page_map.get(sub["title"])
-            if sub_id and sub.get("blocks"):
+            if not sub_id:
+                continue
+            sub_blocks = sub.get("blocks", [])
+            if sub_blocks:
                 try:
-                    notion_blocks = [spec_to_block(b) for b in sub["blocks"] if b.get("type") != "database_ref"]
+                    notion_blocks = [spec_to_block(b) for b in sub_blocks if b.get("type") != "database_ref"]
                     if notion_blocks:
                         await self.client.add_blocks(sub_id, notion_blocks)
-                except Exception:
-                    pass
+                        yield {"type": "progress", "step": "sub_page_blocks", "message": f"  📝 {sub.get('icon','')} {sub['title']} 내용 추가됨"}
+                except Exception as e:
+                    print(f"[하위 페이지 블록 스킵] {sub['title']}: {str(e)[:80]}")
+            else:
+                # blocks가 없으면 기본 블록 자동 생성
+                color = blueprint.get("metadata", {}).get("color_theme", "blue")
+                bg = f"{color}_background" if color != "default" else "default"
+                desc = sub.get("description", f"{sub['title']} 페이지입니다.")
+                default_blocks = [
+                    bb.callout(desc, icon=sub.get("icon", "📄"), color=bg),
+                    bb.divider(),
+                    bb.heading(f"📋 {sub['title']} 개요", level=2, color=color),
+                    bb.paragraph("이 페이지의 내용을 자유롭게 작성해보세요."),
+                    bb.paragraph(""),
+                    bb.toggle("📖 활용 팁", children=[
+                        bb.paragraph(f"• {sub['title']}에 관련된 정보를 정리해보세요"),
+                        bb.paragraph("• 필요한 내용을 자유롭게 추가하고 수정하세요"),
+                    ]),
+                ]
+                try:
+                    await self.client.add_blocks(sub_id, default_blocks)
+                    yield {"type": "progress", "step": "sub_page_blocks", "message": f"  📝 {sub.get('icon','')} {sub['title']} 기본 내용 추가됨"}
+                except Exception as e:
+                    print(f"[하위 페이지 기본 블록 실패] {sub['title']}: {str(e)[:80]}")
 
         # 결과 저장
         self._last_intent = intent
