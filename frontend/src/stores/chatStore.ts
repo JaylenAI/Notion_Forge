@@ -161,13 +161,41 @@ export const useChatStore = create<ChatState>((set, get) => ({
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          const eventType = data.type ?? "";
+
+          // progress 이벤트: 메시지 배열에 추가하지 않고 상태만 업데이트
+          if (eventType === "progress") {
+            set({
+              isLoading: true,
+              currentStep: data.step ?? data.message ?? "",
+            });
+            return;
+          }
+
+          // system 이벤트: 연결 완료 메시지만 추가
+          if (eventType === "system") {
+            const msg: Message = {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: data.content ?? data.message ?? "",
+              timestamp: new Date(),
+              metadata: { type: "system" },
+            };
+            set((state) => ({
+              messages: [...state.messages, msg],
+              isLoading: false,
+            }));
+            return;
+          }
+
+          // complete, error, blueprint_preview 등: 메시지에 추가
           const msg: Message = {
             id: crypto.randomUUID(),
             role: "assistant",
             content: data.content ?? data.message ?? "",
             timestamp: new Date(),
             metadata: {
-              type: data.type,
+              type: eventType,
               notionUrl: data.result?.main_url,
               blueprint: data.blueprint,
               step: data.step,
@@ -176,8 +204,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
           set((state) => ({
             messages: [...state.messages, msg],
-            isLoading: data.type === "progress",
-            currentStep: data.type === "progress" ? (data.step ?? "") : "",
+            isLoading: false,
+            currentStep: "",
           }));
         } catch {
           // ignore parse errors

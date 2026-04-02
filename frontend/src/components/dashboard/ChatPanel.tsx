@@ -244,11 +244,13 @@ function ChatPanel() {
                     </div>
                   )}
                   {/* Markdown rendering for assistant messages */}
-                  <div className="markdown-body">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {msg.content}
-                    </ReactMarkdown>
-                  </div>
+                  {msg.content ? (
+                    <div className="markdown-body">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
+                  ) : null}
                   {msg.metadata?.type === "complete" && msg.metadata.notionUrl && (
                     <CompletionActions notionUrl={msg.metadata.notionUrl} />
                   )}
