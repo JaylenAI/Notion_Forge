@@ -462,6 +462,22 @@ def build_database_properties(props: dict[str, Any]) -> dict[str, Any]:
     }
 
     result = {}
+
+    # title 속성이 반드시 하나 있어야 함 (Notion 필수)
+    has_title = any(
+        (isinstance(s, str) and s == "title") or
+        (isinstance(s, dict) and s.get("type") == "title")
+        for s in props.values()
+    )
+    if not has_title:
+        # 첫 번째 속성을 title로 강제 변환, 또는 "이름" 추가
+        first_key = next(iter(props), None)
+        if first_key:
+            result[first_key] = {"title": {}}
+            props = {k: v for k, v in props.items() if k != first_key}
+        else:
+            result["이름"] = {"title": {}}
+
     for name, spec in props.items():
         if isinstance(spec, str):
             # 타입 별칭 자동 변환

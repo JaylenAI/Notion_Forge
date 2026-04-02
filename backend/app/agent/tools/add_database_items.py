@@ -256,11 +256,31 @@ def _format_value(prop_type: str, value: Any) -> dict[str, Any]:
         # Notion status 속성은 기본 옵션이 영어: Not started, In progress, Done
         # AI가 한국어로 생성하면 매핑 필요
         status_map = {
+            # 기본
             "시작 전": "Not started", "시작전": "Not started", "대기": "Not started",
             "미시작": "Not started", "예정": "Not started", "계획": "Not started",
+            "준비": "Not started", "대기 중": "Not started", "대기중": "Not started",
             "진행 중": "In progress", "진행중": "In progress", "진행": "In progress",
             "작업 중": "In progress", "작업중": "In progress", "활성": "In progress",
+            "처리 중": "In progress", "처리중": "In progress",
             "완료": "Done", "완료됨": "Done", "끝": "Done", "마감": "Done",
+            "종료": "Done", "해결": "Done", "해결됨": "Done",
+            # 독서/학습
+            "읽기 전": "Not started", "읽기전": "Not started", "미독": "Not started",
+            "읽는 중": "In progress", "읽는중": "In progress", "독서 중": "In progress",
+            "읽음": "Done", "독서완료": "Done", "다 읽음": "Done",
+            "수강 전": "Not started", "수강전": "Not started",
+            "수강 중": "In progress", "수강중": "In progress", "학습 중": "In progress",
+            "수강 완료": "Done", "수강완료": "Done",
+            # 콘텐츠/프로젝트
+            "기획": "Not started", "기획 중": "Not started",
+            "작성 중": "In progress", "작성중": "In progress", "리뷰": "In progress",
+            "리뷰 중": "In progress", "검토 중": "In progress",
+            "발행": "Done", "발행됨": "Done", "배포": "Done", "출시": "Done",
+            # 영어 (소문자)
+            "not started": "Not started", "todo": "Not started", "to do": "Not started",
+            "in progress": "In progress", "doing": "In progress", "active": "In progress",
+            "done": "Done", "completed": "Done", "finished": "Done",
         }
         mapped = status_map.get(str(value).strip(), str(value))
         return {"status": {"name": mapped}}

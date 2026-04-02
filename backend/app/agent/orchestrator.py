@@ -162,22 +162,42 @@ class AgentOrchestrator:
                 elif block_type == "column_list":
                     yield {"type": "progress", "step": "block", "message": "🔲 칼럼 레이아웃 생성 중..."}
                     db_refs_in_col = self._collect_db_refs_in_columns(block)
-                    for _ in db_refs_in_col:
+                    for ref_idx in db_refs_in_col:
                         if db_index < len(databases):
+                            db_spec = databases[db_index]
+                            db_title = db_spec.get("title", db_spec.get("db_name", "DB"))
+                            yield {"type": "progress", "step": "database", "message": f"📊 데이터베이스 생성 중: {db_title}"}
                             try:
-                                db_result = await self._create_database_with_data(parent_id=main_page_id, db_spec=databases[db_index])
+                                db_result = await self._create_database_with_data(parent_id=main_page_id, db_spec=db_spec)
                                 result["databases"].append(db_result)
-                            except Exception:
-                                pass
+                                num_props = len(db_spec.get("db_properties", db_spec.get("properties", {})))
+                                yield {"type": "progress", "step": "db_created", "message": f"✅ {db_title} DB 생성됨 (속성 {num_props}개)"}
+
+                                # 뷰 진행 표시
+                                views = db_spec.get("views", [])
+                                for view in views:
+                                    view_type = view if isinstance(view, str) else view.get("type", "?")
+                                    view_icons = {"table": "📋", "gallery": "🖼️", "board": "📊", "calendar": "📅", "timeline": "📈", "list": "📝"}
+                                    yield {"type": "progress", "step": "view", "message": f"  {view_icons.get(view_type, '📋')} {view_type} 뷰 추가됨"}
+                            except Exception as e:
+                                yield {"type": "progress", "step": "warning", "message": f"⚠️ DB 생성 스킵: {str(e)[:80]}"}
                             db_index += 1
                     column_block = await self._build_column_with_db(block, main_page_id, sub_page_map, result)
                     if column_block:
                         try:
                             await self.client.add_blocks(main_page_id, [column_block])
                             result["blocks"] += 1
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            print(f"[칼럼 블록 추가 실패] {str(e)[:100]}")
                     yield {"type": "progress", "step": "block_done", "message": "✅ 칼럼 레이아웃 생성됨"}
+
+                    # column 안에 있던 DB를 page level에 inline으로 표시
+                    # (inline DB는 column 안에 들어갈 수 없으므로 column 아래에 배치)
+                    col_db_refs = self._collect_db_refs_in_columns(block)
+                    for ref_idx in col_db_refs:
+                        created_dbs = result.get("databases", [])
+                        if ref_idx < len(created_dbs):
+                            pass  # DB는 이미 inline으로 생성됨 (parent=main_page_id)
 
                 else:
                     # 일반 블록 (주요 블록만 로그)
@@ -554,7 +574,16 @@ class AgentOrchestrator:
                 continue
             for b in col_items:
                 if b.get("type") == "database_ref":
-                    col_children.append(bb.callout("위 데이터베이스를 확인하세요", icon="📊"))
+                    # inline DB는 link_to_database로 참조 불가 (Notion 제한)
+                    # column 안에 DB를 넣을 수 없으므로 안내 callout 표시
+                    # 실제 DB는 column 밖에서 별도 블록으로 이미 생성됨
+                    db_idx = b.get("db_index", 0)
+                    created_dbs = result.get("databases", [])
+                    if db_idx < len(created_dbs):
+                        db_title = created_dbs[db_idx].get("title", "데이터베이스")
+                        col_children.append(bb.callout(f"↓ {db_title} — 아래 참조", icon="📊"))
+                    else:
+                        col_children.append(bb.callout("↓ 데이터베이스 — 아래 참조", icon="📊"))
                 elif b.get("type") == "bulleted_list" and any(name in b.get("text", "") for name in sub_page_map):
                     matched = False
                     for name, pid in sub_page_map.items():

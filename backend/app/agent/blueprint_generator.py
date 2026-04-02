@@ -137,6 +137,41 @@ column_list[
 ] → divider → toggle(guide)
 
 ## ═══════════════════════════════════════════
+## BLOCK DIVERSITY RULES (CRITICAL!)
+## ═══════════════════════════════════════════
+You MUST use diverse blocks. Do NOT repeat the same callout→column→toggle pattern every time.
+
+### MANDATORY BLOCK MIX:
+- Every template MUST include at least 3 of these: quote, to_do, numbered_list, bulleted_list, bookmark
+- Tracking templates: MUST include to_do (daily checklist) + quote (motivation)
+- Management templates: MUST include numbered_list (workflow steps) + to_do (action items)
+- Finance templates: MUST include bulleted_list (categories) + quote (financial goal)
+- Collection templates: MUST include bulleted_list (categories) + bookmark (resources)
+- Learning templates: MUST include numbered_list (study steps) + to_do (tasks) + bookmark (resources)
+- CRM/Hub templates: MUST include sub_pages (2-3 linked pages) + multiple database_ref
+
+### TOGGLE CONTENT RULES:
+- Toggle "사용 가이드" MUST contain numbered_list with 3-5 setup steps, NOT just a paragraph
+- Toggle "FAQ" MUST contain 2-3 real question/answer pairs
+- Use toggle children_text for simple FAQs, use children array with numbered_list for guides
+
+### TABLE_OF_CONTENTS RULE:
+- Templates with 15+ blocks MUST include table_of_contents at the top (after welcome callout)
+
+### SUB_PAGES RULE:
+- Complex templates (hub, CRM, multi-DB) MUST include 2-3 sub_pages
+- Each sub_page needs: name (Korean), icon (emoji), description (1 sentence)
+
+### COVER_CATEGORY RULE:
+- ALWAYS set cover_category matching the template topic:
+  business, finance, fitness, study, travel, food, creative, nature, tech, minimal
+
+### MULTI-DB RULE:
+- Simple requests: 1 database
+- Medium requests: 1-2 databases
+- Complex requests (hub, CRM, startup): 2-3 databases with different purposes
+
+## ═══════════════════════════════════════════
 ## ANTI-PATTERNS: NEVER DO THESE
 ## ═══════════════════════════════════════════
 - NEVER use more than 3 colors (looks chaotic)
@@ -159,7 +194,8 @@ column_list[
    - Has start+end dates → MUST include timeline view
    - Has image/visual content → MUST include gallery view
    - ALWAYS include table view as the "all data" fallback
-2. Status property colors: 시작 전(gray), 진행 중(blue), 완료(green)
+2. Status property values MUST use these EXACT Korean names: "시작 전", "진행 중", "완료"
+   - NEVER use "읽음", "읽는 중" etc. — ALWAYS map to 시작 전/진행 중/완료
 3. Select options: use the PRIMARY color for most important option, gray for default
 4. Sample items: minimum 5, ALL properties filled, realistic Korean data
 5. Sample items must be spread across ALL statuses (not all in one state)
