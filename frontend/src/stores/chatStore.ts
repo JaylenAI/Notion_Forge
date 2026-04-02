@@ -135,8 +135,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   abortController: null,
 
   connect: () => {
-    const { ws: existing } = get();
-    if (existing && existing.readyState === WebSocket.OPEN) return;
+    const { ws: existing, connectionStatus } = get();
+    if (existing && (existing.readyState === WebSocket.OPEN || existing.readyState === WebSocket.CONNECTING)) return;
+    if (connectionStatus === "connecting") return;
 
     set({ connectionStatus: "connecting" });
 

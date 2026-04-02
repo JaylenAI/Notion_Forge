@@ -84,6 +84,14 @@ class NotionClient:
         try:
             return await self.rate_limiter.call_with_retry(self._real_client.pages.create, **page_data)
         except Exception as e:
+            # 이모지 유효성 에러 시 아이콘 없이 재시도
+            if "icon.emoji" in str(e) and icon:
+                print(f"[Icon 폴백] 잘못된 이모지 '{icon}' → 아이콘 없이 재시도")
+                page_data.pop("icon", None)
+                try:
+                    return await self.rate_limiter.call_with_retry(self._real_client.pages.create, **page_data)
+                except Exception as e2:
+                    raise RuntimeError(f"페이지 '{title}' 생성 실패: {e2}") from e2
             raise RuntimeError(f"페이지 '{title}' 생성 실패: {e}") from e
 
     # ========================================
@@ -205,7 +213,16 @@ class NotionClient:
         try:
             resp = await self._http_legacy.post("/pages", json=page_data)
             if resp.status_code >= 400:
-                raise RuntimeError(f"DB 항목 추가 API 에러: {resp.text[:150]}")
+                # 이모지 에러 시 아이콘 없이 재시도
+                if "icon.emoji" in resp.text and icon:
+                    print(f"[DB Item Icon 폴백] 잘못된 이모지 '{icon}' → 아이콘 없이 재시도")
+                    page_data.pop("icon", None)
+                    await self.rate_limiter.acquire()
+                    resp = await self._http_legacy.post("/pages", json=page_data)
+                    if resp.status_code >= 400:
+                        raise RuntimeError(f"DB 항목 추가 API 에러: {resp.text[:150]}")
+                else:
+                    raise RuntimeError(f"DB 항목 추가 API 에러: {resp.text[:150]}")
             return resp.json()
         except RuntimeError:
             raise

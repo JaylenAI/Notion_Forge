@@ -90,8 +90,12 @@ class AgentOrchestrator:
             result["pages"].append({"id": main_page_id, "title": main["title"], "url": page.get("url", "")})
             result["main_url"] = page.get("url", "")
 
-            # 페이지 전체 너비 자동 설정 (token_v2가 있을 때만)
-            full_width_ok = await self.client.set_page_full_width(main_page_id)
+            # 페이지 전체 너비 자동 설정 (token_v2가 있을 때만, 실패해도 계속 진행)
+            full_width_ok = False
+            try:
+                full_width_ok = await self.client.set_page_full_width(main_page_id)
+            except Exception:
+                pass
             if full_width_ok:
                 yield {"type": "progress", "step": "page_done", "message": f"✅ 페이지 생성됨 (전체 너비): {main.get('icon','')} {main['title']}"}
             else:
@@ -496,15 +500,21 @@ class AgentOrchestrator:
         db_id = db["id"]
 
         # 샘플 데이터 추가
-        if "sample_items" in db_spec:
+        if "sample_items" in db_spec and db_spec["sample_items"]:
             try:
-                await self.add_items_tool.execute(
+                sample_result = await self.add_items_tool.execute(
                     database_id=db_id,
                     items=db_spec["sample_items"],
                     db_properties=db_spec["properties"],
                 )
+                inserted = sample_result.get("item_count", 0)
+                total = len(db_spec["sample_items"])
+                if inserted < total:
+                    print(f"[샘플 데이터] {inserted}/{total}개만 성공")
+                else:
+                    print(f"[샘플 데이터] {inserted}개 전부 성공")
             except Exception as e:
-                print(f"[샘플 데이터 스킵] {str(e)[:80]}")
+                print(f"[샘플 데이터 실패] {str(e)[:120]}")
 
         # 뷰 자동 생성 (Views API 2026-03-19)
         views = db_spec.get("views", [])

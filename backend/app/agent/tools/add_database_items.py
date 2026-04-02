@@ -1,5 +1,6 @@
 """DB에 샘플 항목 추가 -- 실제 속성명 자동 매핑 (퍼지 매칭 포함)"""
 
+import asyncio
 from difflib import SequenceMatcher
 from typing import Any
 
@@ -19,17 +20,31 @@ class AddDatabaseItemsTool(BaseTool):
         items = kwargs["items"]
         db_properties = kwargs.get("db_properties", {})
 
-        # Notion에서 실제 DB 속성명 조회
+        # DB 생성 직후 속성이 아직 반영 안 될 수 있으므로 잠시 대기 후 조회
+        await asyncio.sleep(0.5)
+
+        # Notion에서 실제 DB 속성명 조회 (최대 2회 시도)
         real_props = await self._get_real_property_map(database_id)
+        if not real_props:
+            await asyncio.sleep(1.0)
+            real_props = await self._get_real_property_map(database_id)
+
+        if not real_props:
+            print(f"[샘플 데이터] 실제 DB 속성을 조회할 수 없음 → blueprint 속성으로 폴백")
+            # blueprint 속성을 real_props 형태로 변환해서 사용
+            real_props = _blueprint_to_real_props(db_properties)
 
         # blueprint 속성명 -> 실제 속성명 매핑 테이블 구축
         prop_name_map = _build_property_name_map(db_properties, real_props)
+        print(f"[샘플 데이터] 속성 매핑: {prop_name_map}")
 
         results = []
-        for item in items:
+        errors = []
+        for i, item in enumerate(items):
             try:
                 props = _build_item_props(item, db_properties, real_props, prop_name_map)
                 if not props:
+                    print(f"[샘플 항목 {i+1}] 속성 변환 결과 비어있음, 스킵")
                     continue
                 result = await self.client.add_database_item(
                     database_id=database_id,
@@ -39,9 +54,13 @@ class AddDatabaseItemsTool(BaseTool):
                 )
                 results.append(result)
             except Exception as e:
-                print(f"[샘플 항목 스킵] {str(e)[:80]}")
+                err_msg = str(e)[:120]
+                errors.append(err_msg)
+                print(f"[샘플 항목 {i+1} 실패] {err_msg}")
                 continue
-        return {"item_count": len(results), "results": results}
+
+        print(f"[샘플 데이터] 결과: {len(results)}/{len(items)} 성공, {len(errors)} 실패")
+        return {"item_count": len(results), "results": results, "errors": errors}
 
     async def _get_real_property_map(self, database_id: str) -> dict[str, dict]:
         """Notion DB에서 실제 속성 이름과 타입 조회"""
@@ -53,9 +72,26 @@ class AddDatabaseItemsTool(BaseTool):
                     "type": prop_data.get("type", "rich_text"),
                     "id": prop_data.get("id", ""),
                 }
+            print(f"[샘플 데이터] 실제 DB 속성 {len(real_props)}개 조회됨: {list(real_props.keys())}")
             return real_props
-        except Exception:
+        except Exception as e:
+            print(f"[샘플 데이터] DB 속성 조회 실패: {e}")
             return {}
+
+
+def _blueprint_to_real_props(db_properties: dict) -> dict[str, dict]:
+    """blueprint 속성 스펙을 real_props 형태로 변환 (폴백용)"""
+    result = {}
+    for name, spec in db_properties.items():
+        if spec == "title" or (isinstance(spec, dict) and spec.get("type") == "title"):
+            result[name] = {"type": "title", "id": "title"}
+        elif isinstance(spec, str):
+            result[name] = {"type": spec, "id": ""}
+        elif isinstance(spec, dict):
+            result[name] = {"type": spec.get("type", "rich_text"), "id": ""}
+        else:
+            result[name] = {"type": "rich_text", "id": ""}
+    return result
 
 
 def _build_property_name_map(
@@ -103,7 +139,7 @@ def _build_property_name_map(
             name_map[bname] = real_title_key
             used_real.add(real_title_key)
 
-    # 3단계: 남은 속성 퍼지 매칭 (같은 타입끼리, 유사도 0.4 이상)
+    # 3단계: 남은 속성 퍼지 매칭 (같은 타입끼리, 유사도 0.3 이상으로 낮춤)
     for bname, btype in bp_types.items():
         if bname in name_map:
             continue
@@ -118,9 +154,21 @@ def _build_property_name_map(
             if score > best_score:
                 best_score = score
                 best_match = rname
-        if best_match and best_score >= 0.4:
+        if best_match and best_score >= 0.3:
             name_map[bname] = best_match
             used_real.add(best_match)
+
+    # 4단계: 타입이 같은데 매핑 안 된 속성 → 순서대로 매핑
+    for bname, btype in bp_types.items():
+        if bname in name_map:
+            continue
+        for rname, rinfo in real_props.items():
+            if rname in used_real:
+                continue
+            if rinfo.get("type") == btype:
+                name_map[bname] = rname
+                used_real.add(rname)
+                break
 
     return name_map
 
@@ -163,18 +211,20 @@ def _build_item_props(
         # 2. 매핑 테이블에서 실제 속성명 찾기
         if key in prop_name_map:
             actual_key = prop_name_map[key]
-            actual_type = real_props[actual_key]["type"]
+            actual_type = real_props.get(actual_key, {}).get("type", bp_type or "rich_text")
         elif key in real_props:
-            # 매핑 테이블에 없지만 실제 DB에 직접 존재
             actual_key = key
             actual_type = real_props[key]["type"]
         elif bp_type == "title" and real_title_key:
-            # title 타입인데 이름이 다름 -> 실제 title 속성명 사용
             actual_key = real_title_key
             actual_type = "title"
         else:
-            # 실제 DB에 없는 속성 -> 스킵
-            continue
+            # 실제 DB에 없는 속성 → 스킵하지 않고, blueprint 타입으로 시도
+            if bp_type:
+                actual_key = key
+                actual_type = bp_type
+            else:
+                continue
 
         # 3. 타입에 맞게 값 변환
         properties[actual_key] = _format_value(actual_type, value)
@@ -205,10 +255,14 @@ def _format_value(prop_type: str, value: Any) -> dict[str, Any]:
     elif prop_type == "status":
         return {"status": {"name": str(value)}}
     elif prop_type == "checkbox":
-        return {"checkbox": bool(value)}
+        if isinstance(value, bool):
+            return {"checkbox": value}
+        return {"checkbox": str(value).lower() in ("true", "1", "yes", "✅")}
     elif prop_type == "number":
         try:
-            return {"number": float(value) if value is not None else None}
+            # 숫자에서 콤마, 원, 달러 등 제거
+            cleaned = str(value).replace(",", "").replace("원", "").replace("$", "").replace("₩", "").strip()
+            return {"number": float(cleaned) if cleaned else None}
         except (ValueError, TypeError):
             return {"number": None}
     elif prop_type == "url":
@@ -217,10 +271,13 @@ def _format_value(prop_type: str, value: Any) -> dict[str, Any]:
         return {"email": str(value) if value else None}
     elif prop_type == "date":
         if value:
-            return {"date": {"start": str(value)}}
+            date_str = str(value).strip()
+            # 날짜 형식 정리 (YYYY-MM-DD만 허용)
+            if len(date_str) >= 10:
+                date_str = date_str[:10]
+            return {"date": {"start": date_str}}
         return {"date": None}
     elif prop_type == "people":
-        # people은 user ID가 필요한데 AI는 문자열 이름을 생성함 → rich_text로 폴백
         if isinstance(value, str) and not value.startswith(("user_", "u_")):
             return {"rich_text": [{"text": {"content": str(value)}}]}
         if isinstance(value, list):

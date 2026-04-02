@@ -44,11 +44,14 @@ function ChatPanel() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Connect once on mount, not on every status change
+  const connectCalledRef = useRef(false);
   useEffect(() => {
-    if (connectionStatus === "disconnected") {
+    if (!connectCalledRef.current) {
+      connectCalledRef.current = true;
       connect();
     }
-  }, [connectionStatus, connect]);
+  }, [connect]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -60,12 +63,15 @@ function ChatPanel() {
     sendMessage(trimmed);
     setInput("");
     if (textareaRef.current) {
+      textareaRef.current.value = "";
       textareaRef.current.style.height = "auto";
     }
   }, [input, isLoading, sendMessage]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // 한글 IME 조합 중이면 무시 (조합 완료 후 Enter에만 반응)
+      if (e.nativeEvent.isComposing) return;
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSend();
