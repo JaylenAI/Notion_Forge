@@ -65,33 +65,44 @@ class NotionClient:
         icon: str | None = None,
         cover_url: str | None = None,
         children: list[dict] | None = None,
+        position: str = "",
     ) -> dict[str, Any]:
+        """페이지 생성. position: "page_end" | "page_start" | "" (기본 위치)"""
         if self.mock_mode:
             return self._mock_page(parent_id, title, icon, cover_url)
 
-        properties = {"title": [{"text": {"content": title}}]}
-        page_data: dict[str, Any] = {
+        body: dict[str, Any] = {
             "parent": {"type": "page_id", "page_id": parent_id},
-            "properties": properties,
+            "properties": {"title": [{"text": {"content": title}}]},
         }
         if icon:
-            page_data["icon"] = {"type": "emoji", "emoji": icon}
+            body["icon"] = {"type": "emoji", "emoji": icon}
         if cover_url:
-            page_data["cover"] = {"type": "external", "external": {"url": cover_url}}
+            body["cover"] = {"type": "external", "external": {"url": cover_url}}
         if children:
-            page_data["children"] = children[:100]
+            body["children"] = children[:100]
+        if position:
+            body["position"] = {"type": position}
 
+        await self.rate_limiter.acquire()
         try:
-            return await self.rate_limiter.call_with_retry(self._real_client.pages.create, **page_data)
+            resp = await self._http_client.post("/pages", json=body)
+            if resp.status_code >= 400:
+                error_text = resp.text[:300]
+                # 이모지 에러 시 아이콘 없이 재시도
+                if "icon.emoji" in error_text and icon:
+                    print(f"[Icon 폴백] 잘못된 이모지 '{icon}' → 아이콘 없이 재시도")
+                    body.pop("icon", None)
+                    await self.rate_limiter.acquire()
+                    resp = await self._http_client.post("/pages", json=body)
+                    if resp.status_code >= 400:
+                        raise RuntimeError(f"페이지 '{title}' 생성 실패: {resp.text[:200]}")
+                else:
+                    raise RuntimeError(f"페이지 '{title}' 생성 실패: {error_text}")
+            return resp.json()
+        except RuntimeError:
+            raise
         except Exception as e:
-            # 이모지 유효성 에러 시 아이콘 없이 재시도
-            if "icon.emoji" in str(e) and icon:
-                print(f"[Icon 폴백] 잘못된 이모지 '{icon}' → 아이콘 없이 재시도")
-                page_data.pop("icon", None)
-                try:
-                    return await self.rate_limiter.call_with_retry(self._real_client.pages.create, **page_data)
-                except Exception as e2:
-                    raise RuntimeError(f"페이지 '{title}' 생성 실패: {e2}") from e2
             raise RuntimeError(f"페이지 '{title}' 생성 실패: {e}") from e
 
     # ========================================
@@ -178,7 +189,13 @@ class NotionClient:
     # 블록
     # ========================================
 
-    async def add_blocks(self, page_id: str, blocks: list[dict]) -> list[dict]:
+    async def add_blocks(
+        self,
+        page_id: str,
+        blocks: list[dict],
+        after_block_id: str = "",
+    ) -> list[dict]:
+        """블록 추가. after_block_id 지정 시 해당 블록 뒤에 삽입."""
         if self.mock_mode:
             return self._mock_blocks(page_id, blocks)
 
@@ -186,12 +203,23 @@ class NotionClient:
             results = []
             for i in range(0, len(blocks), 100):
                 chunk = blocks[i : i + 100]
-                resp = await self.rate_limiter.call_with_retry(
-                    self._real_client.blocks.children.append,
-                    block_id=page_id,
-                    children=chunk,
+                # position 파라미터로 삽입 위치 지정 (2025-09-03+)
+                body: dict[str, Any] = {"children": chunk}
+                if after_block_id:
+                    body["position"] = {"type": "after_block", "after_block": {"id": after_block_id}}
+
+                await self.rate_limiter.acquire()
+                resp = await self._http_client.patch(
+                    f"/blocks/{page_id}/children",
+                    json=body,
                 )
-                results.extend(resp.get("results", []))
+                if resp.status_code >= 400:
+                    raise RuntimeError(f"블록 추가 API 에러: {resp.text[:200]}")
+                data = resp.json()
+                results.extend(data.get("results", []))
+                # 다음 chunk는 마지막 블록 뒤에 삽입
+                if results:
+                    after_block_id = results[-1]["id"]
             return results
         except Exception as e:
             raise RuntimeError(f"블록 추가 실패 (page={page_id[:8]}...): {e}") from e

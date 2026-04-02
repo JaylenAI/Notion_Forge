@@ -105,17 +105,8 @@ class AgentOrchestrator:
             yield {"type": "error", "content": f"메인 페이지 생성 실패: {str(e)[:200]}"}
             return
 
-        # 하위 페이지
+        # 서브페이지는 모든 블록 배치 이후 마지막에 생성 (position: page_end)
         sub_page_map: dict[str, str] = {}
-        for sub in blueprint.get("sub_pages", []):
-            yield {"type": "progress", "step": "sub_page", "message": f"📁 하위 페이지: {sub.get('icon','')} {sub['title']}"}
-            try:
-                sub_page = await self.client.create_page(parent_id=main_page_id, title=sub["title"], icon=sub.get("icon"))
-                sub_page_map[sub["title"]] = sub_page["id"]
-                result["pages"].append({"id": sub_page["id"], "title": sub["title"]})
-                yield {"type": "progress", "step": "sub_page_done", "message": f"✅ {sub.get('icon','')} {sub['title']} 생성됨"}
-            except Exception as e:
-                yield {"type": "progress", "step": "warning", "message": f"⚠️ {sub['title']} 스킵됨"}
 
         # 블록 + DB 삽입
         blocks = blueprint.get("blocks", [])
@@ -224,7 +215,23 @@ class AgentOrchestrator:
                 pass
             db_index += 1
 
-        # 하위 페이지 블록
+        # 서브페이지 생성 (모든 블록 배치 후, position: page_end로 하단 배치)
+        for sub in blueprint.get("sub_pages", []):
+            yield {"type": "progress", "step": "sub_page", "message": f"📁 하위 페이지: {sub.get('icon','')} {sub['title']}"}
+            try:
+                sub_page = await self.client.create_page(
+                    parent_id=main_page_id,
+                    title=sub["title"],
+                    icon=sub.get("icon"),
+                    position="page_end",
+                )
+                sub_page_map[sub["title"]] = sub_page["id"]
+                result["pages"].append({"id": sub_page["id"], "title": sub["title"]})
+                yield {"type": "progress", "step": "sub_page_done", "message": f"✅ {sub.get('icon','')} {sub['title']} 생성됨"}
+            except Exception as e:
+                yield {"type": "progress", "step": "warning", "message": f"⚠️ {sub['title']} 스킵됨: {str(e)[:50]}"}
+
+        # 하위 페이지 블록 내용 채우기
         from app.notion import block_builder as bb
         for sub in blueprint.get("sub_pages", []):
             sub_id = sub_page_map.get(sub["title"])
