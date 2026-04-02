@@ -224,16 +224,37 @@ class NotionClient:
         try:
             resp = await self._http_legacy.post("/pages", json=page_data)
             if resp.status_code >= 400:
+                error_text = resp.text[:500]
+                print(f"[DB Item 에러 상세] {error_text}")
+                print(f"[DB Item 전송 데이터] properties keys: {list(properties.keys())}")
                 # 이모지 에러 시 아이콘 없이 재시도
-                if "icon.emoji" in resp.text and icon:
+                if "icon.emoji" in error_text and icon:
                     print(f"[DB Item Icon 폴백] 잘못된 이모지 '{icon}' → 아이콘 없이 재시도")
                     page_data.pop("icon", None)
                     await self.rate_limiter.acquire()
                     resp = await self._http_legacy.post("/pages", json=page_data)
                     if resp.status_code >= 400:
-                        raise RuntimeError(f"DB 항목 추가 API 에러: {resp.text[:150]}")
+                        raise RuntimeError(f"DB 항목 추가 API 에러: {resp.text[:300]}")
+                # 속성 에러 시 title만으로 재시도
+                elif "validation" in error_text.lower() or "property" in error_text.lower():
+                    print(f"[DB Item 속성 폴백] 속성 에러 → title만으로 재시도")
+                    # 실제 title 속성만 남기기
+                    title_prop = None
+                    for k, v in properties.items():
+                        if isinstance(v, dict) and "title" in v:
+                            title_prop = {k: v}
+                            break
+                    if title_prop:
+                        page_data["properties"] = title_prop
+                        page_data.pop("icon", None)
+                        await self.rate_limiter.acquire()
+                        resp = await self._http_legacy.post("/pages", json=page_data)
+                        if resp.status_code >= 400:
+                            raise RuntimeError(f"DB 항목 추가 API 에러 (폴백): {resp.text[:300]}")
+                    else:
+                        raise RuntimeError(f"DB 항목 추가 API 에러: {error_text[:300]}")
                 else:
-                    raise RuntimeError(f"DB 항목 추가 API 에러: {resp.text[:150]}")
+                    raise RuntimeError(f"DB 항목 추가 API 에러: {error_text[:300]}")
             return resp.json()
         except RuntimeError:
             raise
