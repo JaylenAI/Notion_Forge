@@ -6,6 +6,33 @@
 
 # Part 1: 변경 이력
 
+## [5.3.0] - 2026-04-02
+
+### Added
+- 블록 position API 지원 (after_block, page_end — 블록 삽입 위치 제어)
+- 서브페이지 하단 배치 (position: page_end)
+- 실시간 progress 로그 스트림 (채팅에서 생성 과정 실시간 표시)
+- 서브페이지 내용 자동 생성 (빈 페이지 방지)
+- 블록 다양성 강제 규칙 (quote/to_do/numbered_list 최소 3개)
+- Status 매핑 50+ 패턴 (독서/학습/콘텐츠/영어)
+- DB title 속성 자동 보장 (build_database_properties)
+
+### Fixed
+- 미리보기 ≠ 실제 노션 불일치 해결 (column 안 database_ref 금지 규칙)
+- 샘플 데이터 status 에러 (한국어→영어 자동 매핑)
+- WebSocket 연결 끊김 (progress 이벤트 분리, ErrorBoundary 복구)
+- 한글 IME 입력 잔여 글자 (isComposing 체크)
+- 이모지 유효성 에러 자동 폴백
+- column_list 파싱 (list/dict 양방향 지원)
+- toggle children 필수 보장
+
+### Changed
+- Library 저장: 자동 → 수동 (Save to Library 버튼)
+- 사이드바: PRO PLAN 제거, Support → nav 항목 이동
+- column 안에 database_ref 금지 → 미리보기=실제 100% 일치
+
+---
+
 ## [5.2.0] - 2026-04-01
 
 ### Changed

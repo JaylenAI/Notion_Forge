@@ -607,16 +607,16 @@ class AgentOrchestrator:
                 continue
             for b in col_items:
                 if b.get("type") == "database_ref":
-                    # inline DB는 link_to_database로 참조 불가 (Notion 제한)
-                    # column 안에 DB를 넣을 수 없으므로 안내 callout 표시
-                    # 실제 DB는 column 밖에서 별도 블록으로 이미 생성됨
+                    # AI가 column 안에 database_ref를 넣은 경우 (프롬프트 규칙 위반)
+                    # Notion API 제한으로 column 안에 inline DB 삽입 불가
+                    # DB는 column 밖에서 별도 생성됨 → 안내 표시
                     db_idx = b.get("db_index", 0)
                     created_dbs = result.get("databases", [])
                     if db_idx < len(created_dbs):
                         db_title = created_dbs[db_idx].get("title", "데이터베이스")
-                        col_children.append(bb.callout(f"↓ {db_title} — 아래 참조", icon="📊"))
+                        col_children.append(bb.callout(f"📊 {db_title}", icon="📊"))
                     else:
-                        col_children.append(bb.callout("↓ 데이터베이스 — 아래 참조", icon="📊"))
+                        col_children.append(bb.callout("📊 데이터베이스", icon="📊"))
                 elif b.get("type") == "bulleted_list" and any(name in b.get("text", "") for name in sub_page_map):
                     matched = False
                     for name, pid in sub_page_map.items():
