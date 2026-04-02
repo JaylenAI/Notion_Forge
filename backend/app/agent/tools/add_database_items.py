@@ -253,7 +253,17 @@ def _format_value(prop_type: str, value: Any) -> dict[str, Any]:
         names = value if isinstance(value, list) else [str(value)]
         return {"multi_select": [{"name": n} for n in names]}
     elif prop_type == "status":
-        return {"status": {"name": str(value)}}
+        # Notion status 속성은 기본 옵션이 영어: Not started, In progress, Done
+        # AI가 한국어로 생성하면 매핑 필요
+        status_map = {
+            "시작 전": "Not started", "시작전": "Not started", "대기": "Not started",
+            "미시작": "Not started", "예정": "Not started", "계획": "Not started",
+            "진행 중": "In progress", "진행중": "In progress", "진행": "In progress",
+            "작업 중": "In progress", "작업중": "In progress", "활성": "In progress",
+            "완료": "Done", "완료됨": "Done", "끝": "Done", "마감": "Done",
+        }
+        mapped = status_map.get(str(value).strip(), str(value))
+        return {"status": {"name": mapped}}
     elif prop_type == "checkbox":
         if isinstance(value, bool):
             return {"checkbox": value}

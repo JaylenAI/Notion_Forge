@@ -235,24 +235,27 @@ class NotionClient:
                     resp = await self._http_legacy.post("/pages", json=page_data)
                     if resp.status_code >= 400:
                         raise RuntimeError(f"DB 항목 추가 API 에러: {resp.text[:300]}")
-                # 속성 에러 시 title만으로 재시도
+                # 속성 에러 시 문제 속성 제거 후 재시도
                 elif "validation" in error_text.lower() or "property" in error_text.lower():
-                    print(f"[DB Item 속성 폴백] 속성 에러 → title만으로 재시도")
-                    # 실제 title 속성만 남기기
-                    title_prop = None
-                    for k, v in properties.items():
-                        if isinstance(v, dict) and "title" in v:
-                            title_prop = {k: v}
-                            break
-                    if title_prop:
-                        page_data["properties"] = title_prop
-                        page_data.pop("icon", None)
-                        await self.rate_limiter.acquire()
-                        resp = await self._http_legacy.post("/pages", json=page_data)
-                        if resp.status_code >= 400:
-                            raise RuntimeError(f"DB 항목 추가 API 에러 (폴백): {resp.text[:300]}")
+                    # 에러 메시지에서 문제 속성 타입 추출 (status, select 등)
+                    retry_props = dict(properties)
+                    if "status" in error_text.lower():
+                        retry_props = {k: v for k, v in retry_props.items() if not (isinstance(v, dict) and "status" in v)}
+                        print(f"[DB Item 폴백] status 속성 제거 후 재시도")
+                    elif "select" in error_text.lower():
+                        retry_props = {k: v for k, v in retry_props.items() if not (isinstance(v, dict) and "select" in v)}
+                        print(f"[DB Item 폴백] select 속성 제거 후 재시도")
                     else:
-                        raise RuntimeError(f"DB 항목 추가 API 에러: {error_text[:300]}")
+                        # 알 수 없는 속성 에러 → title만 남기기
+                        title_only = {k: v for k, v in retry_props.items() if isinstance(v, dict) and "title" in v}
+                        retry_props = title_only if title_only else retry_props
+                        print(f"[DB Item 폴백] title만으로 재시도")
+                    page_data["properties"] = retry_props
+                    page_data.pop("icon", None)
+                    await self.rate_limiter.acquire()
+                    resp = await self._http_legacy.post("/pages", json=page_data)
+                    if resp.status_code >= 400:
+                        raise RuntimeError(f"DB 항목 추가 API 에러 (폴백): {resp.text[:300]}")
                 else:
                     raise RuntimeError(f"DB 항목 추가 API 에러: {error_text[:300]}")
             return resp.json()
