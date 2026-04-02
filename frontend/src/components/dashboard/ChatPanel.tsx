@@ -28,7 +28,6 @@ function ChatPanel() {
   const messages = useChatStore((s) => s.messages);
   const isLoading = useChatStore((s) => s.isLoading);
   const sendMessage = useChatStore((s) => s.sendMessage);
-  const cancelGeneration = useChatStore((s) => s.cancelGeneration);
   const connectionStatus = useChatStore((s) => s.connectionStatus);
   const connect = useChatStore((s) => s.connect);
   const settings = useChatStore((s) => s.settings);
@@ -265,37 +264,7 @@ function ChatPanel() {
             )
           )}
 
-          {isLoading && (
-            <div className="flex justify-start gap-3 animate-fade-in">
-              <div className="w-8 h-8 rounded-lg bg-[#adc6ff]/20 flex items-center justify-center shrink-0">
-                <span
-                  className="material-symbols-outlined text-[#adc6ff] text-sm"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                >
-                  auto_awesome
-                </span>
-              </div>
-              <div className="glass-panel text-[var(--text-muted,#c2c6d8)] rounded-2xl rounded-tl-none px-4 py-3 text-sm border-l-2 border-[#adc6ff]">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-[#adc6ff] animate-pulse-dot" />
-                  <div className="w-2 h-2 rounded-full bg-[#adc6ff] animate-pulse-dot-delay-1" />
-                  <div className="w-2 h-2 rounded-full bg-[#adc6ff] animate-pulse-dot-delay-2" />
-                  <span className="ml-2 text-xs italic text-[var(--text-muted,#c2c6d8)]/60">
-                    Transmuting...
-                  </span>
-                  {/* Cancel button */}
-                  <button
-                    type="button"
-                    onClick={cancelGeneration}
-                    className="ml-auto px-2.5 py-1 rounded-lg bg-[#ffb4ab]/15 text-[#ffb4ab] text-[10px] font-medium hover:bg-[#ffb4ab]/25 transition-colors flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-xs">close</span>
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          {isLoading && <ProgressStream />}
         </div>
         <div ref={messagesEndRef} />
       </div>
@@ -344,6 +313,59 @@ function ChatPanel() {
 }
 
 /* ─── Sub-components ─── */
+
+function ProgressStream() {
+  const progressLog = useChatStore((s) => s.progressLog);
+  const cancelGeneration = useChatStore((s) => s.cancelGeneration);
+  const logEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [progressLog]);
+
+  return (
+    <div className="flex justify-start gap-3 animate-fade-in">
+      <div className="w-8 h-8 rounded-lg bg-[#adc6ff]/20 flex items-center justify-center shrink-0 mt-1">
+        <span
+          className="material-symbols-outlined text-[#adc6ff] text-sm"
+          style={{ fontVariationSettings: "'FILL' 1" }}
+        >
+          auto_awesome
+        </span>
+      </div>
+      <div className="glass-panel text-[var(--text-muted,#c2c6d8)] max-w-[85%] rounded-2xl rounded-tl-none px-4 py-3 text-sm border-l-2 border-[#adc6ff] min-w-[200px]">
+        {/* Progress log stream */}
+        {progressLog.length > 0 ? (
+          <div className="space-y-1 mb-2 max-h-40 overflow-y-auto">
+            {progressLog.map((log, i) => (
+              <p key={i} className={`text-xs ${i === progressLog.length - 1 ? "text-[#adc6ff]" : "text-[var(--text-muted,#c2c6d8)]/40"} transition-colors`}>
+                {log}
+              </p>
+            ))}
+            <div ref={logEndRef} />
+          </div>
+        ) : null}
+        {/* Pulse dots + cancel */}
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#adc6ff] animate-pulse-dot" />
+          <div className="w-1.5 h-1.5 rounded-full bg-[#adc6ff] animate-pulse-dot-delay-1" />
+          <div className="w-1.5 h-1.5 rounded-full bg-[#adc6ff] animate-pulse-dot-delay-2" />
+          <span className="ml-1 text-[10px] italic text-[var(--text-muted,#c2c6d8)]/40">
+            {progressLog.length > 0 ? progressLog[progressLog.length - 1]?.slice(0, 30) : "Transmuting..."}
+          </span>
+          <button
+            type="button"
+            onClick={cancelGeneration}
+            className="ml-auto px-2 py-0.5 rounded-lg bg-[#ffb4ab]/15 text-[#ffb4ab] text-[10px] font-medium hover:bg-[#ffb4ab]/25 transition-colors flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-xs">close</span>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ProgressIndicator({ step }: { readonly step?: string }) {
   const STEP_ICONS: Record<string, string> = {

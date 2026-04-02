@@ -77,6 +77,7 @@ interface ChatState {
   settings: Settings;
   settingsOpen: boolean;
   currentStep: string;
+  progressLog: string[];
   currentPage: PageName;
   generatedTemplates: readonly GeneratedTemplate[];
   connectionTested: boolean;
@@ -124,6 +125,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   settings: loadSettings(),
   settingsOpen: false,
   currentStep: "",
+  progressLog: [],
   currentPage: "dashboard",
   connectionTested: false,
   aiProvider: "",
@@ -163,12 +165,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
           const data = JSON.parse(event.data);
           const eventType = data.type ?? "";
 
-          // progress 이벤트: 메시지 배열에 추가하지 않고 상태만 업데이트
+          // progress 이벤트: 실시간 로그 스트림 (messages에는 안 추가)
           if (eventType === "progress") {
-            set({
+            const logMsg = data.message ?? data.step ?? "";
+            set((state) => ({
               isLoading: true,
-              currentStep: data.step ?? data.message ?? "",
-            });
+              currentStep: data.step ?? "",
+              progressLog: logMsg ? [...state.progressLog.slice(-15), logMsg] : state.progressLog,
+            }));
             return;
           }
 
@@ -206,6 +210,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             messages: [...state.messages, msg],
             isLoading: false,
             currentStep: "",
+            progressLog: eventType === "complete" || eventType === "error" ? [] : state.progressLog,
           }));
         } catch {
           // ignore parse errors
@@ -237,6 +242,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messages: [...state.messages, userMsg],
       isLoading: true,
       currentStep: "sending",
+      progressLog: [],
     }));
 
     if (ws && connectionStatus === "connected") {
