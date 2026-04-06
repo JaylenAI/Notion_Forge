@@ -89,7 +89,8 @@ make test       # 테스트 실행
 
 ### AI 자유 설계 시스템
 - **채팅 기반 생성**: 자연어 → AI가 blocks[] + databases[] 직접 설계 → Notion에 자동 생성
-- **프로 디자인 품질**: Thomas Frank/Easlo 수준 디자인 규칙 (2-3색 팔레트, 30/70 대시보드, 정보 계층)
+- **프로 디자인 품질**: Thomas Frank/Easlo 수준 디자인 규칙 (2-3색 팔레트, 3컬럼 대시보드, 정보 계층)
+- **복잡도 스케일링**: 간단(10블록) → 중간(20블록) → 복잡(40블록+, 3-4 DB, 서브페이지 5+) 자동 조절
 - **12개 스킬**: track, collect, manage, plan, organize, guide, hub, finance, journal, content, learn, crm
 - **4개 AI 프로바이더**: Gemini (기본) / Groq / Claude / OpenAI — 동적 모델 선택
 - **실시간 스트리밍**: 생성 과정을 단계별로 표시 (의도 분석 → 설계 → 페이지 → DB → 뷰 → 완료)
@@ -106,6 +107,11 @@ make test       # 테스트 실행
 - **링크드 DB 뷰**: Views API로 기존 DB를 다른 페이지에 링크드 뷰로 삽입
 - **블록 position 제어**: 특정 블록 뒤에 삽입, 서브페이지 하단 배치
 - **미리보기=실제 일치**: 프리뷰에서 보이는 그대로 Notion에 생성
+- **DB 고도화**: description, icon, cover 지원
+- **뷰 고도화**: group_by, quick_filters, 속성 표시/숨김, 위치 제어
+- **블록/스레드 코멘트**: 블록 레벨 댓글 + 답글 스레드
+- **페이지 이동**: 페이지 부모 변경 API
+- **링크드 DB뷰**: 같은 DB를 다른 필터로 대시보드 위젯 표시
 
 ### 프론트엔드
 - **다크/라이트 테마**: CSS 변수 기반 전체 테마 시스템 + 토글

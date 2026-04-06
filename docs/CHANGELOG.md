@@ -6,6 +6,22 @@
 
 # Part 1: 변경 이력
 
+## [5.4.0] - 2026-04-06
+
+### Added (28개 미구현 기능 추가 + 복잡도 스케일링)
+- DB description/icon/cover 파라미터 (create_database)
+- 뷰 group_by, sub_group_by, quick_filters, properties, position 파라미터 (create_view)
+- 블록 레벨 코멘트 (block_id), 답글 스레드 (discussion_id)
+- 페이지 이동 API (move_page — 부모 변경, 2026-01-15+)
+- 마크다운 콘텐츠 교체 (update_page_content_markdown, 2026-03-11+)
+- linked_view 블록 타입 (필터된 DB뷰를 대시보드 위젯으로 활용)
+- 복잡도 3단계 스케일링 (simple 10-15 / medium 15-25 / complex 25-40 블록)
+- 3컬럼 대시보드 레이아웃 패턴 (위젯 그리드 + toggle 네비게이션)
+- Pattern C: Complex Dashboard (3col widgets + 3col toggle nav + 3-4 DB)
+- Groq TPM 제한 대응 (스킬 가이드 축약)
+
+---
+
 ## [5.3.0] - 2026-04-02
 
 ### Added

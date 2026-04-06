@@ -1,6 +1,6 @@
 # 진행 현황 (Current Status)
 
-> 최종 업데이트: 2026-04-02
+> 최종 업데이트: 2026-04-06
 > 현재 브랜치: dev-2
 
 ---
@@ -21,6 +21,12 @@ Library 수동 저장       [██████████] 100%
 링크드 DB 뷰           [██████████] 100%
 블록 position 제어     [██████████] 100%
 미리보기=실제 일치      [██████████] 100%
+DB 고도화 (desc/icon)  [██████████] 100%
+뷰 고도화 (group_by등) [██████████] 100%
+코멘트 강화            [██████████] 100%
+페이지 이동/마크다운    [██████████] 100%
+복잡도 스케일링        [██████████] 100%
+링크드 DB뷰+필터       [██████████] 100%
 ```
 
 ---
@@ -60,6 +66,14 @@ Library 수동 저장       [██████████] 100%
 - ✅ **서브페이지 하단 배치** (position: page_end)
 - ✅ DB title 속성 자동 보장
 - ✅ 이모지 유효성 자동 폴백
+- ✅ **DB description/icon/cover** 지원
+- ✅ **뷰 group_by/sub_group_by/quick_filters/properties/position** 지원
+- ✅ **블록 레벨 코멘트 + 답글 스레드** (discussion_id)
+- ✅ **페이지 이동 API** (move_page — 부모 변경)
+- ✅ **마크다운 콘텐츠 교체** (update_page_content_markdown)
+- ✅ **링크드 DB뷰 + 필터** (같은 DB를 다른 필터로 다른 위치에 표시)
+- ✅ **복잡도 스케일링** (simple 10-15 / medium 15-25 / complex 25-40 블록)
+- ✅ **3컬럼 대시보드 레이아웃** (위젯 그리드 + toggle 네비게이션)
 
 ### 프론트엔드 (기본)
 - ✅ 다크 테마 5페이지 (Dashboard/Library/Integrations/Profile/Support)
