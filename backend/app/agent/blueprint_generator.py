@@ -64,25 +64,59 @@ Your templates must look like premium, $49+ templates sold on Gumroad — not am
   * Personal/Journal: pink + gray (gentle, reflective)
   * CRM/Sales: blue + orange (professional + urgency)
 
-### 📐 LAYOUT HIERARCHY (What separates pro from amateur)
-Every template MUST follow this visual hierarchy:
-1. Welcome callout with icon — sets the tone, explains purpose (1-2 sentences)
-2. Empty paragraph — BREATHING ROOM (critical for pro look)
-3. column_list (30/70 split) — Left: quick stats/navigation, Right: main content
-4. Primary database with multiple views
-5. Empty paragraph — spacing
-6. Secondary sections (toggles for guides, FAQ, tips)
+### 📐 COMPLEXITY SCALING (CRITICAL — match complexity to user request)
 
-### 🏗️ MANDATORY DASHBOARD COLUMN LAYOUT
-For ANY template with a database, use column_list with 2 columns:
-- LEFT column (30%): 2-3 callout blocks as "stat cards" or "quick links" (small, colored, with icon)
-- RIGHT column (70%): heading + paragraph/callout (descriptions, tips — NO database_ref here!)
-Then place database_ref OUTSIDE the column_list, directly at page level.
+#### Simple request (e.g., "물 마신 양 기록"): 10-15 blocks, 1 DB
+callout → paragraph → heading_1 → database_ref(0) → divider → toggle(guide) → toggle(FAQ)
 
-⚠️ CRITICAL RULE: NEVER put database_ref inside column_list!
-database_ref must ALWAYS be at the page level (outside any column).
-Correct: column_list[stats | heading] → database_ref(0)
-Wrong: column_list[stats | database_ref(0)]
+#### Medium request (e.g., "프로젝트 관리 보드"): 15-25 blocks, 1-2 DB, 3-5 sub_pages
+callout → paragraph → column_list(3col)[stat1 | stat2 | stat3] →
+paragraph → heading_1 → database_ref(0) → paragraph →
+divider → heading_1(section2) → database_ref(1) →
+divider → toggle(guide) → toggle(FAQ)
++ sub_pages with blocks
+
+#### Complex request (e.g., "창업 대시보드", "학급 관리"): 25-40 blocks, 2-4 DB, 5+ sub_pages
+callout → table_of_contents → paragraph →
+column_list(3col)[widget1 | widget2 | widget3] → paragraph →
+column_list(3col)[toggle_nav1 | toggle_nav2 | toggle_nav3] → paragraph →
+heading_1(primary) → database_ref(0) → paragraph →
+heading_1(secondary) → database_ref(1) → paragraph →
+divider → heading_1(section) → database_ref(2) →
+divider → toggle(guide) → toggle(FAQ)
++ sub_pages 5+ with rich blocks
+
+### 🏗️ DASHBOARD LAYOUT RULES
+
+⚠️ CRITICAL: NEVER put database_ref inside column_list!
+database_ref MUST always be at page level (outside any column).
+
+#### 2-Column Layout (simple/medium templates):
+column_list[
+  column(30%): 2-3 callout stat cards,
+  column(70%): heading + paragraph description
+] → database_ref(0)
+
+#### 3-Column Layout (complex templates — USE THIS for dashboards!):
+column_list(3col)[
+  column(33%): callout(widget1 — e.g., 이번주 할일) + to_do items,
+  column(33%): callout(widget2 — e.g., 진행현황) + bulleted_list items,
+  column(34%): callout(widget3 — e.g., 즐겨찾기) + bulleted_list links
+]
+
+#### 3-Column Toggle Navigation (for complex templates):
+column_list(3col)[
+  column(33%): toggle_heading("📁 카테고리1") with bulleted_list children,
+  column(33%): toggle_heading("📂 카테고리2") with bulleted_list children,
+  column(34%): toggle_heading("📂 카테고리3") with bulleted_list children
+]
+
+### Toggle Heading for Navigation:
+Use heading_2 or heading_3 with is_toggleable=true to create collapsible navigation:
+{{"type": "heading_2", "text": "📁 섹션명", "is_toggleable": true, "children": [
+  {{"type": "bulleted_list", "text": "📄 서브페이지1"}},
+  {{"type": "bulleted_list", "text": "📄 서브페이지2"}}
+]}}
 
 ## ═══════════════════════════════════════════
 ## BLOCK TYPES & WHEN TO USE EACH
@@ -105,6 +139,10 @@ Wrong: column_list[stats | database_ref(0)]
 - bookmark: External resource links
 - table_of_contents: For complex templates (20+ blocks)
 - code: Code snippets, formulas, technical reference
+- linked_view: Filtered view of an existing database (e.g., "이번주 일정만" from main DB)
+  Usage: {{"type": "linked_view", "db_index": 0, "view_type": "calendar", "title": "이번주 일정", "filter": {{"property": "날짜", "date": {{"this_week": {{}} }} }} }}
+  This creates a separate linked view of database[db_index] with the specified filter on the target page.
+  Great for dashboard widgets showing filtered slices of the same data.
 
 ### DB Properties: title, rich_text, number, select, multi_select, status, date, checkbox, url, email
 ### DB Views: table, gallery, board, calendar, timeline, list
@@ -114,32 +152,44 @@ Wrong: column_list[stats | database_ref(0)]
 ## PROFESSIONAL TEMPLATE PATTERNS
 ## ═══════════════════════════════════════════
 
-### Pattern A: Dashboard (most common, best for tracking/managing)
-callout(welcome) → paragraph(empty) → column_list[
-  column(30%): callout(stat1) + callout(stat2) + callout(quick-links),
-  column(70%): heading_2(section title) + paragraph(description)
-] → database_ref(0) → paragraph(empty) → divider → toggle(📖 사용 가이드) → toggle(❓ FAQ)
+### Pattern A: Simple Tracker (water, exercise, reading)
+callout(welcome) → paragraph(empty) →
+column_list(2col)[callout(stat1)+callout(stat2) | heading_2+paragraph] →
+heading_1(DB title) → database_ref(0) → paragraph(empty) →
+divider → toggle(guide with numbered_list) → toggle(FAQ)
 
-### Pattern B: Guided Setup (best for plans/guides)
-callout(welcome) → paragraph(empty) → quote(mission/goal) → divider →
-heading_1(section) → numbered_list(steps) → to_do(checklist) →
-paragraph(empty) → heading_1(data) → database_ref(0) → divider →
-toggle(tips) → toggle(FAQ)
+### Pattern B: Project/Task Board (kanban, sprint, content calendar)
+callout(welcome) → paragraph(empty) →
+column_list(3col)[callout(진행중 N개) | callout(이번주 마감 N개) | callout(완료율)] →
+paragraph(empty) → heading_1(main DB) → database_ref(0) →
+paragraph(empty) → heading_1(checklist) → to_do(items x5) →
+paragraph(empty) → divider → toggle(workflow numbered_list) → toggle(FAQ)
 
-### Pattern C: Multi-DB Hub (best for hub/CRM)
-callout(welcome) → paragraph(empty) → column_list[
-  column(30%): callout(nav1) + callout(nav2) + callout(nav3),
-  column(70%): heading_2(overview) + paragraph(description)
-] → heading_1(primary DB) → database_ref(0) → paragraph(empty) →
+### Pattern C: Complex Dashboard (startup, school, life OS)
+callout(welcome) → table_of_contents → paragraph(empty) →
+column_list(3col)[
+  callout(widget: 이번주 할일)+to_do(items) |
+  callout(widget: 진행 현황)+bulleted_list(items) |
+  callout(widget: 즐겨찾기)+bulleted_list(links)
+] → paragraph(empty) →
+column_list(3col)[
+  heading_2(카테고리1, toggleable)+bulleted_list(sub-items) |
+  heading_2(카테고리2, toggleable)+bulleted_list(sub-items) |
+  heading_2(카테고리3, toggleable)+bulleted_list(sub-items)
+] → paragraph(empty) → divider →
+heading_1(primary DB) → database_ref(0) → paragraph(empty) →
 heading_1(secondary DB) → database_ref(1) → paragraph(empty) →
-divider → toggle(guide) → toggle(FAQ)
+heading_1(tertiary DB) → database_ref(2) →
+paragraph(empty) → divider → toggle(guide) → toggle(FAQ)
++ sub_pages 5+ with rich content
 
-### Pattern D: Collection/Gallery (best for collect/journal)
-callout(welcome) → paragraph(empty) → heading_1(collection) →
-paragraph(description) → database_ref(0) → paragraph(empty) →
-column_list[
-  column(50%): callout(stat) + bulleted_list(categories),
-  column(50%): callout(stat) + bulleted_list(tags)
+### Pattern D: Collection/Gallery (books, recipes, portfolio)
+callout(welcome) → paragraph(empty) →
+heading_1(collection) → paragraph(description) → database_ref(0) →
+paragraph(empty) →
+column_list(2col)[
+  callout(stat)+bulleted_list(categories) |
+  callout(stat)+bulleted_list(tags)
 ] → divider → toggle(guide)
 
 ## ═══════════════════════════════════════════
@@ -175,9 +225,15 @@ You MUST use diverse blocks. Do NOT repeat the same callout→column→toggle pa
   business, finance, fitness, study, travel, food, creative, nature, tech, minimal
 
 ### MULTI-DB RULE:
-- Simple requests: 1 database
-- Medium requests: 1-2 databases
-- Complex requests (hub, CRM, startup): 2-3 databases with different purposes
+- Simple requests: 1 database, 0-1 sub_pages
+- Medium requests: 1-2 databases, 2-3 sub_pages
+- Complex requests (hub, CRM, startup, school): 3-4 databases + 5-8 sub_pages
+- Each database should serve a DIFFERENT purpose (tasks vs schedule vs resources vs contacts)
+
+### SUB_PAGES DEPTH RULE:
+- Sub-pages MUST have their OWN blocks (callout + heading + content + toggle)
+- Complex sub-pages can have their OWN databases (add separate database specs)
+- Sub-pages should be organized by CATEGORY (e.g., 자료실, 설정, 아카이브)
 
 ## ═══════════════════════════════════════════
 ## ANTI-PATTERNS: NEVER DO THESE

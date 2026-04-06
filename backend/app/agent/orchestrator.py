@@ -105,10 +105,23 @@ class AgentOrchestrator:
             yield {"type": "error", "content": f"메인 페이지 생성 실패: {str(e)[:200]}"}
             return
 
-        # 서브페이지는 모든 블록 배치 이후 마지막에 생성 (position: page_end)
+        # ── Pass 1: 서브페이지 먼저 생성 (ID 확보, toggle heading에서 link_to_page 가능)
         sub_page_map: dict[str, str] = {}
+        for sub in blueprint.get("sub_pages", []):
+            yield {"type": "progress", "step": "sub_page", "message": f"📁 하위 페이지: {sub.get('icon','')} {sub['title']}"}
+            try:
+                sub_page = await self.client.create_page(
+                    parent_id=main_page_id,
+                    title=sub["title"],
+                    icon=sub.get("icon"),
+                    position="page_end",
+                )
+                sub_page_map[sub["title"]] = sub_page["id"]
+                result["pages"].append({"id": sub_page["id"], "title": sub["title"]})
+            except Exception as e:
+                yield {"type": "progress", "step": "warning", "message": f"⚠️ {sub['title']} 스킵: {str(e)[:50]}"}
 
-        # 블록 + DB 삽입
+        # ── Pass 2: 블록 + DB 순차 삽입
         blocks = blueprint.get("blocks", [])
         databases = blueprint.get("databases", [])
         db_index = 0
@@ -190,6 +203,29 @@ class AgentOrchestrator:
                         if ref_idx < len(created_dbs):
                             pass  # DB는 이미 inline으로 생성됨 (parent=main_page_id)
 
+                elif block_type == "linked_view":
+                    # 링크드 DB 뷰 (같은 DB를 다른 필터로 표시)
+                    linked_db_idx = block.get("db_index", 0)
+                    created_dbs = result.get("databases", [])
+                    if linked_db_idx < len(created_dbs):
+                        db_id = created_dbs[linked_db_idx].get("id", "")
+                        view_type = block.get("view_type", "table")
+                        view_title = block.get("title", view_type)
+                        view_filter = block.get("filter")
+                        if db_id:
+                            yield {"type": "progress", "step": "linked_view", "message": f"🔗 링크드 뷰: {view_title} ({view_type})"}
+                            try:
+                                await self.client.create_linked_view(
+                                    source_database_id=db_id,
+                                    target_page_id=main_page_id,
+                                    view_type=view_type,
+                                    title=view_title,
+                                    filters=view_filter,
+                                )
+                                result["blocks"] += 1
+                            except Exception as e:
+                                print(f"[링크드 뷰 스킵] {view_title}: {str(e)[:80]}")
+
                 else:
                     # 일반 블록 (주요 블록만 로그)
                     if block_type in ("callout", "heading_1", "heading_2"):
@@ -215,23 +251,7 @@ class AgentOrchestrator:
                 pass
             db_index += 1
 
-        # 서브페이지 생성 (모든 블록 배치 후, position: page_end로 하단 배치)
-        for sub in blueprint.get("sub_pages", []):
-            yield {"type": "progress", "step": "sub_page", "message": f"📁 하위 페이지: {sub.get('icon','')} {sub['title']}"}
-            try:
-                sub_page = await self.client.create_page(
-                    parent_id=main_page_id,
-                    title=sub["title"],
-                    icon=sub.get("icon"),
-                    position="page_end",
-                )
-                sub_page_map[sub["title"]] = sub_page["id"]
-                result["pages"].append({"id": sub_page["id"], "title": sub["title"]})
-                yield {"type": "progress", "step": "sub_page_done", "message": f"✅ {sub.get('icon','')} {sub['title']} 생성됨"}
-            except Exception as e:
-                yield {"type": "progress", "step": "warning", "message": f"⚠️ {sub['title']} 스킵됨: {str(e)[:50]}"}
-
-        # 하위 페이지 블록 내용 채우기
+        # ── Pass 3: 하위 페이지 블록 내용 채우기
         from app.notion import block_builder as bb
         for sub in blueprint.get("sub_pages", []):
             sub_id = sub_page_map.get(sub["title"])
