@@ -115,18 +115,25 @@ class NotionClient:
         title: str,
         properties: dict[str, Any],
         is_inline: bool = True,
+        description: str = "",
+        icon: str | None = None,
+        cover_url: str | None = None,
     ) -> dict[str, Any]:
         if self.mock_mode:
             return self._mock_database(parent_id, title, properties)
 
-        # httpx로 직접 호출 (2022-06-28 버전 — 속성이 정상 생성됨)
-        # SDK 3.0 (2025-09-03)에서는 properties가 빈 객체로 반환되는 문제
-        db_data = {
+        db_data: dict[str, Any] = {
             "parent": {"type": "page_id", "page_id": parent_id},
             "title": [{"type": "text", "text": {"content": title}}],
             "is_inline": is_inline,
             "properties": properties,
         }
+        if description:
+            db_data["description"] = [{"type": "text", "text": {"content": description}}]
+        if icon:
+            db_data["icon"] = {"type": "emoji", "emoji": icon}
+        if cover_url:
+            db_data["cover"] = {"type": "external", "external": {"url": cover_url}}
         await self.rate_limiter.acquire()
         try:
             resp = await self._http_legacy.post("/databases", json=db_data)
@@ -303,16 +310,26 @@ class NotionClient:
         title: str = "",
         filters: dict | None = None,
         sorts: list[dict] | None = None,
+        group_by: dict | None = None,
+        sub_group_by: dict | None = None,
+        quick_filters: dict | None = None,
+        properties: dict | None = None,
+        position: str = "",
     ) -> dict[str, Any]:
-        """DB에 뷰 생성 (gallery, board, calendar, timeline, list, table)
+        """DB에 뷰 생성 (gallery, board, calendar, timeline, list, table, chart, form, map, dashboard)
 
         핵심: data_source_id는 database_id와 다름!
         DB 생성 후 get_data_source_id()로 조회 필요.
+
+        group_by: Board/Timeline 그룹핑 (e.g., {"property": "상태"})
+        sub_group_by: 2차 그룹핑
+        quick_filters: 빠른 필터 (필터바에 표시)
+        properties: 속성 표시/숨김 설정
+        position: "start" | "end" | "" (뷰 순서)
         """
         if self.mock_mode:
             return {"id": self._mock_id(), "type": view_type, "name": title}
 
-        # data_source_id 조회
         data_source_id = await self.get_data_source_id(database_id)
 
         body: dict[str, Any] = {
@@ -325,6 +342,16 @@ class NotionClient:
             body["filter"] = filters
         if sorts:
             body["sort"] = sorts
+        if group_by:
+            body["group_by"] = group_by
+        if sub_group_by:
+            body["sub_group_by"] = sub_group_by
+        if quick_filters:
+            body["quick_filters"] = quick_filters
+        if properties:
+            body["properties"] = properties
+        if position:
+            body["position"] = {"type": position}
 
         await self.rate_limiter.acquire()
         try:
@@ -372,15 +399,33 @@ class NotionClient:
     # Comments API
     # ========================================
 
-    async def add_comment(self, page_id: str, text: str) -> dict:
+    async def add_comment(
+        self,
+        text: str,
+        page_id: str = "",
+        block_id: str = "",
+        discussion_id: str = "",
+    ) -> dict:
+        """댓글 추가 — 페이지/블록/디스커션 스레드 지원
+
+        page_id: 페이지 레벨 댓글 (새 디스커션 시작)
+        block_id: 블록 레벨 댓글 (새 디스커션 시작)
+        discussion_id: 기존 디스커션에 답글
+        """
         if self.mock_mode:
             return {"id": self._mock_id()}
         from app.notion.block_builder import rich_text
 
+        kwargs: dict[str, Any] = {"rich_text": rich_text(text)}
+        if discussion_id:
+            kwargs["discussion_id"] = discussion_id
+        elif block_id:
+            kwargs["parent"] = {"block_id": block_id}
+        elif page_id:
+            kwargs["parent"] = {"page_id": page_id}
+
         return await self.rate_limiter.call_with_retry(
-            self._real_client.comments.create,
-            parent={"page_id": page_id},
-            rich_text=rich_text(text),
+            self._real_client.comments.create, **kwargs
         )
 
     async def get_comments(self, block_id: str) -> list:
@@ -392,8 +437,36 @@ class NotionClient:
         return result.get("results", [])
 
     # ========================================
-    # Page operations (archive / restore / lock)
+    # Page operations (archive / restore / lock / move)
     # ========================================
+
+    async def move_page(self, page_id: str, new_parent_id: str) -> dict:
+        """페이지를 다른 부모 페이지로 이동 (2026-01-15+)"""
+        if self.mock_mode:
+            return {"id": page_id, "parent": {"page_id": new_parent_id}}
+        await self.rate_limiter.acquire()
+        resp = await self._http_client.patch(
+            f"/pages/{page_id}",
+            json={"parent": {"type": "page_id", "page_id": new_parent_id}},
+        )
+        if resp.status_code >= 400:
+            print(f"[페이지 이동 에러] {resp.text[:200]}")
+            return {"id": page_id}
+        return resp.json()
+
+    async def update_page_content_markdown(self, page_id: str, markdown: str) -> dict:
+        """기존 페이지의 마크다운 콘텐츠 교체 (2026-03-11+)"""
+        if self.mock_mode:
+            return {"id": page_id}
+        await self.rate_limiter.acquire()
+        resp = await self._http_client.patch(
+            f"/pages/{page_id}",
+            json={"replace_content": {"markdown": markdown}},
+        )
+        if resp.status_code >= 400:
+            print(f"[마크다운 교체 에러] {resp.text[:200]}")
+            return {"id": page_id}
+        return resp.json()
 
     async def archive_page(self, page_id: str) -> dict:
         if self.mock_mode:

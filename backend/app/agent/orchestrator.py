@@ -570,6 +570,9 @@ class AgentOrchestrator:
             title=db_spec["title"],
             properties=properties,
             is_inline=db_spec.get("is_inline", True),
+            description=db_spec.get("description", ""),
+            icon=db_spec.get("icon"),
+            cover_url=db_spec.get("cover_url"),
         )
 
         db_id = db["id"]
@@ -591,16 +594,21 @@ class AgentOrchestrator:
             except Exception as e:
                 print(f"[샘플 데이터 실패] {str(e)[:120]}")
 
-        # 뷰 자동 생성 (Views API 2026-03-19)
+        # 뷰 자동 생성 (Views API — group_by, quick_filters 등 포함)
         views = db_spec.get("views", [])
         for view in views:
+            view_spec = view if isinstance(view, dict) else {"type": view}
             try:
                 await self.client.create_view(
                     database_id=db_id,
-                    view_type=view.get("type", "table"),
-                    title=view.get("title", ""),
-                    filters=view.get("filters"),
-                    sorts=view.get("sorts"),
+                    view_type=view_spec.get("type", "table"),
+                    title=view_spec.get("title", ""),
+                    filters=view_spec.get("filters"),
+                    sorts=view_spec.get("sorts"),
+                    group_by=view_spec.get("group_by"),
+                    sub_group_by=view_spec.get("sub_group_by"),
+                    quick_filters=view_spec.get("quick_filters"),
+                    properties=view_spec.get("properties"),
                 )
             except Exception as e:
                 print(f"[뷰 생성 스킵] {view.get('type', '?')}: {str(e)[:80]}")

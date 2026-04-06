@@ -144,8 +144,10 @@ Use heading_2 or heading_3 with is_toggleable=true to create collapsible navigat
   This creates a separate linked view of database[db_index] with the specified filter on the target page.
   Great for dashboard widgets showing filtered slices of the same data.
 
-### DB Properties: title, rich_text, number, select, multi_select, status, date, checkbox, url, email
-### DB Views: table, gallery, board, calendar, timeline, list
+### DB Properties: title, rich_text, number, select, multi_select, status, date, checkbox, url, email, relation, formula, rollup
+### DB Views: table, gallery, board, calendar, timeline, list, chart, form, dashboard
+### DB Options: Each database can have "description" (1-sentence Korean), "icon" (emoji), "cover_url" (image URL)
+### View Options: Each view can have "group_by" (for board/timeline), "sorts", "filters"
 ### Colors: default, gray, brown, orange, yellow, green, blue, purple, pink, red (add _background for blocks)
 
 ## ═══════════════════════════════════════════
@@ -293,8 +295,14 @@ ALL text content MUST be in Korean.
   "databases": [
     {{
       "title": "DB명",
+      "icon": "📊",
+      "description": "이 데이터베이스에 대한 한국어 설명",
       "db_properties": {{"이름": "title", "상태": "status", "날짜": "date"}},
-      "views": ["board", "calendar", "table"],
+      "views": [
+        {{"type": "board", "title": "칸반 보드", "group_by": {{"property": "상태"}}}},
+        {{"type": "calendar", "title": "캘린더"}},
+        "table"
+      ],
       "sample_items": [{{"이름": "항목1", "상태": "진행 중", "날짜": "2026-04-01", "icon": "🎯"}}]
     }}
   ],
@@ -338,9 +346,9 @@ async def generate_blueprint(user_message: str, ai_key: str = "", ai_model: str 
     for skill_id in SKILL_REGISTRY:
         skill_md = load_skill(skill_id)
         if skill_md:
-            # 스킬 .md에서 핵심 규칙만 추출 (너무 길면 잘림)
-            lines = skill_md.split("\n")[:30]
-            skill_guide += f"\n### {skill_id} skill guide:\n" + "\n".join(lines) + "\n"
+            # 스킬 .md에서 핵심만 추출 (토큰 절약 — Groq 8K TPM 제한 대응)
+            lines = skill_md.split("\n")[:15]
+            skill_guide += f"\n### {skill_id}:\n" + "\n".join(lines) + "\n"
 
     for attempt in range(2):
         try:
@@ -367,7 +375,7 @@ async def generate_blueprint(user_message: str, ai_key: str = "", ai_model: str 
 async def _call_ai_for_content(user_message: str, ai_key: str = "", ai_model: str = "", extra_context: str = "") -> dict[str, Any] | None:
     prompt = SYSTEM_PROMPT.format(skills=get_tool_enum_description())
     if extra_context:
-        prompt += f"\n\n## Skill Guidelines:\n{extra_context[:2000]}"
+        prompt += f"\n\n## Skill Guidelines:\n{extra_context[:1200]}"
 
     if ai_key:
         provider = _detect_provider_from_key(ai_key)
