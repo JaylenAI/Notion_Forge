@@ -405,6 +405,64 @@ function LivePreview() {
             </button>
           </div>
 
+          {/* Export/Import */}
+          {hasBlueprint && (
+            <button
+              type="button"
+              onClick={() => {
+                const data = JSON.stringify(blueprint, null, 2);
+                const blob = new Blob([data], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `blueprint-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast.success("Blueprint exported!");
+              }}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#333] text-gray-400 hover:text-white hover:bg-[#2a2a2a] transition-colors"
+              title="Export Blueprint JSON"
+            >
+              <span className="material-symbols-outlined text-sm">download</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = ".json";
+              input.onchange = async (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (!file) return;
+                try {
+                  const text = await file.text();
+                  const bp = JSON.parse(text);
+                  // Send to backend for Notion creation
+                  const resp = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:9500"}/api/templates/blueprint/import`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(bp),
+                  });
+                  const result = await resp.json();
+                  if (result.success) {
+                    toast.success(`Imported! ${result.summary.pages} pages, ${result.summary.databases} DBs`);
+                    if (result.notion_url) window.open(result.notion_url, "_blank");
+                  } else {
+                    toast.error("Import failed");
+                  }
+                } catch {
+                  toast.error("Invalid blueprint JSON");
+                }
+              };
+              input.click();
+            }}
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#333] text-gray-400 hover:text-white hover:bg-[#2a2a2a] transition-colors"
+            title="Import Blueprint JSON"
+          >
+            <span className="material-symbols-outlined text-sm">upload</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setPreviewMode((prev) => !prev)}

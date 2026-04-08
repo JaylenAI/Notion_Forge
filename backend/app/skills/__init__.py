@@ -4,12 +4,18 @@ Each skill defines:
 - SKILL.md: Structure guide (layout, block order, required views)
 - examples/: Real usage examples for AI reference
 - reference/: Detailed guides for specific features
+
+Custom Skills:
+- 유저가 직접 만든 스킬은 custom_skills/ 디렉토리에 저장
+- 내장 스킬과 동일한 포맷 (SKILL.md + YAML frontmatter)
+- 내장 스킬과 이름이 겹치면 커스텀 스킬이 우선
 """
 
 from pathlib import Path
 from typing import Any
 
 SKILLS_DIR = Path(__file__).parent
+CUSTOM_SKILLS_DIR = SKILLS_DIR.parent.parent.parent / "custom_skills"  # project root/custom_skills/
 
 # All available skills
 SKILL_REGISTRY: dict[str, dict[str, str]] = {
@@ -99,7 +105,12 @@ def auto_discover_skills() -> dict[str, dict[str, str]]:
 
 
 def load_skill(skill_name: str) -> str | None:
-    """Load SKILL.md content for a skill"""
+    """Load SKILL.md content for a skill — 커스텀 스킬 우선"""
+    # 커스텀 스킬 먼저 확인
+    custom_path = CUSTOM_SKILLS_DIR / skill_name / "SKILL.md"
+    if custom_path.exists():
+        return custom_path.read_text(encoding="utf-8")
+    # 내장 스킬
     skill_path = SKILLS_DIR / skill_name / "SKILL.md"
     if skill_path.exists():
         return skill_path.read_text(encoding="utf-8")
@@ -122,22 +133,90 @@ def get_skill_summary() -> str:
     return "\n".join(lines)
 
 
+def _get_all_skills() -> dict[str, dict[str, str]]:
+    """내장 + 커스텀 스킬 합쳐서 반환 (커스텀 우선)"""
+    merged = dict(SKILL_REGISTRY)
+    custom = load_custom_skills()
+    merged.update(custom)  # 커스텀이 같은 이름이면 덮어씀
+    return merged
+
+
 def get_tool_enum_description() -> str:
-    """Get skill descriptions for Tool schema enum"""
+    """Get skill descriptions for Tool schema enum (내장 + 커스텀)"""
     parts = []
-    for skill_id, info in SKILL_REGISTRY.items():
+    for skill_id, info in _get_all_skills().items():
         parts.append(f"{skill_id}={info['description']}")
     return ", ".join(parts)
 
 
 def list_skills() -> list[dict[str, Any]]:
-    """List all available skills with metadata"""
-    return [
-        {
+    """List all available skills with metadata (내장 + 커스텀)"""
+    result = []
+    all_skills = _get_all_skills()
+    for skill_id, info in all_skills.items():
+        is_custom = (CUSTOM_SKILLS_DIR / skill_id / "SKILL.md").exists()
+        is_builtin = (SKILLS_DIR / skill_id / "SKILL.md").exists()
+        result.append({
             "id": skill_id,
             "name": info["name"],
             "description": info["description"],
-            "has_skill_md": (SKILLS_DIR / skill_id / "SKILL.md").exists(),
-        }
-        for skill_id, info in SKILL_REGISTRY.items()
-    ]
+            "has_skill_md": is_custom or is_builtin,
+            "is_custom": is_custom,
+            "keywords": info.get("keywords", ""),
+        })
+    return result
+
+
+# ============================================================
+# 커스텀 스킬 CRUD
+# ============================================================
+
+def load_custom_skills() -> dict[str, dict[str, str]]:
+    """custom_skills/ 디렉토리에서 유저 커스텀 스킬 로드"""
+    skills: dict[str, dict[str, str]] = {}
+    if not CUSTOM_SKILLS_DIR.exists():
+        return skills
+    for skill_dir in CUSTOM_SKILLS_DIR.iterdir():
+        if skill_dir.is_dir() and (skill_dir / "SKILL.md").exists():
+            content = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
+            name = skill_dir.name
+            desc = ""
+            keywords = ""
+            for line in content.split("\n"):
+                if line.startswith("description:"):
+                    desc = line.split(":", 1)[1].strip()
+                elif line.startswith("keywords:"):
+                    keywords = line.split(":", 1)[1].strip()
+            skills[name] = {
+                "name": name,
+                "description": desc or f"Custom skill: {name}",
+                "keywords": keywords or name,
+            }
+    return skills
+
+
+def save_custom_skill(skill_id: str, content: str) -> bool:
+    """커스텀 스킬 저장 (SKILL.md)"""
+    skill_dir = CUSTOM_SKILLS_DIR / skill_id
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
+    return True
+
+
+def delete_custom_skill(skill_id: str) -> bool:
+    """커스텀 스킬 삭제"""
+    import shutil
+    skill_dir = CUSTOM_SKILLS_DIR / skill_id
+    if skill_dir.exists():
+        shutil.rmtree(skill_dir)
+        return True
+    return False
+
+
+def get_custom_skill(skill_id: str) -> dict[str, Any] | None:
+    """커스텀 스킬 상세 조회"""
+    skill_path = CUSTOM_SKILLS_DIR / skill_id / "SKILL.md"
+    if not skill_path.exists():
+        return None
+    content = skill_path.read_text(encoding="utf-8")
+    return {"id": skill_id, "content": content}

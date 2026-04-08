@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     # 브라우저 → 개발자도구 → Application → Cookies → notion.so → token_v2 값
     notion_token_v2: str = ""
 
+    # Notion OAuth (선택 — 토큰 복붙 대신 OAuth 연동)
+    notion_oauth_client_id: str = ""
+    notion_oauth_client_secret: str = ""
+    notion_oauth_redirect_uri: str = "http://localhost:9500/api/oauth/callback"
+
     @property
     def ai_provider(self) -> str:
         """사용할 AI 프로바이더 결정 (우선순위: Claude > Gemini > Groq > Mock)"""

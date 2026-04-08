@@ -11,7 +11,7 @@ import re
 from typing import Any
 
 from app.config import settings
-from app.skills import load_skill, get_tool_enum_description, SKILL_REGISTRY
+from app.skills import load_skill, get_tool_enum_description, SKILL_REGISTRY, _get_all_skills
 
 COVER_URLS: dict[str, str] = {
     # Gradient / Minimal
@@ -111,6 +111,18 @@ column_list(3col)[
   column(34%): toggle_heading("📂 카테고리3") with bulleted_list children
 ]
 
+### Mixed Rich Text (bold+color in same block):
+For premium-quality text, use "rich_text" array instead of plain "text":
+{{"type": "paragraph", "rich_text": [
+  {{"text": "🎯 목표: ", "bold": true, "color": "blue"}},
+  {{"text": "이번 주 운동 5회 달성하기"}}
+]}}
+{{"type": "callout", "icon": "💡", "color": "blue_background", "rich_text": [
+  {{"text": "Pro Tip: ", "bold": true, "color": "blue"}},
+  {{"text": "매일 아침 5분만 투자하면 습관이 됩니다"}}
+]}}
+Use this for: welcome callouts, stat cards, section intros. Mix bold headers with normal descriptions.
+
 ### Toggle Heading for Navigation:
 Use heading_2 or heading_3 with is_toggleable=true to create collapsible navigation:
 {{"type": "heading_2", "text": "📁 섹션명", "is_toggleable": true, "children": [
@@ -149,6 +161,41 @@ Use heading_2 or heading_3 with is_toggleable=true to create collapsible navigat
 ### DB Options: Each database can have "description" (1-sentence Korean), "icon" (emoji), "cover_url" (image URL)
 ### View Options: Each view can have "group_by" (for board/timeline), "sorts", "filters"
 ### Colors: default, gray, brown, orange, yellow, green, blue, purple, pink, red (add _background for blocks)
+
+## ═══════════════════════════════════════════
+## RELATION + ROLLUP + FORMULA (Mini-ERP)
+## ═══════════════════════════════════════════
+When user requests interconnected databases (project+task, CRM, ERP), use relations:
+
+### Relation Property:
+In db_properties, use: "관련 프로젝트": {{"type": "relation", "target_db_index": 0}}
+- target_db_index refers to the index in the databases[] array
+- After creation, the system auto-links to the actual database ID
+
+### Rollup Property (aggregates from related DB):
+"총 태스크": {{"type": "rollup", "relation_property": "관련 프로젝트", "target_property": "이름", "function": "count"}}
+- relation_property: name of the relation property in THIS database
+- target_property: name of property to aggregate from RELATED database
+- function: count, count_values, unique, sum, average, min, max, percent_empty, percent_not_empty, show_original
+
+### Formula Property (calculated fields):
+"D-Day": {{"type": "formula", "expression": "dateBetween(prop(\"마감일\"), now(), \"days\")"}}
+"진행률": {{"type": "formula", "expression": "if(prop(\"상태\") == \"완료\", 100, if(prop(\"상태\") == \"진행 중\", 50, 0))"}}
+"총액": {{"type": "formula", "expression": "prop(\"단가\") * prop(\"수량\")"}}
+
+### Common Formula Patterns:
+- D-Day countdown: dateBetween(prop("마감일"), now(), "days")
+- Progress %: if(prop("상태") == "완료", 100, if(prop("상태") == "진행 중", 50, 0))
+- Total: prop("단가") * prop("수량")
+- Full name: prop("성") + " " + prop("이름")
+- Status emoji: if(prop("완료"), "✅", "⬜")
+- Overdue check: if(prop("마감일") < now(), "⚠️ 지연", "정상")
+
+### Multi-DB Template Patterns:
+1. Project + Task: Project DB has tasks via relation, rollup counts tasks per project
+2. CRM: Contact DB + Deal DB + Activity DB, all linked via relation
+3. Inventory: Product DB + Order DB, formula calculates total, rollup sums orders
+4. School: Student DB + Assignment DB + Grade DB with rollup averages
 
 ## ═══════════════════════════════════════════
 ## PROFESSIONAL TEMPLATE PATTERNS
@@ -238,6 +285,35 @@ You MUST use diverse blocks. Do NOT repeat the same callout→column→toggle pa
 - Sub-pages should be organized by CATEGORY (e.g., 자료실, 설정, 아카이브)
 
 ## ═══════════════════════════════════════════
+## DESIGN TOKEN SYSTEM (per-category consistency)
+## ═══════════════════════════════════════════
+Each template category has a fixed design token set. ALWAYS follow these:
+
+### Business/Project: icons: 🎯📊📋✅ | blue + gray | cover: business
+  - Callout: blue_background | Headings: blue
+  - DB icons: 📊📋🗂️ | Status: blue(active), green(done), gray(default)
+
+### Fitness/Health: icons: 💪🏋️🏃🧘 | orange + green | cover: fitness
+  - Callout: orange_background | Headings: orange
+
+### Finance: icons: 💰📈🏦💵 | green + gray | cover: finance
+  - Callout: green_background | Headings: green
+  - Select: green(income), red(expense), blue(savings)
+
+### Creative/Content: icons: 🎨📱✨🎬 | purple + pink | cover: creative
+  - Callout: purple_background | Headings: purple
+
+### Learning/Study: icons: 📚🎓📖✏️ | blue + purple | cover: study
+  - Callout: blue_background | Headings: blue
+
+### Personal/Journal: icons: 📔✨🌸💭 | pink + gray | cover: minimal
+  - Callout: pink_background | Headings: pink
+
+### CRM/Sales: icons: 🤝📞💼🎯 | blue + orange | cover: business
+### Travel/Plan: icons: ✈️🗺️📍🌍 | orange + blue | cover: travel
+### Food/Recipe: icons: 🍽️🧑‍🍳🥗🍰 | orange + green | cover: food
+
+## ═══════════════════════════════════════════
 ## ANTI-PATTERNS: NEVER DO THESE
 ## ═══════════════════════════════════════════
 - NEVER use more than 3 colors (looks chaotic)
@@ -271,7 +347,9 @@ You MUST use diverse blocks. Do NOT repeat the same callout→column→toggle pa
 ## ═══════════════════════════════════════════
 ## OUTPUT FORMAT (JSON ONLY, NO OTHER TEXT)
 ## ═══════════════════════════════════════════
-ALL text content MUST be in Korean.
+ALL text content MUST be in Korean by default.
+If user specifies [LANGUAGE: English], write ALL text in English.
+If user specifies [LANGUAGE: Japanese], write ALL text in Japanese.
 
 {{
   "skill": "skill_name",
@@ -340,10 +418,10 @@ def _detect_provider_from_key(api_key: str) -> str:
 
 async def generate_blueprint(user_message: str, ai_key: str = "", ai_model: str = "") -> dict[str, Any]:
     """AI가 전체 구조를 자유롭게 설계. 실패 시 스마트 폴백."""
-    # 스킬 가이드를 프롬프트에 주입
+    # 스킬 가이드를 프롬프트에 주입 (내장 + 커스텀)
     skill_guide = ""
-    # AI에게 스킬 목록 + 가이드 제공
-    for skill_id in SKILL_REGISTRY:
+    all_skills = _get_all_skills()
+    for skill_id in all_skills:
         skill_md = load_skill(skill_id)
         if skill_md:
             # 스킬 .md에서 핵심만 추출 (토큰 절약 — Groq 8K TPM 제한 대응)
@@ -526,6 +604,9 @@ def _assemble_blueprint(content: dict) -> dict[str, Any]:
                 "properties": db.get("db_properties", db.get("properties", {"이름": "title"})),
                 "views": views,
                 "sample_items": db.get("sample_items", []),
+                "description": db.get("description", ""),
+                "icon": db.get("icon"),
+                "cover_url": db.get("cover_url"),
             })
     elif content.get("db_properties"):
         # 단일 DB (하위 호환)
@@ -543,16 +624,21 @@ def _assemble_blueprint(content: dict) -> dict[str, Any]:
             "sample_items": content.get("sample_items", []),
         })
 
-    # sub_pages
+    # sub_pages: AI가 blocks를 설계했으면 그대로 사용, 없으면 기본 블록
     bg = f"{color}_background" if color != "default" else "default"
     for sub in content.get("sub_pages", []):
-        blueprint["sub_pages"].append({
-            "title": sub["name"], "icon": sub.get("icon", "📄"),
-            "blocks": [
-                {"type": "heading_1", "text": f"{sub.get('icon', '📄')} {sub['name']}", "color": bg},
-                {"type": "callout", "text": sub.get("description", f"{sub['name']} 관련 내용을 정리하세요."), "icon": "📌", "color": bg},
+        sub_blocks = sub.get("blocks", [])
+        if not sub_blocks:
+            # AI가 블록을 설계하지 않은 경우에만 기본 블록 생성
+            sub_blocks = [
+                {"type": "heading_1", "text": f"{sub.get('icon', '📄')} {sub.get('name', sub.get('title', ''))}", "color": bg},
+                {"type": "callout", "text": sub.get("description", f"{sub.get('name', '')} 관련 내용을 정리하세요."), "icon": "📌", "color": bg},
                 {"type": "divider"},
-            ],
+            ]
+        blueprint["sub_pages"].append({
+            "title": sub.get("name", sub.get("title", "서브페이지")),
+            "icon": sub.get("icon", "📄"),
+            "blocks": sub_blocks,
         })
 
     return blueprint

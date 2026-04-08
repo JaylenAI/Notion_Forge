@@ -89,6 +89,9 @@ interface ChatState {
   currentSessionId: string | null;
   /* Abort controller for cancel */
   abortController: AbortController | null;
+  /* Complexity & Language */
+  complexity: "simple" | "standard" | "advanced";
+  language: "ko" | "en" | "ja";
   connect: () => void;
   disconnect: () => void;
   sendMessage: (content: string) => void;
@@ -108,6 +111,9 @@ interface ChatState {
   loadSession: (sessionId: string) => void;
   deleteSession: (sessionId: string) => void;
   newSession: () => void;
+  /* Complexity & Language setters */
+  setComplexity: (c: "simple" | "standard" | "advanced") => void;
+  setLanguage: (l: "ko" | "en" | "ja") => void;
 }
 
 function deriveSessionTitle(messages: readonly Message[]): string {
@@ -135,6 +141,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   sessions: loadSessions(),
   currentSessionId: null,
   abortController: null,
+  complexity: "standard",
+  language: "ko",
 
   connect: () => {
     const { ws: existing, connectionStatus } = get();
@@ -503,5 +511,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
       get().saveCurrentSession();
     }
     set({ messages: [], isLoading: false, currentStep: "", currentSessionId: null });
+  },
+
+  setComplexity: (c) => {
+    set({ complexity: c });
+    const { ws } = get();
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "set_complexity", complexity: c }));
+    }
+  },
+
+  setLanguage: (l) => {
+    set({ language: l });
+    const { ws } = get();
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "set_language", language: l }));
+    }
   },
 }));

@@ -1,0 +1,75 @@
+{
+  "id": "project-board",
+  "name": "프로젝트 보드",
+  "name_en": "Project Board",
+  "description": "칸반 보드 + 타임라인으로 프로젝트를 체계적으로 관리",
+  "description_en": "Kanban board + timeline for systematic project management",
+  "category": "business",
+  "icon": "📊",
+  "author": "NotionForge",
+  "tags": ["project", "kanban", "timeline", "task"],
+  "complexity": "standard",
+  "preview_image": null,
+  "blueprint": {
+    "version": "3.0",
+    "metadata": {
+      "title": "프로젝트 보드",
+      "template_type": "manage",
+      "color_theme": "blue"
+    },
+    "main_page": {
+      "title": "프로젝트 보드",
+      "icon": "📊",
+      "cover_url": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1600"
+    },
+    "blocks": [
+      {"type": "callout", "text": "프로젝트 진행 현황을 한눈에 관리하세요! 🗂️", "icon": "📊", "color": "blue_background"},
+      {"type": "paragraph", "text": ""},
+      {"type": "heading_1", "text": "🗂️ 프로젝트 태스크", "color": "blue"},
+      {"type": "database_ref", "db_index": 0},
+      {"type": "paragraph", "text": ""},
+      {"type": "divider"},
+      {"type": "toggle", "text": "💡 사용 가이드", "children": [
+        {"type": "numbered_list", "text": "보드 뷰에서 드래그로 상태 변경"},
+        {"type": "numbered_list", "text": "타임라인 뷰에서 일정 조정"},
+        {"type": "numbered_list", "text": "필터로 담당자별 태스크 확인"}
+      ]}
+    ],
+    "databases": [
+      {
+        "title": "프로젝트 태스크",
+        "is_inline": true,
+        "properties": {
+          "태스크": "title",
+          "상태": "status",
+          "담당자": "rich_text",
+          "우선순위": {"type": "select", "options": [
+            {"name": "높음", "color": "red"},
+            {"name": "중간", "color": "yellow"},
+            {"name": "낮음", "color": "green"}
+          ]},
+          "기한": "date",
+          "카테고리": {"type": "select", "options": [
+            {"name": "기획", "color": "blue"},
+            {"name": "개발", "color": "green"},
+            {"name": "디자인", "color": "purple"},
+            {"name": "QA", "color": "orange"}
+          ]}
+        },
+        "views": [
+          {"type": "board", "title": "칸반 보드", "group_by": {"property": "상태"}},
+          {"type": "timeline", "title": "타임라인"},
+          "table"
+        ],
+        "sample_items": [
+          {"태스크": "기획서 작성", "담당자": "김팀장", "우선순위": "높음", "기한": "2026-04-05", "카테고리": "기획", "icon": "📝"},
+          {"태스크": "UI 디자인", "담당자": "이디자이너", "우선순위": "높음", "기한": "2026-04-10", "카테고리": "디자인", "icon": "🎨"},
+          {"태스크": "백엔드 API", "담당자": "박개발", "우선순위": "중간", "기한": "2026-04-15", "카테고리": "개발", "icon": "⚙️"},
+          {"태스크": "프론트엔드 구현", "담당자": "최개발", "우선순위": "중간", "기한": "2026-04-18", "카테고리": "개발", "icon": "🖥️"},
+          {"태스크": "QA 테스트", "담당자": "정QA", "우선순위": "낮음", "기한": "2026-04-22", "카테고리": "QA", "icon": "🧪"}
+        ]
+      }
+    ],
+    "sub_pages": []
+  }
+}

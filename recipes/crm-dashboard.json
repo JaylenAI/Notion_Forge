@@ -1,0 +1,90 @@
+{
+  "id": "crm-dashboard",
+  "name": "CRM 대시보드",
+  "name_en": "CRM Dashboard",
+  "description": "고객 관리 + 딜 파이프라인 + 활동 기록 연동 CRM",
+  "description_en": "Customer management + deal pipeline + activity tracking CRM",
+  "category": "business",
+  "icon": "🤝",
+  "author": "NotionForge",
+  "tags": ["crm", "sales", "customer", "pipeline", "relation"],
+  "complexity": "advanced",
+  "blueprint": {
+    "version": "3.0",
+    "metadata": {"title": "CRM 대시보드", "template_type": "crm", "color_theme": "blue"},
+    "main_page": {"title": "CRM 대시보드", "icon": "🤝", "cover_url": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1600"},
+    "blocks": [
+      {"type": "callout", "text": "고객 관계를 체계적으로 관리하세요! 🤝", "icon": "🤝", "color": "blue_background"},
+      {"type": "table_of_contents"},
+      {"type": "paragraph", "text": ""},
+      {"type": "column_list", "columns": [
+        [{"type": "callout", "text": "📞 신규 리드 12건", "icon": "📞", "color": "blue_background"}],
+        [{"type": "callout", "text": "💰 진행 중 딜 8건", "icon": "💰", "color": "orange_background"}],
+        [{"type": "callout", "text": "✅ 이번 달 성사 3건", "icon": "✅", "color": "green_background"}]
+      ], "width_ratios": [0.33, 0.34, 0.33]},
+      {"type": "paragraph", "text": ""},
+      {"type": "heading_1", "text": "👥 고객 관리", "color": "blue"},
+      {"type": "database_ref", "db_index": 0},
+      {"type": "paragraph", "text": ""},
+      {"type": "heading_1", "text": "💼 딜 파이프라인", "color": "blue"},
+      {"type": "database_ref", "db_index": 1},
+      {"type": "paragraph", "text": ""},
+      {"type": "divider"},
+      {"type": "toggle", "text": "📖 CRM 활용 가이드", "children": [
+        {"type": "numbered_list", "text": "고객 DB에 새 고객 추가"},
+        {"type": "numbered_list", "text": "딜 DB에서 영업 단계 관리"},
+        {"type": "numbered_list", "text": "Relation으로 고객-딜 연결"},
+        {"type": "numbered_list", "text": "보드 뷰에서 파이프라인 관리"}
+      ]}
+    ],
+    "databases": [
+      {
+        "title": "고객", "is_inline": true, "icon": "👥",
+        "description": "전체 고객 정보를 관리합니다",
+        "properties": {
+          "고객명": "title", "회사": "rich_text", "이메일": "email", "전화": "rich_text",
+          "등급": {"type": "select", "options": [{"name": "VIP", "color": "red"}, {"name": "일반", "color": "blue"}, {"name": "잠재", "color": "gray"}]},
+          "담당자": "rich_text", "최근 연락일": "date"
+        },
+        "views": [{"type": "table", "title": "전체 고객"}, {"type": "board", "title": "등급별", "group_by": {"property": "등급"}}],
+        "sample_items": [
+          {"고객명": "김철수", "회사": "테크스타", "이메일": "kim@tech.com", "등급": "VIP", "담당자": "이영업", "icon": "👤"},
+          {"고객명": "박미정", "회사": "디자인랩", "이메일": "park@design.com", "등급": "일반", "담당자": "이영업", "icon": "👤"},
+          {"고객명": "최준혁", "회사": "스타트업A", "이메일": "choi@startup.com", "등급": "잠재", "담당자": "김세일즈", "icon": "👤"},
+          {"고객명": "정수아", "회사": "빅코퍼", "이메일": "jung@big.com", "등급": "VIP", "담당자": "김세일즈", "icon": "👤"},
+          {"고객명": "한동민", "회사": "프리랜서", "이메일": "han@free.com", "등급": "일반", "담당자": "이영업", "icon": "👤"}
+        ]
+      },
+      {
+        "title": "딜 파이프라인", "is_inline": true, "icon": "💼",
+        "description": "영업 기회를 단계별로 관리합니다",
+        "properties": {
+          "딜 명": "title",
+          "단계": {"type": "select", "options": [{"name": "리드", "color": "gray"}, {"name": "미팅", "color": "blue"}, {"name": "제안", "color": "orange"}, {"name": "협상", "color": "purple"}, {"name": "성사", "color": "green"}, {"name": "실패", "color": "red"}]},
+          "금액": "number", "예상 마감일": "date", "담당자": "rich_text",
+          "관련 고객": {"type": "relation", "target_db_index": 0}
+        },
+        "views": [{"type": "board", "title": "파이프라인", "group_by": {"property": "단계"}}, "table"],
+        "sample_items": [
+          {"딜 명": "테크스타 연간 계약", "단계": "협상", "금액": 50000000, "담당자": "이영업", "icon": "💰"},
+          {"딜 명": "디자인랩 프로젝트", "단계": "제안", "금액": 15000000, "담당자": "이영업", "icon": "💼"},
+          {"딜 명": "스타트업A 파일럿", "단계": "미팅", "금액": 5000000, "담당자": "김세일즈", "icon": "🤝"},
+          {"딜 명": "빅코퍼 확장", "단계": "성사", "금액": 80000000, "담당자": "김세일즈", "icon": "✅"},
+          {"딜 명": "프리랜서 컨설팅", "단계": "리드", "금액": 3000000, "담당자": "이영업", "icon": "📞"}
+        ]
+      }
+    ],
+    "sub_pages": [
+      {"name": "영업 자료실", "icon": "📁", "blocks": [
+        {"type": "callout", "text": "제안서, 계약서, 소개자료를 보관합니다", "icon": "📁", "color": "blue_background"},
+        {"type": "heading_2", "text": "📋 제안서 템플릿"},
+        {"type": "bulleted_list", "text": "기본 제안서"},
+        {"type": "bulleted_list", "text": "엔터프라이즈 제안서"}
+      ]},
+      {"name": "미팅 노트", "icon": "📝", "blocks": [
+        {"type": "callout", "text": "미팅 내용을 기록하세요", "icon": "📝", "color": "blue_background"},
+        {"type": "heading_2", "text": "최근 미팅"}
+      ]}
+    ]
+  }
+}

@@ -164,7 +164,7 @@ def _mock_analyze(message: str) -> IntentResult:
         intent = "QUESTION"
     elif any(w in msg for w in ["만들어", "생성", "제작", "만들자", "ㄱㄱ"]):
         intent = "CREATE"
-    elif any(w in msg for w in ["추가", "수정", "바꿔", "변경"]):
+    elif any(w in msg for w in ["추가", "수정", "바꿔", "변경", "삭제", "없애", "제거", "연결", "넣어", "빼"]):
         intent = "MODIFY"
     else:
         intent = "CREATE"

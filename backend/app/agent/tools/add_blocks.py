@@ -1,4 +1,4 @@
-"""페이지에 블록 추가 — 전체 블록 타입 지원"""
+"""페이지에 블록 추가 — 전체 블록 타입 지원 + 혼합 리치텍스트"""
 
 from typing import Any
 
@@ -47,9 +47,21 @@ def spec_to_block(spec: dict) -> dict:
         children = [spec_to_block(c) for c in spec.get("children", [])] if spec.get("children") else [bb.paragraph("")]
         return bb.heading(spec.get("text", ""), level=level, color=spec.get("color", "default"), is_toggleable=True, children=children)
     elif t == "paragraph":
+        # 혼합 서식 지원: rich_text 배열이 있으면 사용
+        if spec.get("rich_text") and isinstance(spec["rich_text"], list):
+            rt = bb.rich_text_array(spec["rich_text"])
+            block = {"object": "block", "type": "paragraph", "paragraph": {"rich_text": rt, "color": bb._safe_color(spec.get("color", "default"))}}
+            return block
         return bb.paragraph(spec.get("text", ""), color=spec.get("color", "default"))
     elif t == "callout":
         children = [spec_to_block(c) for c in spec["children"]] if spec.get("children") else None
+        if spec.get("rich_text") and isinstance(spec["rich_text"], list):
+            rt = bb.rich_text_array(spec["rich_text"])
+            icon_obj = {"type": "emoji", "emoji": spec.get("icon", "📌")}
+            block: dict[str, Any] = {"object": "block", "type": "callout", "callout": {"rich_text": rt, "icon": icon_obj, "color": bb._safe_color(spec.get("color", "default"))}}
+            if children:
+                block["callout"]["children"] = children
+            return block
         return bb.callout(spec.get("text", ""), icon=spec.get("icon", "📌"), color=spec.get("color", "default"), children=children)
     elif t == "toggle":
         children = None

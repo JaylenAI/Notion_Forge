@@ -7,7 +7,7 @@
 **NotionForge**는 사용자가 자연어로 원하는 노션 템플릿을 설명하면, AI Agent가 Notion API를 통해 완성된 템플릿을 자동으로 생성해주는 서비스입니다.
 
 > **소속**: 가짜연구소 - "나만의 자동화 AI Agent 만들기" 프로젝트
-> **브랜치**: `dev-2` (AI 자유 설계 + 12개 스킬, 최신) | `dev` (하드코딩 방식)
+> **브랜치**: `dev-2` (v6.0.0 — 멀티턴 수정 + 멀티 에이전트 + 레시피, 최신) | `dev` (하드코딩 방식)
 
 ---
 
@@ -95,6 +95,14 @@ make test       # 테스트 실행
 - **4개 AI 프로바이더**: Gemini (기본) / Groq / Claude / OpenAI — 동적 모델 선택
 - **실시간 스트리밍**: 생성 과정을 단계별로 표시 (의도 분석 → 설계 → 페이지 → DB → 뷰 → 완료)
 - **스마트 폴백**: AI 실패 시 키워드 기반 6개 템플릿 자동 선택
+- **멀티턴 대화형 수정**: 생성 후 "속성 추가해줘", "뷰 바꿔줘", "DB 연결해줘" 등 자연어로 수정
+- **Relation/Rollup/Formula**: DB 간 관계 자동 연결 + 수식 자동 생성 (D-Day, 진행률 등)
+- **멀티 에이전트 파이프라인**: Architect→Designer→Content→Validator 4단계 (고급 모드)
+- **Document-to-Notion**: CSV/MD/TXT/PDF 업로드 → 자동 템플릿 변환
+- **커뮤니티 레시피**: recipes/ 디렉토리에서 JSON 레시피 공유 + 원클릭 생성
+- **다국어 지원**: 한국어/영어/일본어 선택 가능
+- **OAuth 연동**: Notion OAuth 플로우 (토큰 복붙 대신 원클릭 연결)
+- **커스텀 스킬**: 유저가 직접 스킬 추가 → 맞춤형 AI Agent 구축 (시스템 프롬프트 커스터마이징)
 
 ### Notion API 전체 지원 (74개 기능 + 확장)
 - **블록 30+종**: heading, callout, toggle, quote, code, table, equation, tab, synced_block 등
@@ -146,10 +154,18 @@ NotionForge/
 │   │   ├── main.py                # FastAPI 진입점
 │   │   ├── config.py              # AI 프로바이더 자동 선택
 │   │   ├── agent/
-│   │   │   ├── orchestrator.py    # 실시간 스트리밍 파이프라인
+│   │   │   ├── orchestrator.py    # 실시간 스트리밍 파이프라인 + 멀티턴 수정
 │   │   │   ├── intent_analyzer.py # 의도 분석 (4개 프로바이더)
 │   │   │   ├── blueprint_generator.py  # AI 자유 설계 + 스마트 폴백
+│   │   │   ├── pipeline.py        # 멀티 에이전트 파이프라인
+│   │   │   ├── document_parser.py # Document-to-Notion (CSV/MD/PDF)
 │   │   │   └── tools/             # 8개 Tool
+│   │   ├── routers/
+│   │   │   ├── chat.py            # WebSocket 채팅
+│   │   │   ├── template.py        # REST API + Blueprint Import
+│   │   │   ├── recipes.py         # 커뮤니티 레시피 API
+│   │   │   ├── oauth.py           # Notion OAuth 연동
+│   │   │   └── skills.py          # 커스텀 스킬 CRUD API
 │   │   ├── notion/                # Notion API 클라이언트 (74개 기능)
 │   │   ├── skills/                # 12개 스킬 (.md)
 │   │   │   ├── track/   collect/   manage/   plan/
@@ -241,24 +257,47 @@ NotionForge/
 
 ## 이어서 개발할 것 (TODO)
 
-### 우선순위 HIGH
-- [ ] AI 블록 다양성 강화 (quote, code, column_list 등 적극 활용)
-- [ ] AI 모델 업그레이드 (Claude/GPT-4o = 더 복잡한 구조)
+### v6.0.0 완료 (2026-04-08)
+- [x] Relation + Rollup + Formula 자동 생성
+- [x] 멀티턴 대화형 수정 (속성/뷰/DB/Relation/Formula/서브페이지/블록)
+- [x] 복잡도/언어 선택 UI (Simple/Standard/Advanced + KR/EN/JP)
+- [x] Blueprint JSON Export/Import
+- [x] 커뮤니티 레시피 갤러리 (recipes/ + API + UI)
+- [x] 다국어 지원 (한/영/일)
+- [x] 멀티 에이전트 파이프라인 (Architect→Designer→Content→Validator)
+- [x] Document-to-Notion (CSV/MD/TXT/PDF)
+- [x] OAuth 연동 (Notion OAuth 플로우)
+- [x] 디자인 토큰 시스템 (카테고리별 통일)
+- [x] 혼합 리치텍스트 (bold+color 복합 서식)
+- [x] 서브페이지 AI 블록 패스스루 수정
 
-### 우선순위 MEDIUM — UI/UX
-- [ ] 드래그 앤 드롭 블루프린트 재배치 (LivePreview에서 DB/서브페이지 순서 변경)
-- [ ] 즐겨찾기 퀵 액세스 (사이드바에 starred 템플릿 바로가기)
-- [ ] 블루프린트 JSON 내보내기/가져오기 (Export/Import 버튼)
-- [ ] 실시간 연결 품질 모니터 (WebSocket ping/pong latency 실측)
+### 다음 개발 예정 (v7.0.0 — 템플릿 품질 혁신)
 
-### 우선순위 MEDIUM — 인프라
+**AI 프롬프트 강화:**
+- [ ] Chart/Dashboard 뷰 강제 (DB 2개 이상이면 필수)
+- [ ] Tab 블록 강제 (Complex 템플릿 필수)
+- [ ] Formula 자동 필수 (date→D-Day, status→진행률)
+- [ ] 뷰 최소 4개 강제 (table + board/calendar + chart + 1)
+- [ ] Table/Embed/Bookmark/Quote 블록 적극 활용 패턴
+
+**스마트 폴백 고도화:**
+- [ ] 폴백 6개 → 12개 (스킬별 프로 레이아웃)
+- [ ] 폴백에 column_list, formula, chart 뷰, sub_pages 포함
+
+**코드 후처리 자동화:**
+- [ ] 뷰 자동 보강 (date→calendar, status→board, number→chart)
+- [ ] Formula/group_by/quick_filter 자동 추가
+- [ ] DB description/icon 자동 채움
+
+**Copilot SDK 연동:**
+- [ ] GitHub Copilot SDK → GPT-4o 무제한 연동
+- [ ] OpenAI 호환 엔드포인트 + max_tokens 8192
+- [ ] 프로바이더 우선순위: Copilot > Claude > Gemini > Groq
+
+**기타:**
+- [ ] 드래그 앤 드롭 블루프린트 재배치
 - [ ] Vercel (FE) + Railway (BE) 프로덕션 배포
-- [ ] 스킬 간 크로스 조합 지원
-
-### 우선순위 LOW
-- [ ] 시연 영상 제작
-- [ ] 가짜연구소 발표 자료
-- [ ] 다국어 지원
+- [ ] 시연 영상 + 발표 자료
 
 ---
 

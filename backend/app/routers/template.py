@@ -1,6 +1,6 @@
 """템플릿 생성 REST API 라우터"""
 
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, UploadFile, File
 
 from app.agent.blueprint_generator import generate_blueprint
 from app.agent.orchestrator import AgentOrchestrator
@@ -140,6 +140,85 @@ async def detect_provider(api_key: str = Body("", embed=True)):
         return {"provider": provider, "models": [], "error": f"모델 목록 조회 실패: {str(e)[:200]}"}
 
     return {"provider": provider, "models": models}
+
+
+@router.post("/document-to-notion")
+async def document_to_notion(file: UploadFile = File(...)):
+    """문서 업로드 → 구조 분석 → 블루프린트 프리뷰
+
+    지원: .txt, .md, .csv, .pdf
+    """
+    from app.agent.document_parser import parse_document, parse_pdf_bytes
+
+    content_bytes = await file.read()
+    filename = file.filename or "document.txt"
+    ext = filename.rsplit(".", 1)[-1].lower()
+
+    if ext == "pdf":
+        parsed = parse_pdf_bytes(content_bytes)
+    else:
+        content_str = content_bytes.decode("utf-8", errors="replace")
+        parsed = parse_document(content_str, filename)
+
+    # CSV인 경우 바로 블루프린트 생성
+    if parsed.get("properties"):
+        db_title = parsed.get("db_title", "Imported Data")
+        blueprint = {
+            "version": "3.0",
+            "metadata": {"title": db_title, "template_type": "custom", "color_theme": "blue"},
+            "main_page": {"title": db_title, "icon": "📄"},
+            "blocks": [
+                {"type": "callout", "text": f"{parsed['hint']}", "icon": "📄", "color": "blue_background"},
+                {"type": "heading_1", "text": f"📊 {db_title}"},
+                {"type": "database_ref", "db_index": 0},
+            ],
+            "databases": [{
+                "title": db_title, "is_inline": True,
+                "properties": parsed["properties"],
+                "views": ["table"],
+                "sample_items": parsed.get("sample_items", []),
+            }],
+            "sub_pages": [],
+        }
+        return {"success": True, "blueprint": blueprint, "hint": parsed["hint"]}
+
+    # MD/텍스트: AI에게 전달할 컨텍스트 생성
+    hint = parsed.get("hint", "")
+    text_content = parsed.get("text_content", "")
+    blocks = parsed.get("blocks", [])
+
+    # AI에게 문서 기반 템플릿 설계 요청
+    ai_prompt = f"이 문서를 기반으로 노션 템플릿을 만들어줘:\n\n{text_content[:2000]}"
+    bp = await generate_blueprint(ai_prompt)
+
+    # MD 블록이 있으면 블루프린트에 추가
+    if blocks:
+        bp["blocks"] = blocks + bp.get("blocks", [])
+
+    return {"success": True, "blueprint": bp, "hint": hint}
+
+
+@router.post("/blueprint/import")
+async def import_blueprint(blueprint: dict = Body(...)):
+    """Blueprint JSON 가져오기 → 실제 Notion 생성"""
+    from app.config import settings as cfg
+
+    agent = AgentOrchestrator(
+        notion_token=cfg.notion_api_key,
+        parent_page_id=cfg.notion_parent_page_id,
+    )
+
+    # blueprint를 직접 실행
+    result = await agent._execute_blueprint(blueprint)
+    return {
+        "success": True,
+        "notion_url": result.get("main_url"),
+        "summary": {
+            "pages": len(result.get("pages", [])),
+            "databases": len(result.get("databases", [])),
+            "blocks": result.get("blocks", 0),
+        },
+    }
 
 
 @router.get("/patterns")

@@ -1,5 +1,7 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useChatStore } from "../../stores/chatStore";
+
+const RecipeGallery = lazy(() => import("./RecipeGallery"));
 
 const SKILL_LABELS: Record<string, { label: string; color: string }> = {
   track: { label: "Track", color: "bg-orange-900/50 text-orange-300" },
@@ -28,6 +30,7 @@ function LibraryPage() {
   const [filterSkill, setFilterSkill] = useState<string>("all");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [activeTab, setActiveTab] = useState<"my" | "recipes">("my");
 
   const availableSkills = useMemo(() => {
     const skills = new Set(templates.map((t) => t.skill));
@@ -84,12 +87,42 @@ function LibraryPage() {
             Template Library
           </h2>
           <p className="text-[#c2c6d8] text-base max-w-2xl font-body leading-relaxed">
-            Your AI-generated Notion templates are automatically saved here after creation.
+            Your templates and community recipes.
           </p>
         </div>
       </div>
 
-      {isEmpty ? (
+      {/* Tab Switcher */}
+      <div className="flex gap-1 mb-6 bg-[var(--surface-variant,#1e1e1e)] rounded-xl p-1 w-fit">
+        <button
+          type="button"
+          onClick={() => setActiveTab("my")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === "my"
+              ? "bg-[#adc6ff]/15 text-[#adc6ff]"
+              : "text-gray-400 hover:text-gray-200"
+          }`}
+        >
+          My Templates ({templates.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("recipes")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === "recipes"
+              ? "bg-[#adc6ff]/15 text-[#adc6ff]"
+              : "text-gray-400 hover:text-gray-200"
+          }`}
+        >
+          Community Recipes
+        </button>
+      </div>
+
+      {activeTab === "recipes" ? (
+        <Suspense fallback={<div className="text-gray-500 text-center py-12">Loading...</div>}>
+          <RecipeGallery />
+        </Suspense>
+      ) : isEmpty ? (
         <EmptyLibrary onCreateNew={handleNewTemplate} />
       ) : (
         <>

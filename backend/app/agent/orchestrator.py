@@ -35,6 +35,12 @@ class AgentOrchestrator:
         self._conversation: list[dict[str, str]] = []
         self._last_intent: IntentResult | None = None
         self._last_result: dict[str, Any] | None = None
+        self._last_blueprint: dict[str, Any] | None = None
+
+        # 사용자 설정
+        self.complexity: str = "standard"  # simple, standard, advanced
+        self.language: str = "ko"  # ko, en, ja
+        self.use_pipeline: bool = False  # 멀티 에이전트 파이프라인 사용 여부
 
     async def process(self, message: str) -> AsyncGenerator[dict[str, Any], None]:
         """메인 처리 파이프라인 — 실시간 스트리밍"""
@@ -46,10 +52,26 @@ class AgentOrchestrator:
         intent = await analyze_intent(message)
         yield {"type": "progress", "step": "intent_done", "message": f"✅ 의도 파악: {intent.intent} ({intent.template_type})"}
 
+        # 이전 생성 결과가 있고 수정 의도가 감지되면 멀티턴 수정 모드
         if intent.intent == "MODIFY" and self._last_result:
             async for event in self._handle_modify(message, intent):
                 yield event
             return
+
+        # 이전 결과가 있고, CREATE이지만 수정 키워드가 포함된 경우 → MODIFY로 전환
+        if self._last_result and intent.intent == "CREATE":
+            msg_lower = message.lower()
+            modify_keywords = ["추가", "넣어", "바꿔", "변경", "삭제", "없애", "제거", "연결", "빼"]
+            context_keywords = ["속성", "뷰", "db", "디비", "데이터베이스", "칼럼", "페이지", "블록",
+                                "수식", "formula", "d-day", "relation", "캘린더", "보드", "갤러리",
+                                "타임라인", "테이블", "리스트", "칸반"]
+            has_modify = any(kw in msg_lower for kw in modify_keywords)
+            has_context = any(kw in msg_lower for kw in context_keywords)
+            if has_modify and has_context:
+                yield {"type": "progress", "step": "intent_override", "message": "🔄 수정 모드로 전환합니다..."}
+                async for event in self._handle_modify(message, intent):
+                    yield event
+                return
 
         if intent.intent == "QUESTION":
             yield {"type": "ai_response", "content": self._answer_question(message)}
@@ -60,8 +82,40 @@ class AgentOrchestrator:
             return
 
         # ② AI 설계
-        yield {"type": "progress", "step": "designing", "message": "🎨 AI가 템플릿을 설계하고 있어요..."}
-        blueprint = await generate_blueprint(message, ai_key=self.ai_key, ai_model=self.ai_model)
+        complexity_label = {"simple": "간단한", "standard": "표준", "advanced": "고급"}.get(self.complexity, "표준")
+        # 복잡도 + 언어 힌트를 메시지에 추가
+        enhanced_msg = message
+        if self.complexity != "standard":
+            complexity_hint = {"simple": "\n[COMPLEXITY: simple — 10-15 blocks, 1 DB, minimal]", "advanced": "\n[COMPLEXITY: advanced — 25-40 blocks, 3-4 DB, 5+ sub_pages, dashboard layout]"}.get(self.complexity, "")
+            enhanced_msg = message + complexity_hint
+        if self.language != "ko":
+            lang_hint = {"en": "\n[LANGUAGE: English — all text content in English]", "ja": "\n[LANGUAGE: Japanese — all text content in Japanese]"}.get(self.language, "")
+            enhanced_msg += lang_hint
+
+        # 멀티 에이전트 파이프라인 or 단일 에이전트
+        if self.use_pipeline and self.complexity == "advanced":
+            yield {"type": "progress", "step": "designing", "message": f"🧠 멀티 에이전트 파이프라인으로 {complexity_label} 템플릿을 설계하고 있어요..."}
+            from app.agent.pipeline import multi_agent_pipeline
+            from app.agent.blueprint_generator import _assemble_blueprint
+            pipeline_result = None
+            async for event in multi_agent_pipeline(enhanced_msg, ai_key=self.ai_key, ai_model=self.ai_model):
+                if event.get("stage") == "complete":
+                    pipeline_result = event.get("blueprint")
+                elif event.get("stage") == "error":
+                    break
+                else:
+                    yield {"type": "progress", "step": event.get("stage", "pipeline"), "message": event.get("message", "")}
+
+            if pipeline_result:
+                blueprint = _assemble_blueprint(pipeline_result)
+                blueprint["metadata"]["generation_method"] = "multi_agent_pipeline"
+                blueprint["metadata"]["skill_used"] = pipeline_result.get("skill", "custom")
+            else:
+                yield {"type": "progress", "step": "designing", "message": f"🎨 AI가 {complexity_label} 템플릿을 설계하고 있어요... (단일 에이전트 폴백)"}
+                blueprint = await generate_blueprint(enhanced_msg, ai_key=self.ai_key, ai_model=self.ai_model)
+        else:
+            yield {"type": "progress", "step": "designing", "message": f"🎨 AI가 {complexity_label} 템플릿을 설계하고 있어요..."}
+            blueprint = await generate_blueprint(enhanced_msg, ai_key=self.ai_key, ai_model=self.ai_model)
 
         method = blueprint.get("metadata", {}).get("generation_method", "?")
         skill = blueprint.get("metadata", {}).get("skill_used", "?")
@@ -288,66 +342,301 @@ class AgentOrchestrator:
                 except Exception as e:
                     print(f"[하위 페이지 기본 블록 실패] {sub['title']}: {str(e)[:80]}")
 
+        # ── Pass 4: Relation / Rollup / Formula 후처리 (DB 간 연결)
+        await self._post_process_relations(blueprint, result, lambda msg: None)
+        relation_count = sum(1 for db in databases for _, v in db.get("properties", db.get("db_properties", {})).items()
+                             if isinstance(v, dict) and v.get("type") in ("relation", "rollup", "formula") or
+                             (isinstance(v, dict) and "target_db_index" in v))
+        if relation_count > 0:
+            yield {"type": "progress", "step": "relations", "message": f"🔗 DB 간 연결 완료 (Relation/Rollup/Formula {relation_count}개)"}
+
         # 결과 저장
         self._last_intent = intent
         self._last_result = result
+        self._last_blueprint = blueprint
 
         # ④ 완료
         yield {"type": "complete", "content": self._format_complete(result), "result": result}
 
     async def _handle_modify(self, message: str, intent: IntentResult) -> AsyncGenerator[dict[str, Any], None]:
-        """후속 수정 처리 — 기존 생성 결과에 추가/변경"""
+        """후속 수정 처리 — AI 기반 멀티턴 대화형 수정
+
+        지원하는 수정:
+        - 속성 추가/삭제/변경
+        - 뷰 추가/변경
+        - DB 추가
+        - Relation/Formula 연결
+        - 서브페이지 추가
+        - 블록 추가
+        """
         msg = message.lower()
         result = self._last_result
 
-        if not result or not result.get("databases"):
+        if not result or not result.get("pages"):
             yield {"type": "ai_response", "content": "수정할 템플릿이 없습니다. 먼저 템플릿을 생성해주세요."}
             return
 
-        # DB 속성 추가 요청
-        if "속성" in msg and ("추가" in msg or "넣어" in msg):
-            yield {"type": "progress", "step": "modifying", "message": "데이터베이스를 수정 중..."}
+        main_page_id = result["pages"][0]["id"]
+        has_dbs = bool(result.get("databases"))
 
-            db_id = result["databases"][0]["id"]
+        # ── 1. 속성 삭제/제거
+        if has_dbs and any(w in msg for w in ["삭제", "없애", "제거", "빼"]) and "속성" in msg:
+            yield {"type": "progress", "step": "modifying", "message": "🗑️ 속성을 삭제하고 있어요..."}
+            db_id = self._pick_target_db(msg, result)
+            prop_name = self._extract_property_name(message)
+            if prop_name:
+                try:
+                    await self.client.update_database(db_id, {"properties": {prop_name: None}})
+                    yield {"type": "complete", "content": f"✅ \"{prop_name}\" 속성 삭제 완료!"}
+                except Exception as e:
+                    yield {"type": "error", "content": f"속성 삭제 실패: {str(e)[:100]}"}
+            else:
+                yield {"type": "question", "content": "어떤 속성을 삭제할까요? 속성 이름을 정확히 알려주세요."}
+            return
+
+        # ── 2. 속성 추가
+        if has_dbs and "속성" in msg and any(w in msg for w in ["추가", "넣어", "만들어"]):
+            yield {"type": "progress", "step": "modifying", "message": "📊 속성을 추가하고 있어요..."}
+            db_id = self._pick_target_db(msg, result)
             new_props = self._parse_property_request(message)
-
             if new_props:
                 try:
                     props = build_database_properties(new_props)
                     await self.client.update_database(db_id, {"properties": props})
                     prop_names = ", ".join(new_props.keys())
-                    yield {
-                        "type": "complete",
-                        "content": f"✅ 속성 추가 완료!\n📊 추가된 속성: {prop_names}\n\n기존 데이터베이스에 새 속성이 추가되었습니다.",
-                    }
+                    yield {"type": "complete", "content": f"✅ 속성 추가 완료!\n📊 추가된 속성: {prop_names}"}
                 except Exception as e:
-                    yield {"type": "error", "content": f"속성 추가 중 오류: {str(e)[:100]}"}
+                    yield {"type": "error", "content": f"속성 추가 실패: {str(e)[:100]}"}
             else:
-                yield {
-                    "type": "question",
-                    "content": "어떤 속성을 추가할까요?\n\n예시:\n- \"우선순위 select 속성 추가해줘 (높음/중간/낮음)\"\n- \"메모 텍스트 속성 추가해줘\"\n- \"마감일 날짜 속성 추가해줘\"",
-                }
+                yield {"type": "question", "content": "어떤 속성을 추가할까요?\n\n예시:\n- \"우선순위 select 속성 추가해줘 (높음/중간/낮음)\"\n- \"마감일 날짜 속성 추가해줘\"\n- \"메모 텍스트 속성 추가해줘\""}
             return
 
-        # 블록 추가 요청
-        if any(w in msg for w in ["블록", "섹션", "내용", "텍스트"]) and "추가" in msg:
-            yield {"type": "progress", "step": "modifying", "message": "블록을 추가 중..."}
-            main_page_id = result["pages"][0]["id"]
+        # ── 3. 뷰 추가/변경
+        if has_dbs and any(w in msg for w in ["뷰", "보드", "캘린더", "갤러리", "타임라인", "테이블", "칸반"]):
+            yield {"type": "progress", "step": "modifying", "message": "📋 뷰를 추가하고 있어요..."}
+            db_id = self._pick_target_db(msg, result)
+            view_type = self._detect_view_type(msg)
+            view_title = {"board": "칸반 보드", "calendar": "캘린더", "gallery": "갤러리", "timeline": "타임라인", "table": "테이블", "list": "리스트"}.get(view_type, view_type)
 
+            group_by = None
+            if view_type == "board":
+                group_by = {"property": "상태"}
+
+            try:
+                await self.client.create_view(
+                    database_id=db_id,
+                    view_type=view_type,
+                    title=view_title,
+                    group_by=group_by,
+                )
+                yield {"type": "complete", "content": f"✅ {view_title} 뷰 추가 완료!"}
+            except Exception as e:
+                yield {"type": "error", "content": f"뷰 추가 실패: {str(e)[:100]}"}
+            return
+
+        # ── 4. DB 추가 (새 데이터베이스)
+        if any(w in msg for w in ["db ", "데이터베이스", "디비"]) and any(w in msg for w in ["추가", "만들어", "생성"]):
+            yield {"type": "progress", "step": "modifying", "message": "📊 새 데이터베이스를 생성 중..."}
+            # AI에게 DB 설계 요청
+            try:
+                from app.agent.blueprint_generator import generate_blueprint
+                bp = await generate_blueprint(f"단일 데이터베이스만 만들어줘: {message}", ai_key=self.ai_key, ai_model=self.ai_model)
+                if bp.get("databases"):
+                    db_spec = bp["databases"][0]
+                    db_result = await self._create_database_with_data(parent_id=main_page_id, db_spec=db_spec)
+                    result["databases"].append(db_result)
+                    yield {"type": "complete", "content": f"✅ \"{db_spec['title']}\" 데이터베이스 추가 완료!\n📊 속성 {len(db_spec.get('properties', {}))}개, 샘플 데이터 포함"}
+                else:
+                    yield {"type": "error", "content": "DB 설계 실패. 다시 시도해주세요."}
+            except Exception as e:
+                yield {"type": "error", "content": f"DB 추가 실패: {str(e)[:100]}"}
+            return
+
+        # ── 5. Relation 연결
+        if has_dbs and any(w in msg for w in ["연결", "relation", "릴레이션", "관계"]):
+            yield {"type": "progress", "step": "modifying", "message": "🔗 DB를 연결하고 있어요..."}
+            if len(result["databases"]) < 2:
+                yield {"type": "question", "content": "Relation 연결은 2개 이상의 DB가 필요합니다.\n먼저 DB를 추가해주세요! (예: \"태스크 DB 추가해줘\")"}
+                return
+
+            # 첫 번째 DB에 두 번째 DB로의 relation 추가
+            source_db = result["databases"][0]
+            target_db = result["databases"][1]
+
+            # 메시지에서 더 구체적인 DB 지정 시도
+            for i, db in enumerate(result["databases"]):
+                db_title = db.get("title", "").lower()
+                if db_title and db_title in msg:
+                    if i == 0:
+                        target_db = result["databases"][1] if len(result["databases"]) > 1 else result["databases"][0]
+                    else:
+                        source_db = result["databases"][0]
+                        target_db = db
+
+            relation_name = f"관련 {target_db['title']}"
+            try:
+                await self.client.update_database(source_db["id"], {
+                    "properties": {
+                        relation_name: {
+                            "relation": {
+                                "database_id": target_db["id"],
+                                "single_property": {},
+                            }
+                        }
+                    }
+                })
+                yield {"type": "complete", "content": f"✅ Relation 연결 완료!\n🔗 {source_db['title']} → {target_db['title']}\n📊 \"{relation_name}\" 속성 추가됨"}
+            except Exception as e:
+                yield {"type": "error", "content": f"Relation 연결 실패: {str(e)[:100]}"}
+            return
+
+        # ── 6. Formula 추가
+        if has_dbs and any(w in msg for w in ["수식", "formula", "포뮬라", "계산", "d-day", "디데이"]):
+            yield {"type": "progress", "step": "modifying", "message": "🔢 수식 속성을 추가하고 있어요..."}
+            db_id = self._pick_target_db(msg, result)
+            formula = self._detect_formula(msg)
+            if formula:
+                try:
+                    await self.client.update_database(db_id, {
+                        "properties": {
+                            formula["name"]: {
+                                "formula": {"expression": formula["expression"]}
+                            }
+                        }
+                    })
+                    yield {"type": "complete", "content": f"✅ 수식 속성 추가 완료!\n🔢 \"{formula['name']}\" = {formula['expression'][:50]}"}
+                except Exception as e:
+                    yield {"type": "error", "content": f"수식 추가 실패: {str(e)[:100]}"}
+            else:
+                yield {"type": "question", "content": "어떤 수식을 추가할까요?\n\n예시:\n- \"D-Day 수식 추가해줘\" (마감일까지 남은 일수)\n- \"진행률 수식 추가해줘\" (상태 기반 %)\n- \"총액 수식 추가해줘\" (단가 × 수량)"}
+            return
+
+        # ── 7. 서브페이지 추가
+        if any(w in msg for w in ["하위 페이지", "서브페이지", "페이지 추가", "새 페이지"]):
+            yield {"type": "progress", "step": "modifying", "message": "📁 하위 페이지를 추가하고 있어요..."}
+            import re
+            # 제목 추출
+            title_match = re.search(r"[\"']([^\"']+)[\"']", message)
+            page_title = title_match.group(1) if title_match else message.replace("하위 페이지", "").replace("서브페이지", "").replace("추가해줘", "").replace("만들어줘", "").strip()
+            if not page_title or len(page_title) > 50:
+                page_title = "새 페이지"
+
+            try:
+                from app.notion import block_builder as bb
+                sub_page = await self.client.create_page(
+                    parent_id=main_page_id,
+                    title=page_title,
+                    icon="📄",
+                    position="page_end",
+                )
+                # 기본 내용 추가
+                default_blocks = [
+                    bb.callout(f"{page_title} 페이지입니다.", icon="📄", color="blue_background"),
+                    bb.divider(),
+                    bb.heading(f"📋 {page_title} 개요", level=2),
+                    bb.paragraph("이 페이지의 내용을 자유롭게 작성해보세요."),
+                ]
+                await self.client.add_blocks(sub_page["id"], default_blocks)
+                result["pages"].append({"id": sub_page["id"], "title": page_title})
+                yield {"type": "complete", "content": f"✅ \"{page_title}\" 하위 페이지 추가 완료!"}
+            except Exception as e:
+                yield {"type": "error", "content": f"페이지 추가 실패: {str(e)[:100]}"}
+            return
+
+        # ── 8. 블록 추가
+        if any(w in msg for w in ["블록", "섹션", "내용", "텍스트", "faq", "가이드"]) and any(w in msg for w in ["추가", "넣어"]):
+            yield {"type": "progress", "step": "modifying", "message": "🧱 블록을 추가하고 있어요..."}
             blocks_to_add = self._parse_block_request(message)
             try:
                 notion_blocks = [spec_to_block(b) for b in blocks_to_add]
                 await self.client.add_blocks(main_page_id, notion_blocks)
                 yield {"type": "complete", "content": f"✅ 블록 {len(blocks_to_add)}개 추가 완료!"}
             except Exception as e:
-                yield {"type": "error", "content": f"블록 추가 중 오류: {str(e)[:100]}"}
+                yield {"type": "error", "content": f"블록 추가 실패: {str(e)[:100]}"}
             return
 
-        # 기타 수정
+        # ── 기타: AI에게 수정 의도 분석 요청 (폴백)
         yield {
             "type": "question",
-            "content": "어떤 수정을 원하시나요?\n\n가능한 수정:\n- \"DB에 우선순위 속성 추가해줘\"\n- \"FAQ 섹션 추가해줘\"\n- \"새 하위 페이지 추가해줘\"",
+            "content": (
+                "어떤 수정을 원하시나요?\n\n"
+                "**속성 관련:**\n"
+                "- \"우선순위 select 속성 추가해줘 (높음/중간/낮음)\"\n"
+                "- \"예산 속성 삭제해줘\"\n\n"
+                "**뷰 관련:**\n"
+                "- \"캘린더 뷰 추가해줘\"\n"
+                "- \"칸반 보드 뷰 추가해줘\"\n\n"
+                "**DB 관련:**\n"
+                "- \"태스크 DB 추가해줘\"\n"
+                "- \"프로젝트랑 태스크 연결해줘\"\n\n"
+                "**수식:**\n"
+                "- \"D-Day 수식 추가해줘\"\n"
+                "- \"진행률 계산 추가해줘\"\n\n"
+                "**구조:**\n"
+                "- \"새 하위 페이지 추가해줘\"\n"
+                "- \"FAQ 섹션 추가해줘\""
+            ),
         }
+
+    def _pick_target_db(self, msg: str, result: dict) -> str:
+        """메시지에서 대상 DB 식별. 이름이 언급되지 않으면 첫 번째 DB."""
+        for db in result.get("databases", []):
+            title = db.get("title", "").lower()
+            if title and title in msg:
+                return db["id"]
+        return result["databases"][0]["id"] if result.get("databases") else ""
+
+    def _extract_property_name(self, message: str) -> str:
+        """메시지에서 속성 이름 추출"""
+        import re
+        # "예산 속성 삭제해줘" → "예산"
+        patterns = [
+            r"[\"']([^\"']+)[\"']\s*속성",
+            r"([가-힣a-zA-Z_]+)\s*속성\s*(삭제|없애|제거|빼)",
+            r"(삭제|없애|제거|빼)\s*[\"']?([가-힣a-zA-Z_]+)[\"']?",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, message)
+            if match:
+                groups = match.groups()
+                for g in groups:
+                    if g and g not in ("삭제", "없애", "제거", "빼", "속성"):
+                        return g.strip()
+        return ""
+
+    def _detect_view_type(self, msg: str) -> str:
+        """메시지에서 뷰 타입 감지"""
+        view_map = {
+            "보드": "board", "칸반": "board", "kanban": "board", "board": "board",
+            "캘린더": "calendar", "달력": "calendar", "calendar": "calendar",
+            "갤러리": "gallery", "gallery": "gallery",
+            "타임라인": "timeline", "timeline": "timeline",
+            "리스트": "list", "list": "list",
+            "테이블": "table", "table": "table",
+        }
+        for keyword, view_type in view_map.items():
+            if keyword in msg:
+                return view_type
+        return "table"
+
+    def _detect_formula(self, msg: str) -> dict[str, str] | None:
+        """메시지에서 수식 패턴 감지"""
+        if any(w in msg for w in ["d-day", "디데이", "남은 일", "마감까지"]):
+            return {"name": "D-Day", "expression": 'dateBetween(prop("마감일"), now(), "days")'}
+        if any(w in msg for w in ["진행률", "진행율", "progress"]):
+            return {"name": "진행률", "expression": 'if(prop("상태") == "완료", 100, if(prop("상태") == "진행 중", 50, 0))'}
+        if any(w in msg for w in ["총액", "합계", "total", "총"]) and any(w in msg for w in ["단가", "수량", "가격"]):
+            return {"name": "총액", "expression": 'prop("단가") * prop("수량")'}
+        if any(w in msg for w in ["상태 이모지", "체크", "완료 표시"]):
+            return {"name": "상태 표시", "expression": 'if(prop("완료"), "✅", "⬜")'}
+        if any(w in msg for w in ["지연", "overdue", "초과"]):
+            return {"name": "지연 여부", "expression": 'if(prop("마감일") < now(), "⚠️ 지연", "정상")'}
+        # 사용자가 직접 수식을 지정한 경우
+        import re
+        expr_match = re.search(r"수식\s*[:=]\s*(.+)", msg)
+        if expr_match:
+            return {"name": "계산", "expression": expr_match.group(1).strip()}
+        return None
 
     def _parse_property_request(self, message: str) -> dict[str, Any]:
         """유저 메시지에서 속성 추가 요청 파싱"""
@@ -356,10 +645,15 @@ class AgentOrchestrator:
 
         # "우선순위 select 속성 (높음/중간/낮음)"
         if "select" in msg or "셀렉트" in msg:
-            # 속성 이름 추출 (첫 번째 한글 단어)
+            # 속성 이름 추출 (stop words 제외)
             import re
-            name_match = re.search(r"[가-힣a-zA-Z]+", message)
-            name = name_match.group() if name_match else "카테고리"
+            stop_words = {"db에", "db", "디비", "에", "속성", "추가", "해줘", "넣어", "만들어", "select", "셀렉트"}
+            name = "카테고리"
+            for m in re.finditer(r"[가-힣a-zA-Z]+", message):
+                word = m.group()
+                if word.lower() not in stop_words and len(word) > 1:
+                    name = word
+                    break
 
             # 옵션 추출 (괄호 안 또는 / 구분)
             options_match = re.search(r"[(\(]([^)]+)[)\)]", message)
@@ -562,9 +856,74 @@ class AgentOrchestrator:
 
         return result
 
+    async def _post_process_relations(self, blueprint: dict, result: dict, log_fn) -> None:
+        """DB 생성 후 relation/rollup/formula 속성 후처리 — target_db_index → 실제 DB ID 매핑"""
+        created_dbs = result.get("databases", [])
+        if len(created_dbs) < 2:
+            return  # relation은 최소 2개 DB 필요
+
+        databases = blueprint.get("databases", [])
+        for i, db_spec in enumerate(databases):
+            if i >= len(created_dbs):
+                break
+            db_id = created_dbs[i]["id"]
+            props = db_spec.get("properties", db_spec.get("db_properties", {}))
+
+            relation_props: dict[str, Any] = {}
+            for prop_name, prop_spec in props.items():
+                if not isinstance(prop_spec, dict):
+                    continue
+
+                prop_type = prop_spec.get("type", "")
+
+                # relation: target_db_index → 실제 database_id
+                if prop_type == "relation" and "target_db_index" in prop_spec:
+                    target_idx = prop_spec["target_db_index"]
+                    if target_idx < len(created_dbs):
+                        target_db_id = created_dbs[target_idx]["id"]
+                        relation_props[prop_name] = {
+                            "relation": {
+                                "database_id": target_db_id,
+                                "single_property": {},
+                            }
+                        }
+
+                # formula: expression 그대로
+                elif prop_type == "formula" and "expression" in prop_spec:
+                    relation_props[prop_name] = {
+                        "formula": {"expression": prop_spec["expression"]}
+                    }
+
+                # rollup: relation_property + target_property + function
+                elif prop_type == "rollup" and "relation_property" in prop_spec:
+                    relation_props[prop_name] = {
+                        "rollup": {
+                            "relation_property_name": prop_spec["relation_property"],
+                            "rollup_property_name": prop_spec.get("target_property", "이름"),
+                            "function": prop_spec.get("function", "count"),
+                        }
+                    }
+
+            if relation_props:
+                try:
+                    await self.client.update_database(db_id, {"properties": relation_props})
+                    print(f"[Relation 후처리] {created_dbs[i]['title']}: {list(relation_props.keys())}")
+                except Exception as e:
+                    print(f"[Relation 후처리 실패] {created_dbs[i]['title']}: {str(e)[:100]}")
+
     async def _create_database_with_data(self, parent_id: str, db_spec: dict) -> dict[str, Any]:
         """DB 생성 + 샘플 데이터 + 뷰 자동 생성"""
-        properties = build_database_properties(db_spec["properties"])
+        # relation/rollup/formula는 후처리에서 추가 (target DB ID 필요)
+        filtered_props = {}
+        for k, v in db_spec["properties"].items():
+            if isinstance(v, dict) and v.get("type") in ("relation", "rollup"):
+                continue  # 후처리에서 처리
+            if isinstance(v, dict) and v.get("type") == "formula":
+                continue  # 후처리에서 처리
+            if isinstance(v, dict) and "target_db_index" in v:
+                continue  # relation shorthand
+            filtered_props[k] = v
+        properties = build_database_properties(filtered_props)
         db = await self.client.create_database(
             parent_id=parent_id,
             title=db_spec["title"],

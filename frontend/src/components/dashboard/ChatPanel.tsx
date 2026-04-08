@@ -37,6 +37,11 @@ function ChatPanel() {
   const deleteSession = useChatStore((s) => s.deleteSession);
   const newSession = useChatStore((s) => s.newSession);
 
+  const complexity = useChatStore((s) => s.complexity);
+  const language = useChatStore((s) => s.language);
+  const setComplexity = useChatStore((s) => s.setComplexity);
+  const setLanguage = useChatStore((s) => s.setLanguage);
+
   const [input, setInput] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const [showPromptLibrary, setShowPromptLibrary] = useState(false);
@@ -276,8 +281,46 @@ function ChatPanel() {
         onSelect={handleSend}
       />
 
+      {/* Complexity & Language Selector */}
+      <div className="px-3 sm:px-4 pt-2 pb-0 bg-[var(--surface-low,#1c1b1b)] border-t border-[var(--border-color,#424656)]/10 flex items-center gap-3 text-xs">
+        <div className="flex items-center gap-1">
+          <span className="text-[var(--text-muted,#c2c6d8)]/50">Complexity:</span>
+          {(["simple", "standard", "advanced"] as const).map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setComplexity(c)}
+              className={`px-2 py-0.5 rounded-md transition-colors ${
+                complexity === c
+                  ? "bg-[#adc6ff]/20 text-[#adc6ff]"
+                  : "text-[var(--text-muted,#c2c6d8)]/40 hover:text-[var(--text-muted,#c2c6d8)]/70"
+              }`}
+            >
+              {c === "simple" ? "Simple" : c === "standard" ? "Standard" : "Advanced"}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-[var(--text-muted,#c2c6d8)]/50">Lang:</span>
+          {(["ko", "en", "ja"] as const).map((l) => (
+            <button
+              key={l}
+              type="button"
+              onClick={() => setLanguage(l)}
+              className={`px-2 py-0.5 rounded-md transition-colors ${
+                language === l
+                  ? "bg-[#adc6ff]/20 text-[#adc6ff]"
+                  : "text-[var(--text-muted,#c2c6d8)]/40 hover:text-[var(--text-muted,#c2c6d8)]/70"
+              }`}
+            >
+              {l === "ko" ? "KR" : l === "en" ? "EN" : "JP"}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Input Area */}
-      <div className="p-3 sm:p-4 bg-[var(--surface-low,#1c1b1b)] border-t border-[var(--border-color,#424656)]/10">
+      <div className="p-3 sm:p-4 bg-[var(--surface-low,#1c1b1b)] border-b-0 border-t-0">
         <div className="flex items-end gap-2">
           <button
             type="button"

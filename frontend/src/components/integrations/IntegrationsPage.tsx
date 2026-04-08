@@ -1,5 +1,7 @@
-import { useState, useCallback, type FormEvent } from "react";
+import { useState, useCallback, lazy, Suspense, type FormEvent } from "react";
 import { useChatStore } from "../../stores/chatStore";
+
+const CustomSkills = lazy(() => import("./CustomSkills"));
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:9500";
 
@@ -379,6 +381,13 @@ function IntegrationsPage() {
 
             </div>
           </div>
+        </div>
+
+        {/* Custom Skills Section */}
+        <div className="mt-12 bg-[var(--surface-low,#1c1b1b)] rounded-2xl border border-[var(--border-color,#424656)]/10 p-6">
+          <Suspense fallback={<div className="text-gray-500 text-center py-8">Loading...</div>}>
+            <CustomSkills />
+          </Suspense>
         </div>
       </div>
     </div>

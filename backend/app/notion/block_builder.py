@@ -53,6 +53,33 @@ def rich_text(
     return [{"type": "text", "text": text_obj, "annotations": annotations}]
 
 
+def rich_text_array(segments: list[dict]) -> list[dict]:
+    """혼합 서식 리치텍스트 배열 생성 — bold+color, italic+link 등 복합 서식
+
+    segments: [
+        {"text": "볼드텍스트", "bold": true, "color": "blue"},
+        {"text": " 일반 ", },
+        {"text": "링크", "link": "https://...", "italic": true},
+    ]
+    """
+    result = []
+    for seg in segments:
+        text_content = seg.get("text", seg.get("content", ""))
+        annotations = {
+            "bold": seg.get("bold", False),
+            "italic": seg.get("italic", False),
+            "underline": seg.get("underline", False),
+            "strikethrough": seg.get("strikethrough", False),
+            "code": seg.get("code", False),
+            "color": _safe_color(seg.get("color", "default")),
+        }
+        text_obj: dict[str, Any] = {"content": text_content}
+        if seg.get("link"):
+            text_obj["link"] = {"url": seg["link"]}
+        result.append({"type": "text", "text": text_obj, "annotations": annotations})
+    return result
+
+
 def rich_text_equation(expression: str) -> list[dict]:
     """인라인 수식 (LaTeX)"""
     return [{"type": "equation", "equation": {"expression": expression}}]

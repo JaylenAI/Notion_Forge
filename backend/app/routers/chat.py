@@ -34,6 +34,25 @@ async def websocket_chat(websocket: WebSocket):
                 await websocket.send_json({"type": "system", "content": "연결 완료! 어떤 템플릿을 만들어드릴까요?"})
                 continue
 
+            # 복잡도 설정
+            if msg_type == "set_complexity" and agent:
+                agent.complexity = data.get("complexity", "standard")
+                await websocket.send_json({"type": "system", "content": f"복잡도 설정: {agent.complexity}"})
+                continue
+
+            # 언어 설정
+            if msg_type == "set_language" and agent:
+                agent.language = data.get("language", "ko")
+                await websocket.send_json({"type": "system", "content": f"언어 설정: {agent.language}"})
+                continue
+
+            # 파이프라인 모드 설정
+            if msg_type == "set_pipeline" and agent:
+                agent.use_pipeline = data.get("enabled", False)
+                mode = "Multi-Agent Pipeline" if agent.use_pipeline else "Single Agent"
+                await websocket.send_json({"type": "system", "content": f"AI 모드: {mode}"})
+                continue
+
             if msg_type == "cancel":
                 continue
 

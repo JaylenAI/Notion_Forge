@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.routers import chat, template
+from app.routers import chat, template, recipes, oauth, skills
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,7 +21,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="NotionForge API",
         description="AI 기반 노션 템플릿 자동 생성 에이전트",
-        version="0.3.0",
+        version="6.0.0",
         docs_url="/docs",
         redoc_url="/redoc",
     )
@@ -52,12 +52,15 @@ def create_app() -> FastAPI:
 
     app.include_router(chat.router)
     app.include_router(template.router)
+    app.include_router(recipes.router)
+    app.include_router(oauth.router)
+    app.include_router(skills.router)
 
     @app.get("/health")
     async def health_check():
         return {
             "status": "ok",
-            "version": "0.3.0",
+            "version": "6.0.0",
             "ai_provider": settings.ai_provider,
             "notion_ready": settings.notion_ready,
             "features": 74,
