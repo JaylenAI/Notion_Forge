@@ -78,10 +78,12 @@ class CopilotManager:
         system_prompt: str,
         user_message: str,
         model: str = "gpt-4.1",
+        timeout: float = 180.0,
     ) -> str | None:
         """프롬프트 전송 → 텍스트 응답 반환
 
         매 호출마다 세션을 생성하고 응답 후 세션은 GC됨.
+        timeout: 응답 대기 시간 (기본 180초, 복잡한 프롬프트 대응)
         """
         if not self._client or not self._started:
             return None
@@ -95,12 +97,15 @@ class CopilotManager:
             )
 
             prompt = f"{system_prompt}\n\nUser request: {user_message}"
-            response = await session.send_and_wait(prompt)
+            response = await session.send_and_wait(prompt, timeout=timeout)
 
             if response and response.data:
                 return response.data.content
             return None
 
+        except TimeoutError:
+            print(f"[Copilot 타임아웃] {model}: {timeout}초 초과")
+            return None
         except Exception as e:
             print(f"[Copilot 에러] {model}: {str(e)[:120]}")
             return None
