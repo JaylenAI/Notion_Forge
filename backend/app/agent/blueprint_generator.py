@@ -536,9 +536,37 @@ async def _call_ai_for_content(user_message: str, ai_key: str = "", ai_model: st
         return None
 
 
+def _truncate_prompt_for_groq(system: str, max_chars: int = 16000) -> str:
+    """Groq 8K TPM 제한 대응 — View Catalog 축약 (OUTPUT FORMAT 보존 필수)"""
+    if len(system) <= max_chars:
+        return system
+
+    # 1) VIEW CATALOG 섹션 축약 (가장 긴 부분)
+    marker_start = "## ═══════════════════════════════════════════\n## VIEW CATALOG"
+    marker_end = "## ═══════════════════════════════════════════\n## RELATION"
+    start_idx = system.find(marker_start)
+    end_idx = system.find(marker_end)
+    if start_idx > 0 and end_idx > start_idx:
+        compact_catalog = """## VIEW CATALOG (compact)
+DB "views" array types: table, board, gallery, calendar, timeline, chart, list, form, map, dashboard.
+View config options: group_by, cover(page_cover/property), cover_size(small/medium/large), chart_type(donut/column/bar/line), x_axis, y_axis, color_theme, date_property, arrows_by, zoom_level, show_data_labels, height.
+Choose views that fit. Simple request = 1-2 views. Complex = 3-4 views.
+"""
+        system = system[:start_idx] + compact_catalog + system[end_idx:]
+
+    # 2) PROFESSIONAL TEMPLATE PATTERNS 섹션 축약
+    pattern_start = system.find("## PROFESSIONAL TEMPLATE PATTERNS")
+    pattern_end = system.find("## OUTPUT FORMAT")
+    if pattern_start > 0 and pattern_end > pattern_start:
+        system = system[:pattern_start] + system[pattern_end:]
+
+    return system
+
+
 async def _groq_call(system: str, user_message: str, api_key: str = "", model: str = "") -> dict[str, Any] | None:
     try:
         from groq import AsyncGroq
+        system = _truncate_prompt_for_groq(system)
         client = AsyncGroq(api_key=api_key or settings.groq_api_key)
         response = await client.chat.completions.create(
             model=model or "openai/gpt-oss-120b",

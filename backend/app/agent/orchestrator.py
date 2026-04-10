@@ -1154,9 +1154,23 @@ class AgentOrchestrator:
                 print(f"[샘플 데이터 실패] {str(e)[:120]}")
 
         # 뷰 자동 생성 (Views API — group_by, quick_filters, configuration 포함)
+        # property name → ID 매핑 (calendar/timeline의 date_property_id 변환에 필요)
+        prop_name_to_id = {}
+        try:
+            db_info = await self.client.get_database(db_id)
+            for pname, pdata in db_info.get("properties", {}).items():
+                prop_name_to_id[pname] = pdata.get("id", "")
+        except Exception:
+            pass
+
         views = db_spec.get("views", [])
         for view in views:
             view_spec = view if isinstance(view, dict) else {"type": view}
+            # date_property 이름을 ID로 변환
+            for key in ("date_property", "date_property_id"):
+                dp = view_spec.get(key)
+                if dp and dp in prop_name_to_id:
+                    view_spec[key] = prop_name_to_id[dp]
             try:
                 configuration = self._build_view_configuration(view_spec)
                 await self.client.create_view(
