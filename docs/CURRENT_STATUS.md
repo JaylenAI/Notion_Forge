@@ -1,8 +1,8 @@
 # 진행 현황 (Current Status)
 
-> 최종 업데이트: 2026-04-08
+> 최종 업데이트: 2026-04-10
 > 현재 브랜치: dev-2
-> 버전: v6.0.0
+> 버전: v6.1.0
 
 ---
 
@@ -161,22 +161,44 @@ OAuth 연동                [██████████] 100%
 
 ---
 
+## v6.1.0 변경사항 (2026-04-10 — API 파이프라인 완성 + 프롬프트 전환)
+
+### Views API configuration 파이프라인 완성
+- ✅ `create_view()`에 `configuration` 파라미터 추가 — AI blueprint의 뷰 설정이 실제로 반영됨
+- ✅ `_build_view_configuration()` 메서드 — 10개 뷰 타입 전체 config 빌드 (board cover, gallery card, chart x/y축, timeline arrows 등)
+- ✅ `create_linked_view()`에도 `group_by`, `configuration` 파라미터 추가
+- ✅ modify 흐름에서도 board/gallery 뷰 추가 시 cover 자동 설정
+- ✅ configuration 에러 시 자동 폴백 (config 제거 후 재시도)
+
+### 블록/뷰/페이지 CRUD API 완전 구현
+- ✅ `update_view()` — 뷰 설정 수정
+- ✅ `delete_view()` — 뷰 삭제
+- ✅ `list_views()` — DB 뷰 목록 조회
+- ✅ `get_view()` — 뷰 상세 조회
+- ✅ `get_block()`, `get_block_children()` — 블록 조회 (페이지네이션 자동)
+- ✅ `update_block()` — 블록 내용 수정
+- ✅ `delete_block()` — 블록 삭제
+- ✅ `query_database()` — DB 항목 필터/정렬 쿼리
+- ✅ `get_page()`, `update_page()`, `delete_page()` — 페이지 CRUD
+
+### 멀티턴 수정 기능 확장
+- ✅ 뷰 삭제 ("캘린더 뷰 삭제해줘") — list_views → delete_view 활용
+- ✅ 블록 삭제 ("'FAQ' 블록 삭제해줘") — get_block_children → delete_block 활용
+
+### 프롬프트 "규칙" → "메뉴판" 전환
+- ✅ 하드코딩 강제 규칙 제거 ("ALWAYS include", "MUST have 3 views" 등)
+- ✅ View Catalog 섹션 추가 — 10개 뷰 타입별 configuration 예시 + 사용 가이드라인
+- ✅ 핵심 철학 전환: "Match the user's intent — no more, no less"
+- ✅ tab 블록 프롬프트에 사용법 추가
+
+### 기존 테스트 버그 수정
+- ✅ `test_build_database_properties_select` — title 속성 누락 문제 수정
+
+---
+
 ## 개발 예정 (v7.0.0 — 템플릿 품질 혁신)
 
-### 우선순위 최상 — AI 프롬프트 강화 (P-1~P-8)
-
-| # | 항목 | 상태 | 설명 |
-|---|------|------|------|
-| P-1 | Chart/Dashboard 뷰 강제 | ❌ 미개발 | DB 2개 이상이면 chart+dashboard 뷰 필수 강제 |
-| P-2 | Tab 블록 강제 | ❌ 미개발 | Complex 템플릿에 tab 블록 필수 |
-| P-3 | Table 블록 활용 | ❌ 미개발 | 비교표/가격표/일정표에 table 블록 패턴 추가 |
-| P-4 | Formula 강제 | ❌ 미개발 | date→D-Day, status→진행률 formula 자동 필수 |
-| P-5 | 뷰 최소 4개 강제 | ❌ 미개발 | 모든 DB에 table+board/calendar+chart+1 |
-| P-6 | Embed/Bookmark 강제 | ❌ 미개발 | 학습→bookmark 3개, 콘텐츠→embed 필수 |
-| P-7 | 중첩 토글 패턴 | ❌ 미개발 | 가이드 안에 numbered_list + 중첩 FAQ |
-| P-8 | Quote 블록 적극 활용 | ❌ 미개발 | 모든 템플릿에 quote 1개 이상 |
-
-### 우선순위 상 — 스마트 폴백 고도화 (F-1~F-6)
+### 우선순위 최상 — 스마트 폴백 고도화 (F-1~F-6)
 
 | # | 항목 | 상태 | 설명 |
 |---|------|------|------|
@@ -187,11 +209,11 @@ OAuth 연동                [██████████] 100%
 | F-5 | 폴백에 sub_pages+blocks | ❌ 미개발 | 3개 서브페이지 + 실제 콘텐츠 |
 | F-6 | 폴백에 quote/to_do/table | ❌ 미개발 | 다양한 블록 믹스 |
 
-### 우선순위 상 — 코드 후처리 자동화 (C-1~C-5)
+### 우선순위 상 — 후처리 자동화 (C-1~C-5)
 
 | # | 항목 | 상태 | 설명 |
 |---|------|------|------|
-| C-1 | 뷰 자동 보강 | ❌ 미개발 | date→calendar, status→board, number→chart 자동 추가 |
+| C-1 | 뷰 자동 보강 | ❌ 미개발 | AI가 뷰 빼먹으면 속성 기반 자동 추가 |
 | C-2 | Formula 자동 추가 | ❌ 미개발 | date→D-Day, status→진행률 자동 |
 | C-3 | DB description/icon 자동 | ❌ 미개발 | 비어있으면 자동 생성 |
 | C-4 | group_by 자동 설정 | ❌ 미개발 | board→status/select 자동 |

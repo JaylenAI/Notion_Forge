@@ -315,6 +315,7 @@ class NotionClient:
         quick_filters: dict | None = None,
         properties: dict | None = None,
         position: str = "",
+        configuration: dict | None = None,
     ) -> dict[str, Any]:
         """DB에 뷰 생성 (gallery, board, calendar, timeline, list, table, chart, form, map, dashboard)
 
@@ -326,6 +327,13 @@ class NotionClient:
         quick_filters: 빠른 필터 (필터바에 표시)
         properties: 속성 표시/숨김 설정
         position: "start" | "end" | "" (뷰 순서)
+        configuration: 뷰 타입별 세부 설정 (cover, chart_type, date_property_id 등)
+            - board: {"type":"board", "cover":{"type":"page_cover"}, "cover_size":"medium", "cover_aspect":"cover", "card_layout":"compact"}
+            - gallery: {"type":"gallery", "cover":{"type":"page_cover"}, "cover_size":"medium", "cover_aspect":"cover"}
+            - calendar: {"type":"calendar", "date_property_id":"prop_id"}
+            - chart: {"type":"chart", "chart_type":"donut|column|bar|line|number", "x_axis":{...}, "y_axis":{...}, "color_theme":"blue", "show_data_labels":true, "height":"medium"}
+            - timeline: {"type":"timeline", "date_property_id":"prop_id", "arrows_by":{"property_id":"relation_id"}, "preference":{"zoom_level":"month"}}
+            - dashboard: {"type":"dashboard", "rows":[...]}
         """
         if self.mock_mode:
             return {"id": self._mock_id(), "type": view_type, "name": title}
@@ -352,6 +360,8 @@ class NotionClient:
             body["properties"] = properties
         if position:
             body["position"] = {"type": position}
+        if configuration:
+            body["configuration"] = configuration
 
         await self.rate_limiter.acquire()
         try:
@@ -359,11 +369,237 @@ class NotionClient:
             if resp.status_code >= 400:
                 error_body = resp.text[:200]
                 print(f"[Views API {resp.status_code}] {view_type}: {error_body}")
+                # configuration이 문제일 수 있으므로 config 없이 재시도
+                if configuration:
+                    print(f"[Views API 폴백] configuration 제거 후 재시도")
+                    body.pop("configuration", None)
+                    await self.rate_limiter.acquire()
+                    resp2 = await self._http_client.post("/views", json=body)
+                    if resp2.status_code < 400:
+                        return resp2.json()
                 return {"id": self._mock_id(), "type": view_type, "name": title, "fallback": True}
             return resp.json()
         except Exception as e:
             print(f"[Views API 에러] {view_type}: {str(e)[:100]}")
             return {"id": self._mock_id(), "type": view_type, "name": title, "fallback": True}
+
+    # ========================================
+    # Views CRUD (update / delete / list / query)
+    # ========================================
+
+    async def update_view(self, view_id: str, **kwargs) -> dict[str, Any]:
+        """기존 뷰 설정 업데이트 (configuration, filters, sorts, group_by 등)"""
+        if self.mock_mode:
+            return {"id": view_id, **kwargs}
+        body = {k: v for k, v in kwargs.items() if v is not None}
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.patch(f"/views/{view_id}", json=body)
+            if resp.status_code >= 400:
+                print(f"[update_view 에러 {resp.status_code}] {resp.text[:200]}")
+                return {"id": view_id, "fallback": True}
+            return resp.json()
+        except Exception as e:
+            print(f"[update_view 에러] {str(e)[:100]}")
+            return {"id": view_id, "fallback": True}
+
+    async def delete_view(self, view_id: str) -> bool:
+        """뷰 삭제"""
+        if self.mock_mode:
+            return True
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.delete(f"/views/{view_id}")
+            if resp.status_code >= 400:
+                print(f"[delete_view 에러 {resp.status_code}] {resp.text[:200]}")
+                return False
+            return True
+        except Exception as e:
+            print(f"[delete_view 에러] {str(e)[:100]}")
+            return False
+
+    async def list_views(self, database_id: str) -> list[dict]:
+        """DB의 모든 뷰 목록 조회"""
+        if self.mock_mode:
+            return []
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.get(f"/databases/{database_id}/views")
+            if resp.status_code >= 400:
+                print(f"[list_views 에러 {resp.status_code}] {resp.text[:200]}")
+                return []
+            return resp.json().get("results", [])
+        except Exception as e:
+            print(f"[list_views 에러] {str(e)[:100]}")
+            return []
+
+    async def get_view(self, view_id: str) -> dict[str, Any]:
+        """뷰 상세 조회"""
+        if self.mock_mode:
+            return {"id": view_id}
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.get(f"/views/{view_id}")
+            if resp.status_code >= 400:
+                return {"id": view_id}
+            return resp.json()
+        except Exception as e:
+            print(f"[get_view 에러] {str(e)[:100]}")
+            return {"id": view_id}
+
+    # ========================================
+    # Block CRUD (get / update / delete)
+    # ========================================
+
+    async def get_block(self, block_id: str) -> dict[str, Any]:
+        """블록 상세 조회"""
+        if self.mock_mode:
+            return {"id": block_id, "type": "paragraph"}
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.get(f"/blocks/{block_id}")
+            if resp.status_code >= 400:
+                return {"id": block_id}
+            return resp.json()
+        except Exception as e:
+            print(f"[get_block 에러] {str(e)[:100]}")
+            return {"id": block_id}
+
+    async def get_block_children(self, block_id: str, page_size: int = 100) -> list[dict]:
+        """블록의 자식 목록 조회 (페이지네이션 자동 처리)"""
+        if self.mock_mode:
+            return []
+        all_children: list[dict] = []
+        start_cursor = None
+        while True:
+            await self.rate_limiter.acquire()
+            try:
+                params: dict[str, Any] = {"page_size": min(page_size, 100)}
+                if start_cursor:
+                    params["start_cursor"] = start_cursor
+                resp = await self._http_client.get(
+                    f"/blocks/{block_id}/children",
+                    params=params,
+                )
+                if resp.status_code >= 400:
+                    break
+                data = resp.json()
+                all_children.extend(data.get("results", []))
+                if not data.get("has_more"):
+                    break
+                start_cursor = data.get("next_cursor")
+            except Exception as e:
+                print(f"[get_block_children 에러] {str(e)[:100]}")
+                break
+        return all_children
+
+    async def update_block(self, block_id: str, block_data: dict[str, Any]) -> dict[str, Any]:
+        """블록 내용 수정 (텍스트, 색상, 체크 등)"""
+        if self.mock_mode:
+            return {"id": block_id, **block_data}
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.patch(f"/blocks/{block_id}", json=block_data)
+            if resp.status_code >= 400:
+                print(f"[update_block 에러 {resp.status_code}] {resp.text[:200]}")
+                return {"id": block_id, "fallback": True}
+            return resp.json()
+        except Exception as e:
+            print(f"[update_block 에러] {str(e)[:100]}")
+            return {"id": block_id, "fallback": True}
+
+    async def delete_block(self, block_id: str) -> bool:
+        """블록 삭제 (휴지통 이동)"""
+        if self.mock_mode:
+            return True
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.delete(f"/blocks/{block_id}")
+            if resp.status_code >= 400:
+                print(f"[delete_block 에러 {resp.status_code}] {resp.text[:200]}")
+                return False
+            return True
+        except Exception as e:
+            print(f"[delete_block 에러] {str(e)[:100]}")
+            return False
+
+    # ========================================
+    # Database Query
+    # ========================================
+
+    async def query_database(
+        self,
+        database_id: str,
+        filters: dict | None = None,
+        sorts: list[dict] | None = None,
+        page_size: int = 100,
+    ) -> list[dict]:
+        """DB 항목 쿼리 (필터/정렬)"""
+        if self.mock_mode:
+            return []
+        body: dict[str, Any] = {"page_size": min(page_size, 100)}
+        if filters:
+            body["filter"] = filters
+        if sorts:
+            body["sorts"] = sorts
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_legacy.post(f"/databases/{database_id}/query", json=body)
+            if resp.status_code >= 400:
+                print(f"[query_database 에러 {resp.status_code}] {resp.text[:200]}")
+                return []
+            return resp.json().get("results", [])
+        except Exception as e:
+            print(f"[query_database 에러] {str(e)[:100]}")
+            return []
+
+    # ========================================
+    # Page operations (get / update / delete)
+    # ========================================
+
+    async def get_page(self, page_id: str) -> dict[str, Any]:
+        """페이지 상세 조회"""
+        if self.mock_mode:
+            return {"id": page_id, "object": "page"}
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.get(f"/pages/{page_id}")
+            if resp.status_code >= 400:
+                return {"id": page_id}
+            return resp.json()
+        except Exception as e:
+            print(f"[get_page 에러] {str(e)[:100]}")
+            return {"id": page_id}
+
+    async def update_page(self, page_id: str, **kwargs) -> dict[str, Any]:
+        """페이지 속성/아이콘/커버 업데이트"""
+        if self.mock_mode:
+            return {"id": page_id, **kwargs}
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.patch(f"/pages/{page_id}", json=kwargs)
+            if resp.status_code >= 400:
+                print(f"[update_page 에러 {resp.status_code}] {resp.text[:200]}")
+                return {"id": page_id, "fallback": True}
+            return resp.json()
+        except Exception as e:
+            print(f"[update_page 에러] {str(e)[:100]}")
+            return {"id": page_id, "fallback": True}
+
+    async def delete_page(self, page_id: str) -> bool:
+        """페이지 삭제 (휴지통 이동)"""
+        if self.mock_mode:
+            return True
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.delete(f"/pages/{page_id}")
+            if resp.status_code >= 400:
+                print(f"[delete_page 에러 {resp.status_code}] {resp.text[:200]}")
+                return False
+            return True
+        except Exception as e:
+            print(f"[delete_page 에러] {str(e)[:100]}")
+            return False
 
     # ========================================
     # Search API
@@ -557,6 +793,8 @@ class NotionClient:
         title: str = "",
         filters: dict | None = None,
         sorts: list[dict] | None = None,
+        group_by: dict | None = None,
+        configuration: dict | None = None,
     ) -> dict[str, Any]:
         """기존 DB를 다른 페이지에 링크드 뷰로 삽입 (Views API create_database)
 
@@ -583,6 +821,10 @@ class NotionClient:
             body["filter"] = filters
         if sorts:
             body["sort"] = sorts
+        if group_by:
+            body["group_by"] = group_by
+        if configuration:
+            body["configuration"] = configuration
 
         await self.rate_limiter.acquire()
         try:
