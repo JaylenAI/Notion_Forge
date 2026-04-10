@@ -837,72 +837,9 @@ class NotionClient:
             print(f"[Linked View API 에러] {e}")
             return {"id": self._mock_id(), "type": view_type, "name": title, "fallback": True}
 
-    # ========================================
-    # Page Full Width (Internal API)
-    # ========================================
-
-    async def set_page_full_width(
-        self,
-        page_id: str,
-        full_width: bool = True,
-        small_text: bool = False,
-        token_v2: str = "",
-    ) -> bool:
-        """페이지를 전체 너비로 설정 (Notion Internal API)
-
-        공식 API에서 지원하지 않는 기능.
-        Notion 내부 API (submitTransaction)를 사용하며,
-        token_v2 브라우저 쿠키가 필요함.
-
-        token_v2 획득 방법:
-        1. 브라우저에서 notion.so 로그인
-        2. 개발자도구 (F12) → Application → Cookies → notion.so
-        3. token_v2 값 복사
-        """
-        if self.mock_mode:
-            return True
-
-        t2 = token_v2 or settings.notion_token_v2
-        if not t2:
-            print("[Full Width] token_v2가 없어서 전체 너비를 설정할 수 없습니다.")
-            return False
-
-        # page_id에서 하이픈 제거 (내부 API는 하이픈 없는 UUID 사용)
-        clean_id = page_id.replace("-", "")
-
-        payload = {
-            "operations": [
-                {
-                    "id": clean_id,
-                    "path": ["format"],
-                    "args": {
-                        "page_full_width": full_width,
-                        "page_small_text": small_text,
-                    },
-                    "command": "update",
-                    "table": "block",
-                }
-            ]
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.post(
-                    "https://www.notion.so/api/v3/submitTransaction",
-                    json=payload,
-                    headers={
-                        "Cookie": f"token_v2={t2}",
-                        "Content-Type": "application/json",
-                    },
-                )
-                if resp.status_code == 200:
-                    print(f"[Full Width] 페이지 전체 너비 설정 완료: {page_id[:8]}...")
-                    return True
-                print(f"[Full Width] 실패 ({resp.status_code}): {resp.text[:200]}")
-                return False
-        except Exception as e:
-            print(f"[Full Width] 에러: {e}")
-            return False
+    # NOTE: 전체 너비(Full Width) 설정은 Notion 공식 API에서 미지원.
+    # Internal API(submitTransaction + token_v2)도 API 통합으로 생성한 페이지에는 권한 문제로 작동하지 않음.
+    # 유저에게 수동 설정 안내: 페이지 ··· → 전체 너비 활성화
 
     # ========================================
     # Mock 응답

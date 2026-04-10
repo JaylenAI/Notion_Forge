@@ -143,17 +143,7 @@ class AgentOrchestrator:
             main_page_id = page["id"]
             result["pages"].append({"id": main_page_id, "title": main["title"], "url": page.get("url", "")})
             result["main_url"] = page.get("url", "")
-
-            # 페이지 전체 너비 자동 설정 (token_v2가 있을 때만, 실패해도 계속 진행)
-            full_width_ok = False
-            try:
-                full_width_ok = await self.client.set_page_full_width(main_page_id)
-            except Exception:
-                pass
-            if full_width_ok:
-                yield {"type": "progress", "step": "page_done", "message": f"✅ 페이지 생성됨 (전체 너비): {main.get('icon','')} {main['title']}"}
-            else:
-                yield {"type": "progress", "step": "page_done", "message": f"✅ 페이지 생성됨: {main.get('icon','')} {main['title']}"}
+            yield {"type": "progress", "step": "page_done", "message": f"✅ 페이지 생성됨: {main.get('icon','')} {main['title']}"}
         except Exception as e:
             yield {"type": "progress", "step": "error", "message": f"❌ 페이지 생성 실패: {str(e)[:100]}"}
             yield {"type": "error", "content": f"메인 페이지 생성 실패: {str(e)[:200]}"}

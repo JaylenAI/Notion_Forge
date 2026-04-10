@@ -25,10 +25,6 @@ class Settings(BaseSettings):
     unsplash_access_key: str = ""
     log_level: str = "INFO"
 
-    # Notion Internal API (페이지 전체 너비 설정용)
-    # 브라우저 → 개발자도구 → Application → Cookies → notion.so → token_v2 값
-    notion_token_v2: str = ""
-
     # Notion OAuth (선택 — 토큰 복붙 대신 OAuth 연동)
     notion_oauth_client_id: str = ""
     notion_oauth_client_secret: str = ""
