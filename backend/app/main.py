@@ -1,5 +1,6 @@
 import logging
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,13 +18,32 @@ logging.basicConfig(
 logger = logging.getLogger("notionforge")
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """앱 시작/종료 시 Copilot SDK 라이프사이클 관리"""
+    if settings.copilot_enabled:
+        try:
+            from app.core.copilot_client import copilot_manager
+            await copilot_manager.start()
+        except Exception as e:
+            logger.warning(f"Copilot 시작 스킵: {e}")
+    yield
+    if settings.copilot_enabled:
+        try:
+            from app.core.copilot_client import copilot_manager
+            await copilot_manager.stop()
+        except Exception:
+            pass
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="NotionForge API",
         description="AI 기반 노션 템플릿 자동 생성 에이전트",
-        version="6.0.0",
+        version="6.1.0",
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=lifespan,
     )
 
     app.add_middleware(
@@ -58,11 +78,18 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health_check():
+        copilot_status = {}
+        try:
+            from app.core.copilot_client import copilot_manager
+            copilot_status = copilot_manager.get_status()
+        except ImportError:
+            copilot_status = {"available": False}
         return {
             "status": "ok",
-            "version": "6.0.0",
+            "version": "6.1.0",
             "ai_provider": settings.ai_provider,
             "notion_ready": settings.notion_ready,
+            "copilot": copilot_status,
             "features": 74,
         }
 

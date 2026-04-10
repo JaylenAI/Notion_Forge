@@ -55,7 +55,9 @@ async def analyze_intent(message: str) -> IntentResult:
     """사용자 메시지 의도 분석 (프로바이더 자동 선택)"""
     provider = settings.ai_provider
 
-    if provider == "groq":
+    if provider == "copilot":
+        return await _copilot_analyze(message)
+    elif provider == "groq":
         return await _groq_analyze(message)
     elif provider == "gemini":
         return await _gemini_analyze(message)
@@ -63,6 +65,22 @@ async def analyze_intent(message: str) -> IntentResult:
         return await _claude_analyze(message)
     else:
         return _mock_analyze(message)
+
+
+async def _copilot_analyze(message: str) -> IntentResult:
+    """GitHub Copilot SDK로 의도 분석. 실패 시 Mock 폴백."""
+    try:
+        from app.core.copilot_client import copilot_manager
+        text = await copilot_manager.send(
+            system_prompt=SYSTEM_PROMPT,
+            user_message=message,
+            model=settings.copilot_model,
+        )
+        if text:
+            return _parse_ai_response(text)
+    except Exception as e:
+        print(f"[Copilot 의도분석 에러] {str(e)[:100]}")
+    return _mock_analyze(message)
 
 
 async def _groq_analyze(message: str) -> IntentResult:

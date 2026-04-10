@@ -34,9 +34,20 @@ class Settings(BaseSettings):
     notion_oauth_client_secret: str = ""
     notion_oauth_redirect_uri: str = "http://localhost:9500/api/oauth/callback"
 
+    # Copilot SDK (API 키 불필요, GitHub Copilot 구독 인증)
+    copilot_enabled: bool = True
+    copilot_model: str = "gpt-4.1"
+
     @property
     def ai_provider(self) -> str:
-        """사용할 AI 프로바이더 결정 (우선순위: Claude > Gemini > Groq > Mock)"""
+        """사용할 AI 프로바이더 결정 (우선순위: Copilot > Claude > Gemini > Groq > Mock)"""
+        if self.copilot_enabled:
+            try:
+                from app.core.copilot_client import copilot_manager
+                if copilot_manager.is_available():
+                    return "copilot"
+            except ImportError:
+                pass
         if self.anthropic_api_key:
             return "claude"
         if self.gemini_api_key:

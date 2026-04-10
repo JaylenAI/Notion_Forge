@@ -526,13 +526,32 @@ async def _call_ai_for_content(user_message: str, ai_key: str = "", ai_model: st
             return await _openai_call(prompt, user_message, api_key=ai_key, model=ai_model)
 
     provider = settings.ai_provider
-    if provider == "gemini":
+    if provider == "copilot":
+        return await _copilot_call(prompt, user_message)
+    elif provider == "gemini":
         return await _gemini_call(prompt, user_message)
     elif provider == "groq":
         return await _groq_call(prompt, user_message)
     elif provider == "claude":
         return await _claude_call(prompt, user_message)
     else:
+        return None
+
+
+async def _copilot_call(system: str, user_message: str, model: str = "") -> dict[str, Any] | None:
+    """GitHub Copilot SDK를 통한 AI 호출 (API 키 불필요)"""
+    try:
+        from app.core.copilot_client import copilot_manager
+        text = await copilot_manager.send(
+            system_prompt=system,
+            user_message=user_message,
+            model=model or settings.copilot_model,
+        )
+        if text:
+            return _parse_json_response(text)
+        return None
+    except Exception as e:
+        print(f"[Copilot 에러] {str(e)[:120]}")
         return None
 
 

@@ -531,6 +531,7 @@ function CompletionActions({ notionUrl }: { readonly notionUrl: string }) {
 
 function ModelBadge({ model, provider }: { readonly model: string; readonly provider: string }) {
   const providerConfig: Record<string, { emoji: string; color: string }> = {
+    copilot: { emoji: "C", color: "text-cyan-400 bg-cyan-400/10" },
     google: { emoji: "G", color: "text-blue-400 bg-blue-400/10" },
     groq: { emoji: "G", color: "text-orange-400 bg-orange-400/10" },
     anthropic: { emoji: "A", color: "text-purple-400 bg-purple-400/10" },

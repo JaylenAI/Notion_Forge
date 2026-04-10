@@ -142,6 +142,24 @@ async def detect_provider(api_key: str = Body("", embed=True)):
     return {"provider": provider, "models": models}
 
 
+@router.get("/ai/copilot-status")
+async def copilot_status():
+    """Copilot SDK 상태 및 사용 가능 모델 조회"""
+    try:
+        from app.core.copilot_client import copilot_manager
+        return copilot_manager.get_status()
+    except ImportError:
+        return {"available": False, "started": False, "models": []}
+
+
+@router.post("/ai/copilot-model")
+async def set_copilot_model(model: str = Body("gpt-4.1", embed=True)):
+    """Copilot 모델 변경"""
+    from app.config import settings
+    settings.copilot_model = model
+    return {"model": model, "status": "updated"}
+
+
 @router.post("/document-to-notion")
 async def document_to_notion(file: UploadFile = File(...)):
     """문서 업로드 → 구조 분석 → 블루프린트 프리뷰

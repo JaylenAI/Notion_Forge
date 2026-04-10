@@ -6,6 +6,7 @@ const CustomSkills = lazy(() => import("./CustomSkills"));
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:9500";
 
 const PROVIDER_LABELS: Record<string, string> = {
+  copilot: "GitHub Copilot",
   anthropic: "Anthropic (Claude)",
   openai: "OpenAI",
   groq: "Groq",
@@ -13,6 +14,7 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 const PROVIDER_ICONS: Record<string, string> = {
+  copilot: "\uD83D\uDFE6",
   anthropic: "\uD83D\uDFE3",
   openai: "\uD83D\uDFE2",
   groq: "\uD83D\uDFE0",
