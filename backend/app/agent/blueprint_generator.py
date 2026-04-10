@@ -71,69 +71,51 @@ A simple tracker done perfectly is better than a bloated dashboard the user didn
 
 ### 📐 COMPLEXITY SCALING — match to user request
 
-#### Simple request (e.g., "물 마신 양 기록"): 10-15 blocks, 1 DB
-callout → paragraph → heading_1 → database_ref(0) → divider → toggle(guide) → toggle(FAQ)
+#### Simple (e.g., "물 마신 양 기록"): 8-12 blocks, 1 DB
+#### Medium (e.g., "프로젝트 관리 보드"): 12-20 blocks, 1-2 DB
+#### Complex (e.g., "창업 대시보드"): 20-35 blocks, 2-4 DB
 
-#### Medium request (e.g., "프로젝트 관리 보드"): 15-25 blocks, 1-2 DB, 3-5 sub_pages
-callout → paragraph → column_list(3col)[stat1 | stat2 | stat3] →
-paragraph → heading_1 → database_ref(0) → paragraph →
-divider → heading_1(section2) → database_ref(1) →
-divider → toggle(guide) → toggle(FAQ)
-+ sub_pages with blocks
+### 🏗️ PAGE LAYOUT — How pro Notion templates are structured
 
-#### Complex request (e.g., "창업 대시보드", "학급 관리"): 25-40 blocks, 2-4 DB, 5+ sub_pages
-callout → table_of_contents → paragraph →
-column_list(3col)[widget1 | widget2 | widget3] → paragraph →
-column_list(3col)[toggle_nav1 | toggle_nav2 | toggle_nav3] → paragraph →
-heading_1(primary) → database_ref(0) → paragraph →
-heading_1(secondary) → database_ref(1) → paragraph →
-divider → heading_1(section) → database_ref(2) →
-divider → toggle(guide) → toggle(FAQ)
-+ sub_pages 5+ with rich blocks
+⚠️ CRITICAL RULES:
+- NEVER put database_ref inside column_list! database_ref MUST always be at page level.
+- NEVER list sub_pages as link_to_page blocks at the top of the page. Sub-pages are in "sub_pages" array only.
+- Use paragraph("") for spacing between sections. This creates visual breathing room.
 
-### 🏗️ DASHBOARD LAYOUT RULES
+#### LAYOUT ORDER (follow this top-to-bottom flow):
 
-⚠️ CRITICAL: NEVER put database_ref inside column_list!
-database_ref MUST always be at page level (outside any column).
+**Zone 1 — Hero (first impression)**
+  callout: Welcome message with icon. 1-2 lines max. Use primary color_background.
+  paragraph: "" (empty spacing)
 
-#### 2-Column Layout (simple/medium templates):
-column_list[
-  column(30%): 2-3 callout stat cards,
-  column(70%): heading + paragraph description
-] → database_ref(0)
+**Zone 2 — Quick Stats (at-a-glance metrics)**
+  column_list(3col): Each column has a callout "card" with icon + bold stat + description.
+  Example: [📊 진행 중 5건 | ✅ 완료율 78% | 📅 이번주 마감 3건]
+  paragraph: "" (spacing)
 
-#### 3-Column Layout (complex templates — USE THIS for dashboards!):
-column_list(3col)[
-  column(33%): callout(widget1 — e.g., 이번주 할일) + to_do items,
-  column(33%): callout(widget2 — e.g., 진행현황) + bulleted_list items,
-  column(34%): callout(widget3 — e.g., 즐겨찾기) + bulleted_list links
-]
+**Zone 3 — Main Content (databases — the core)**
+  For EACH database:
+    heading_2(colored): Section title with emoji (e.g., "📋 태스크 보드")
+    database_ref: The inline database with multiple views
+    paragraph: "" (spacing after DB)
+  Use divider between different DB sections.
 
-#### 3-Column Toggle Navigation (for complex templates):
-column_list(3col)[
-  column(33%): toggle_heading("📁 카테고리1") with bulleted_list children,
-  column(33%): toggle_heading("📂 카테고리2") with bulleted_list children,
-  column(34%): toggle_heading("📂 카테고리3") with bulleted_list children
-]
+**Zone 4 — Footer (guides & help)**
+  divider
+  toggle: "📖 사용 가이드" with numbered_list children explaining how to use
+  toggle: "❓ FAQ" with bulleted_list children for common questions
 
-### Mixed Rich Text (bold+color in same block):
-For premium-quality text, use "rich_text" array instead of plain "text":
-{{"type": "paragraph", "rich_text": [
-  {{"text": "🎯 목표: ", "bold": true, "color": "blue"}},
-  {{"text": "이번 주 운동 5회 달성하기"}}
-]}}
-{{"type": "callout", "icon": "💡", "color": "blue_background", "rich_text": [
-  {{"text": "Pro Tip: ", "bold": true, "color": "blue"}},
-  {{"text": "매일 아침 5분만 투자하면 습관이 됩니다"}}
-]}}
-Use this for: welcome callouts, stat cards, section intros. Mix bold headers with normal descriptions.
+#### WHAT NOT TO DO:
+- ❌ Don't put 5+ link_to_page blocks at the top — looks like a raw file list
+- ❌ Don't put heading_1 for every DB — it's too loud. Use heading_2 instead.
+- ❌ Don't repeat the same callout style everywhere — vary icons and descriptions
+- ❌ Don't put stat widgets AFTER databases — stats go ABOVE databases
+- ❌ Don't make the page just "heading → DB → heading → DB" — add context between
 
-### Toggle Heading for Navigation:
-Use heading_2 or heading_3 with is_toggleable=true to create collapsible navigation:
-{{"type": "heading_2", "text": "📁 섹션명", "is_toggleable": true, "children": [
-  {{"type": "bulleted_list", "text": "📄 서브페이지1"}},
-  {{"type": "bulleted_list", "text": "📄 서브페이지2"}}
-]}}
+#### VISUAL HIERARCHY TIPS:
+- callout with rich_text for emphasis: {{"type": "callout", "icon": "💡", "color": "blue_background", "rich_text": [{{"text": "핵심: ", "bold": true, "color": "blue"}}, {{"text": "설명 텍스트"}}]}}
+- quote for important messages: {{"type": "quote", "text": "이 템플릿으로 생산성을 높여보세요!", "color": "blue"}}
+- toggle heading for collapsible navigation: {{"type": "heading_3", "text": "📁 카테고리", "is_toggleable": true, "children": [{{"type": "bulleted_list", "text": "항목1"}}]}}
 
 ## ═══════════════════════════════════════════
 ## BLOCK TYPES & WHEN TO USE EACH
@@ -257,39 +239,53 @@ In db_properties, use: "관련 프로젝트": {{"type": "relation", "target_db_i
 4. School: Student DB + Assignment DB + Grade DB with rollup averages
 
 ## ═══════════════════════════════════════════
-## PROFESSIONAL TEMPLATE PATTERNS
+## REFERENCE EXAMPLES (adapt to user's request, don't copy blindly)
 ## ═══════════════════════════════════════════
 
-### Pattern A: Simple Tracker (water, exercise, reading)
-callout(welcome) → paragraph(empty) →
-column_list(2col)[callout(stat1)+callout(stat2) | heading_2+paragraph] →
-heading_1(DB title) → database_ref(0) → paragraph(empty) →
-divider → toggle(guide with numbered_list) → toggle(FAQ)
+### Example A: Simple Tracker
+callout("💧 오늘도 물 한 잔! 건강한 습관을 기록하세요", orange_background)
+→ paragraph("")
+→ column_list(2col)[callout("📊 이번주 기록\n5회 달성") | callout("🎯 목표\n하루 8잔")]
+→ paragraph("")
+→ heading_2("💧 물 섭취 기록", orange)
+→ database_ref(0)
+→ paragraph("")
+→ divider
+→ toggle("📖 사용 가이드") → toggle("❓ FAQ")
 
-### Pattern B: Project/Task Board (kanban, sprint, content calendar)
-callout(welcome) → paragraph(empty) →
-column_list(3col)[callout(진행중 N개) | callout(이번주 마감 N개) | callout(완료율)] →
-paragraph(empty) → heading_1(main DB) → database_ref(0) →
-paragraph(empty) → heading_1(checklist) → to_do(items x5) →
-paragraph(empty) → divider → toggle(workflow numbered_list) → toggle(FAQ)
+### Example B: Project Board
+callout("📋 프로젝트를 한눈에 관리하세요!", blue_background)
+→ paragraph("")
+→ column_list(3col)[callout("🔥 진행 중\n5건") | callout("📅 이번주 마감\n3건") | callout("✅ 완료율\n78%")]
+→ paragraph("")
+→ heading_2("📋 태스크 보드", blue)
+→ database_ref(0)
+→ paragraph("")
+→ divider
+→ heading_2("✏️ 오늘의 할일", blue)
+→ to_do("기획서 초안 작성") → to_do("디자인 리뷰") → to_do("API 문서화")
+→ paragraph("")
+→ divider
+→ toggle("📖 워크플로 가이드") → toggle("❓ FAQ")
 
-### Pattern C: Complex Dashboard (startup, school, life OS)
-callout(welcome) → table_of_contents → paragraph(empty) →
-column_list(3col)[
-  callout(widget: 이번주 할일)+to_do(items) |
-  callout(widget: 진행 현황)+bulleted_list(items) |
-  callout(widget: 즐겨찾기)+bulleted_list(links)
-] → paragraph(empty) →
-column_list(3col)[
-  heading_2(카테고리1, toggleable)+bulleted_list(sub-items) |
-  heading_2(카테고리2, toggleable)+bulleted_list(sub-items) |
-  heading_2(카테고리3, toggleable)+bulleted_list(sub-items)
-] → paragraph(empty) → divider →
-heading_1(primary DB) → database_ref(0) → paragraph(empty) →
-heading_1(secondary DB) → database_ref(1) → paragraph(empty) →
-heading_1(tertiary DB) → database_ref(2) →
-paragraph(empty) → divider → toggle(guide) → toggle(FAQ)
-+ sub_pages 5+ with rich content
+### Example C: Complex Dashboard (CRM, 학급관리, Life OS)
+callout("🏢 CRM 대시보드에 오신 것을 환영합니다!", blue_background)
+→ paragraph("")
+→ column_list(3col)[
+    callout("📊 활성 고객\n128명", blue_bg) |
+    callout("💰 이번달 매출\n₩45,000,000", green_bg) |
+    callout("📈 전환율\n23%", purple_bg)
+  ]
+→ paragraph("")
+→ heading_2("👥 고객 관리", blue)
+→ database_ref(0)
+→ paragraph("")
+→ divider
+→ heading_2("💼 거래 현황", green)
+→ database_ref(1)
+→ paragraph("")
+→ divider
+→ toggle("📖 CRM 사용 가이드") → toggle("❓ FAQ")
 
 ### Pattern D: Collection/Gallery (books, recipes, portfolio)
 callout(welcome) → paragraph(empty) →
