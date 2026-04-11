@@ -117,11 +117,23 @@ class AgentOrchestrator:
             yield {"type": "progress", "step": "designing", "message": f"🎨 AI가 {complexity_label} 템플릿을 설계하고 있어요..."}
             blueprint = await generate_blueprint(enhanced_msg, ai_key=self.ai_key, ai_model=self.ai_model)
 
-        method = blueprint.get("metadata", {}).get("generation_method", "?")
-        skill = blueprint.get("metadata", {}).get("skill_used", "?")
+        meta = blueprint.get("metadata", {})
+        method = meta.get("generation_method", "?")
+        skill = meta.get("skill_used", "?")
         num_blocks = len(blueprint.get("blocks", []))
         num_dbs = len(blueprint.get("databases", []))
-        yield {"type": "progress", "step": "design_done", "message": f"✅ 설계 완료: {skill} 스킬, 블록 {num_blocks}개, DB {num_dbs}개 ({method})"}
+        gen_eval_attempts = meta.get("gen_eval_attempts", 1)
+        gen_eval_time = meta.get("gen_eval_time", 0)
+        gen_eval_errors = meta.get("gen_eval_errors", 0)
+
+        design_msg = f"✅ 설계 완료: {skill} 스킬, 블록 {num_blocks}개, DB {num_dbs}개 ({method})"
+        if gen_eval_attempts > 1:
+            design_msg += f"\n   🔄 Gen-Eval: {gen_eval_attempts}회 시도"
+        if gen_eval_errors > 0:
+            design_msg += f" (잔여 오류 {gen_eval_errors}개 자동 보정)"
+        if gen_eval_time:
+            design_msg += f" | ⏱️ {gen_eval_time}s"
+        yield {"type": "progress", "step": "design_done", "message": design_msg}
 
         yield {"type": "blueprint_preview", "content": self._format_preview(blueprint), "blueprint": blueprint}
 

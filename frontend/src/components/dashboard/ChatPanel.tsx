@@ -32,6 +32,8 @@ function ChatPanel() {
   const connect = useChatStore((s) => s.connect);
   const settings = useChatStore((s) => s.settings);
   const aiProvider = useChatStore((s) => s.aiProvider);
+  const copilotStatus = useChatStore((s) => s.copilotStatus);
+  const fetchCopilotStatus = useChatStore((s) => s.fetchCopilotStatus);
   const sessions = useChatStore((s) => s.sessions);
   const loadSession = useChatStore((s) => s.loadSession);
   const deleteSession = useChatStore((s) => s.deleteSession);
@@ -54,8 +56,9 @@ function ChatPanel() {
     if (!connectCalledRef.current) {
       connectCalledRef.current = true;
       connect();
+      fetchCopilotStatus();
     }
-  }, [connect]);
+  }, [connect, fetchCopilotStatus]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -103,7 +106,7 @@ function ChatPanel() {
         <div className="min-w-0">
           <h3 className="font-headline font-bold text-base sm:text-lg">Alchemist Chat</h3>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <ModelBadge model={settings.aiModel} provider={aiProvider} />
+            <ModelBadge model={settings.aiModel} provider={aiProvider} copilotModel={copilotStatus?.available ? copilotStatus.model : undefined} />
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -529,7 +532,7 @@ function CompletionActions({ notionUrl }: { readonly notionUrl: string }) {
   );
 }
 
-function ModelBadge({ model, provider }: { readonly model: string; readonly provider: string }) {
+function ModelBadge({ model, provider, copilotModel }: { readonly model: string; readonly provider: string; readonly copilotModel?: string }) {
   const providerConfig: Record<string, { emoji: string; color: string }> = {
     copilot: { emoji: "C", color: "text-cyan-400 bg-cyan-400/10" },
     google: { emoji: "G", color: "text-blue-400 bg-blue-400/10" },
@@ -538,8 +541,11 @@ function ModelBadge({ model, provider }: { readonly model: string; readonly prov
     openai: { emoji: "O", color: "text-green-400 bg-green-400/10" },
   };
 
-  const displayModel = model || "(default)";
-  const config = providerConfig[provider] ?? { emoji: "?", color: "text-gray-400 bg-gray-400/10" };
+  // Copilot이 활성이면 Copilot 모델을 우선 표시
+  const activeCopilot = !!copilotModel;
+  const displayProvider = activeCopilot ? "copilot" : provider;
+  const displayModel = activeCopilot ? copilotModel : (model || "(default)");
+  const config = providerConfig[displayProvider] ?? { emoji: "?", color: "text-gray-400 bg-gray-400/10" };
 
   return (
     <span className={`inline-flex items-center gap-1 text-[11px] ${config.color} px-2 py-0.5 rounded-full`}>

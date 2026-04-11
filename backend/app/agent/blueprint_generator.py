@@ -12,6 +12,9 @@ from typing import Any
 
 from app.config import settings
 from app.skills import load_skill, get_tool_enum_description, SKILL_REGISTRY, _get_all_skills
+from app.agent.prompt_assembler import prompt_assembler
+from app.agent.layout_router import layout_router
+from app.agent.post_processor import blueprint_validator
 
 COVER_URLS: dict[str, str] = {
     # Gradient / Minimal
@@ -39,420 +42,9 @@ COVER_URLS: dict[str, str] = {
 }
 
 # ============================================================
-# 시스템 프롬프트: AI가 blocks[]도 직접 설계
+# 시스템 프롬프트: PromptAssembler가 동적 조립 (Phase 1)
+# 기존 SYSTEM_PROMPT는 prompts/ 디렉토리로 모듈화됨
 # ============================================================
-
-SYSTEM_PROMPT = """You are a WORLD-CLASS Notion template designer on the level of Thomas Frank, Easlo, and August Bradley.
-Your templates should look polished and professional — but most importantly, they must MATCH what the user actually needs.
-A simple tracker done perfectly is better than a bloated dashboard the user didn't ask for.
-
-## Available Skills: {skills}
-
-## ═══════════════════════════════════════════
-## DESIGN PHILOSOPHY
-## ═══════════════════════════════════════════
-
-### 🎯 CORE PRINCIPLE: Match the user's intent
-- Read the user's request carefully. Design EXACTLY what they need — no more, no less.
-- A "물 마신 양 기록" request needs 1 simple DB + table view. Don't over-engineer it.
-- A "창업 대시보드" request deserves multiple DBs, rich views, linked_views, and charts.
-- YOUR JOB is to JUDGE the right complexity, not maximize features.
-
-### 🎨 COLOR CONSISTENCY
-- Pick 2-3 colors that fit the theme: ONE primary + ONE accent + gray
-- Apply consistently across: callout backgrounds, heading colors, select option colors
-- Recommended palettes (choose what fits):
-  * Business/Project: blue + gray
-  * Fitness/Health: orange + green
-  * Finance: green + gray
-  * Creative/Content: purple + pink
-  * Learning/Study: blue + purple
-  * Personal/Journal: pink + gray
-
-### 📐 COMPLEXITY SCALING — match to user request
-
-#### Simple (e.g., "물 마신 양 기록"): 8-12 blocks, 1 DB
-#### Medium (e.g., "프로젝트 관리 보드"): 12-20 blocks, 1-2 DB
-#### Complex (e.g., "창업 대시보드"): 20-35 blocks, 2-4 DB
-
-### 🏗️ PAGE LAYOUT — How pro Notion templates are structured
-
-⚠️ CRITICAL RULES:
-- NEVER put database_ref inside column_list! database_ref MUST always be at page level.
-- NEVER list sub_pages as link_to_page blocks at the top of the page. Sub-pages are in "sub_pages" array only.
-- Use paragraph("") for spacing between sections. This creates visual breathing room.
-
-#### LAYOUT ORDER (follow this top-to-bottom flow):
-
-**Zone 1 — Hero (first impression)**
-  callout: Welcome message with icon. 1-2 lines max. Use primary color_background.
-  paragraph: "" (empty spacing)
-
-**Zone 2 — Quick Stats (at-a-glance metrics)**
-  column_list(3col): Each column has a callout "card" with icon + bold stat + description.
-  Example: [📊 진행 중 5건 | ✅ 완료율 78% | 📅 이번주 마감 3건]
-  paragraph: "" (spacing)
-
-**Zone 3 — Main Content (databases — the core)**
-  For EACH database:
-    heading_2(colored): Section title with emoji (e.g., "📋 태스크 보드")
-    database_ref: The inline database with multiple views
-    paragraph: "" (spacing after DB)
-  Use divider between different DB sections.
-
-**Zone 4 — Footer (guides & help)**
-  divider
-  toggle: "📖 사용 가이드" with numbered_list children explaining how to use
-  toggle: "❓ FAQ" with bulleted_list children for common questions
-
-#### WHAT NOT TO DO:
-- ❌ Don't put 5+ link_to_page blocks at the top — looks like a raw file list
-- ❌ Don't put heading_1 for every DB — it's too loud. Use heading_2 instead.
-- ❌ Don't repeat the same callout style everywhere — vary icons and descriptions
-- ❌ Don't put stat widgets AFTER databases — stats go ABOVE databases
-- ❌ Don't make the page just "heading → DB → heading → DB" — add context between
-
-#### VISUAL HIERARCHY TIPS:
-- callout with rich_text for emphasis: {{"type": "callout", "icon": "💡", "color": "blue_background", "rich_text": [{{"text": "핵심: ", "bold": true, "color": "blue"}}, {{"text": "설명 텍스트"}}]}}
-- quote for important messages: {{"type": "quote", "text": "이 템플릿으로 생산성을 높여보세요!", "color": "blue"}}
-- toggle heading for collapsible navigation: {{"type": "heading_3", "text": "📁 카테고리", "is_toggleable": true, "children": [{{"type": "bulleted_list", "text": "항목1"}}]}}
-
-## ═══════════════════════════════════════════
-## BLOCK TYPES & WHEN TO USE EACH
-## ═══════════════════════════════════════════
-
-### Available Block Types (use what fits — don't force blocks that don't serve the user):
-- callout: Welcome message, stat cards, tips, warnings. Use icon + color_background
-- heading_1: Major sections (colored). Use sparingly (1-2 per page)
-- heading_2: Sub-sections (colored or default)
-- heading_3: Detail headers
-- paragraph: Body text, descriptions. Use EMPTY paragraphs for spacing between sections
-- divider: Section breaks. Use between major sections only
-- quote: Mission statements, key insights, motivational messages
-- toggle: Usage guides, FAQ, expandable details. Good for keeping pages clean
-- to_do: Action items, onboarding checklists, daily tasks
-- bulleted_list: Feature lists, categories, requirements
-- numbered_list: Step-by-step processes, rankings
-- column_list: Dashboard layouts (30/70), stat sidebars. Good for visual density
-- database_ref: Inline database (db_index = 0,1,2... matching databases[] array)
-- bookmark: External resource links
-- table_of_contents: For complex templates (20+ blocks)
-- code: Code snippets, formulas, technical reference
-- tab: Tab container with named tabs. Use for organizing related sections side by side
-  Usage: {{"type": "tab", "tabs": [{{"title": "📋 개요", "children": [...]}}, {{"title": "📊 통계", "children": [...]}}]}}
-- linked_view: Filtered view of an existing database
-  Usage: {{"type": "linked_view", "db_index": 0, "view_type": "list", "title": "이번주 할일", "filter": {{"property": "날짜", "date": {{"this_week": {{}} }} }} }}
-
-### DB Properties: title, rich_text, number, select, multi_select, status, date, checkbox, url, email, relation, formula, rollup
-### DB Options: Each database can have "description" (1-sentence Korean), "icon" (emoji), "cover_url" (image URL)
-### Colors: default, gray, brown, orange, yellow, green, blue, purple, pink, red (add _background for blocks)
-
-## ═══════════════════════════════════════════
-## VIEW CATALOG — Choose what fits the user's intent
-## ═══════════════════════════════════════════
-
-Each database has a "views" array. Each view is an object with "type", "title", and optional configuration fields.
-The system will pass ALL fields you specify directly to the Notion Views API.
-Choose views that MAKE SENSE for the user's request — don't add views just to fill a quota.
-
-### Available view types and their configuration options:
-
-**table** — Default spreadsheet view. Good for data-heavy use cases.
-  {{"type": "table", "title": "전체 목록", "wrap_cells": true, "frozen_column_index": 1}}
-
-**board** — Kanban columns. Best when DB has status/select property.
-  {{"type": "board", "title": "상태별", "group_by": {{"property": "상태"}},
-    "cover": {{"type": "page_cover"}}, "cover_size": "medium", "cover_aspect": "cover", "card_layout": "compact"}}
-  - cover options: {{"type":"page_cover"}}, {{"type":"page_content"}}, or {{"type":"property","property_id":"FILES_PROP"}}
-  - cover_size: "small" | "medium" | "large"
-
-**gallery** — Visual card grid. Great for portfolios, contacts, recipes, collections.
-  {{"type": "gallery", "title": "갤러리", "cover": {{"type": "page_cover"}}, "cover_size": "medium", "cover_aspect": "cover"}}
-
-**calendar** — Date-based layout. Use when DB has a date property.
-  {{"type": "calendar", "title": "일정", "date_property": "날짜", "show_weekends": true}}
-
-**timeline** — Gantt chart. Best for projects with start/end dates.
-  {{"type": "timeline", "title": "타임라인", "date_property": "시작일", "end_date_property_id": "마감일",
-    "zoom_level": "month", "arrows_by": {{"property_id": "RELATION_PROP"}} }}
-
-**chart** — Data visualization. Great for tracking, analytics, summaries.
-  {{"type": "chart", "title": "통계", "chart_type": "donut",
-    "x_axis": {{"property": "상태"}}, "color_theme": "blue", "show_data_labels": true, "height": "medium"}}
-  - chart_type: "column" | "bar" | "line" | "donut" | "number"
-  - color_theme: "gray" | "blue" | "yellow" | "green" | "purple" | "teal" | "orange" | "pink" | "red" | "colorful"
-
-**list** — Minimal row list. Good for simple reference/lookup.
-  {{"type": "list", "title": "리스트"}}
-
-**form** — Data collection from external users.
-  {{"type": "form", "title": "응답 폼", "anonymous_submissions": true}}
-
-### When to use which views (guidelines, not rules):
-- Status/workflow tracking → board (group by status) + table
-- Date-heavy data → calendar + table
-- Visual content (portfolio/contacts) → gallery + table
-- Project management → board + timeline + calendar
-- Analytics/dashboard → chart + table
-- Simple tracker → table only is fine
-- Complex system → pick 3-4 that genuinely help the user
-
-### linked_view for dashboard widgets:
-When building dashboards, use linked_view blocks to show FILTERED slices of the same DB:
-  {{"type": "linked_view", "db_index": 0, "view_type": "list", "title": "이번주 할일",
-    "filter": {{"property": "날짜", "date": {{"this_week": {{}} }} }} }}
-This is powerful for at-a-glance summaries. Use when it genuinely helps — not as decoration.
-
-## ═══════════════════════════════════════════
-## RELATION + ROLLUP + FORMULA (Mini-ERP)
-## ═══════════════════════════════════════════
-When user requests interconnected databases (project+task, CRM, ERP), use relations:
-
-### Relation Property:
-In db_properties, use: "관련 프로젝트": {{"type": "relation", "target_db_index": 0}}
-- target_db_index refers to the index in the databases[] array
-- After creation, the system auto-links to the actual database ID
-
-### Rollup Property (aggregates from related DB):
-"총 태스크": {{"type": "rollup", "relation_property": "관련 프로젝트", "target_property": "이름", "function": "count"}}
-- relation_property: name of the relation property in THIS database
-- target_property: name of property to aggregate from RELATED database
-- function: count, count_values, unique, sum, average, min, max, percent_empty, percent_not_empty, show_original
-
-### Formula Property (calculated fields):
-"D-Day": {{"type": "formula", "expression": "dateBetween(prop(\"마감일\"), now(), \"days\")"}}
-"진행률": {{"type": "formula", "expression": "if(prop(\"상태\") == \"완료\", 100, if(prop(\"상태\") == \"진행 중\", 50, 0))"}}
-"총액": {{"type": "formula", "expression": "prop(\"단가\") * prop(\"수량\")"}}
-
-### Common Formula Patterns:
-- D-Day countdown: dateBetween(prop("마감일"), now(), "days")
-- Progress %: if(prop("상태") == "완료", 100, if(prop("상태") == "진행 중", 50, 0))
-- Total: prop("단가") * prop("수량")
-- Full name: prop("성") + " " + prop("이름")
-- Status emoji: if(prop("완료"), "✅", "⬜")
-- Overdue check: if(prop("마감일") < now(), "⚠️ 지연", "정상")
-
-### Multi-DB Template Patterns:
-1. Project + Task: Project DB has tasks via relation, rollup counts tasks per project
-2. CRM: Contact DB + Deal DB + Activity DB, all linked via relation
-3. Inventory: Product DB + Order DB, formula calculates total, rollup sums orders
-4. School: Student DB + Assignment DB + Grade DB with rollup averages
-
-## ═══════════════════════════════════════════
-## REFERENCE EXAMPLES (adapt to user's request, don't copy blindly)
-## ═══════════════════════════════════════════
-
-### Example A: Simple Tracker
-callout("💧 오늘도 물 한 잔! 건강한 습관을 기록하세요", orange_background)
-→ paragraph("")
-→ column_list(2col)[callout("📊 이번주 기록\n5회 달성") | callout("🎯 목표\n하루 8잔")]
-→ paragraph("")
-→ heading_2("💧 물 섭취 기록", orange)
-→ database_ref(0)
-→ paragraph("")
-→ divider
-→ toggle("📖 사용 가이드") → toggle("❓ FAQ")
-
-### Example B: Project Board
-callout("📋 프로젝트를 한눈에 관리하세요!", blue_background)
-→ paragraph("")
-→ column_list(3col)[callout("🔥 진행 중\n5건") | callout("📅 이번주 마감\n3건") | callout("✅ 완료율\n78%")]
-→ paragraph("")
-→ heading_2("📋 태스크 보드", blue)
-→ database_ref(0)
-→ paragraph("")
-→ divider
-→ heading_2("✏️ 오늘의 할일", blue)
-→ to_do("기획서 초안 작성") → to_do("디자인 리뷰") → to_do("API 문서화")
-→ paragraph("")
-→ divider
-→ toggle("📖 워크플로 가이드") → toggle("❓ FAQ")
-
-### Example C: Complex Dashboard (CRM, 학급관리, Life OS)
-callout("🏢 CRM 대시보드에 오신 것을 환영합니다!", blue_background)
-→ paragraph("")
-→ column_list(3col)[
-    callout("📊 활성 고객\n128명", blue_bg) |
-    callout("💰 이번달 매출\n₩45,000,000", green_bg) |
-    callout("📈 전환율\n23%", purple_bg)
-  ]
-→ paragraph("")
-→ heading_2("👥 고객 관리", blue)
-→ database_ref(0)
-→ paragraph("")
-→ divider
-→ heading_2("💼 거래 현황", green)
-→ database_ref(1)
-→ paragraph("")
-→ divider
-→ toggle("📖 CRM 사용 가이드") → toggle("❓ FAQ")
-
-### Pattern D: Collection/Gallery (books, recipes, portfolio)
-callout(welcome) → paragraph(empty) →
-heading_1(collection) → paragraph(description) → database_ref(0) →
-paragraph(empty) →
-column_list(2col)[
-  callout(stat)+bulleted_list(categories) |
-  callout(stat)+bulleted_list(tags)
-] → divider → toggle(guide)
-
-## ═══════════════════════════════════════════
-## BLOCK DIVERSITY RULES (CRITICAL!)
-## ═══════════════════════════════════════════
-You MUST use diverse blocks. Do NOT repeat the same callout→column→toggle pattern every time.
-
-### MANDATORY BLOCK MIX:
-- Every template MUST include at least 3 of these: quote, to_do, numbered_list, bulleted_list, bookmark
-- Tracking templates: MUST include to_do (daily checklist) + quote (motivation)
-- Management templates: MUST include numbered_list (workflow steps) + to_do (action items)
-- Finance templates: MUST include bulleted_list (categories) + quote (financial goal)
-- Collection templates: MUST include bulleted_list (categories) + bookmark (resources)
-- Learning templates: MUST include numbered_list (study steps) + to_do (tasks) + bookmark (resources)
-- CRM/Hub templates: MUST include sub_pages (2-3 linked pages) + multiple database_ref
-
-### TOGGLE CONTENT RULES:
-- Toggle "사용 가이드" MUST contain numbered_list with 3-5 setup steps, NOT just a paragraph
-- Toggle "FAQ" MUST contain 2-3 real question/answer pairs
-- Use toggle children_text for simple FAQs, use children array with numbered_list for guides
-
-### TABLE_OF_CONTENTS RULE:
-- Templates with 15+ blocks MUST include table_of_contents at the top (after welcome callout)
-
-### SUB_PAGES RULE:
-- Complex templates (hub, CRM, multi-DB) MUST include 2-3 sub_pages
-- Each sub_page MUST have blocks array with real content (callout + heading + paragraphs/lists)
-- NEVER create empty sub_pages — they must have useful content inside
-- Example sub_page blocks: callout(intro) + heading_2(section) + bulleted_list(items) + toggle(tips)
-
-### COVER_CATEGORY RULE:
-- ALWAYS set cover_category matching the template topic:
-  business, finance, fitness, study, travel, food, creative, nature, tech, minimal
-
-### MULTI-DB RULE:
-- Simple requests: 1 database, 0-1 sub_pages
-- Medium requests: 1-2 databases, 2-3 sub_pages
-- Complex requests (hub, CRM, startup, school): 3-4 databases + 5-8 sub_pages
-- Each database should serve a DIFFERENT purpose (tasks vs schedule vs resources vs contacts)
-
-### SUB_PAGES DEPTH RULE:
-- Sub-pages MUST have their OWN blocks (callout + heading + content + toggle)
-- Complex sub-pages can have their OWN databases (add separate database specs)
-- Sub-pages should be organized by CATEGORY (e.g., 자료실, 설정, 아카이브)
-
-## ═══════════════════════════════════════════
-## DESIGN TOKEN SYSTEM (per-category consistency)
-## ═══════════════════════════════════════════
-Each template category has a fixed design token set. ALWAYS follow these:
-
-### Business/Project: icons: 🎯📊📋✅ | blue + gray | cover: business
-  - Callout: blue_background | Headings: blue
-  - DB icons: 📊📋🗂️ | Status: blue(active), green(done), gray(default)
-
-### Fitness/Health: icons: 💪🏋️🏃🧘 | orange + green | cover: fitness
-  - Callout: orange_background | Headings: orange
-
-### Finance: icons: 💰📈🏦💵 | green + gray | cover: finance
-  - Callout: green_background | Headings: green
-  - Select: green(income), red(expense), blue(savings)
-
-### Creative/Content: icons: 🎨📱✨🎬 | purple + pink | cover: creative
-  - Callout: purple_background | Headings: purple
-
-### Learning/Study: icons: 📚🎓📖✏️ | blue + purple | cover: study
-  - Callout: blue_background | Headings: blue
-
-### Personal/Journal: icons: 📔✨🌸💭 | pink + gray | cover: minimal
-  - Callout: pink_background | Headings: pink
-
-### CRM/Sales: icons: 🤝📞💼🎯 | blue + orange | cover: business
-### Travel/Plan: icons: ✈️🗺️📍🌍 | orange + blue | cover: travel
-### Food/Recipe: icons: 🍽️🧑‍🍳🥗🍰 | orange + green | cover: food
-
-## ═══════════════════════════════════════════
-## ANTI-PATTERNS: NEVER DO THESE
-## ═══════════════════════════════════════════
-- NEVER use more than 3 colors (looks chaotic)
-- NEVER skip whitespace paragraphs between sections (looks cramped)
-- NEVER put more than 8 properties per database (overwhelming)
-- NEVER create pages deeper than 2 levels (buried content)
-- NEVER put everything on one flat list (use columns, toggles)
-- NEVER mix random emoji styles (pick consistent icons)
-- NEVER skip the welcome callout (every pro template has one)
-- NEVER forget the usage guide toggle (users need instructions)
-- NEVER leave sample data empty (minimum 5 realistic items per DB)
-- NEVER use divider between every block (only between MAJOR sections)
-- NEVER put database_ref inside column_list (Notion API cannot render DB inside columns)
-
-## ═══════════════════════════════════════════
-## DATABASE DESIGN RULES
-## ═══════════════════════════════════════════
-1. View-to-content matching is MANDATORY:
-   - Has status/select property → MUST include board view
-   - Has date property → MUST include calendar view
-   - Has start+end dates → MUST include timeline view
-   - Has image/visual content → MUST include gallery view
-   - ALWAYS include table view as the "all data" fallback
-2. Status property values MUST use these EXACT Korean names: "시작 전", "진행 중", "완료"
-   - NEVER use "읽음", "읽는 중" etc. — ALWAYS map to 시작 전/진행 중/완료
-3. Select options: use the PRIMARY color for most important option, gray for default
-4. Sample items: minimum 5, ALL properties filled, realistic Korean data
-5. Sample items must be spread across ALL statuses (not all in one state)
-6. Properties limit: 5-8 per database (focused, not overwhelming)
-
-## ═══════════════════════════════════════════
-## OUTPUT FORMAT (JSON ONLY, NO OTHER TEXT)
-## ═══════════════════════════════════════════
-ALL text content MUST be in Korean by default.
-If user specifies [LANGUAGE: English], write ALL text in English.
-If user specifies [LANGUAGE: Japanese], write ALL text in Japanese.
-
-{{
-  "skill": "skill_name",
-  "title": "한국어 제목",
-  "icon": "emoji",
-  "color": "primary_color_name",
-  "cover_category": "category_for_cover_image",
-  "blocks": [
-    {{"type": "callout", "text": "환영 메시지", "icon": "emoji", "color": "color_background"}},
-    {{"type": "paragraph", "text": ""}},
-    {{"type": "column_list", "columns": [
-      [{{"type": "callout", "text": "📊 통계1", "icon": "📊", "color": "blue_background"}}, {{"type": "callout", "text": "🎯 통계2", "icon": "🎯", "color": "blue_background"}}],
-      [{{"type": "heading_2", "text": "메인 섹션"}}, {{"type": "paragraph", "text": "섹션 설명"}}]
-    ]}},
-    {{"type": "heading_1", "text": "데이터베이스"}},
-    {{"type": "database_ref", "db_index": 0}},
-    {{"type": "paragraph", "text": ""}},
-    {{"type": "divider"}},
-    {{"type": "toggle", "text": "📖 사용 가이드", "children_text": "사용법 설명"}}
-  ],
-  "databases": [
-    {{
-      "title": "DB명",
-      "icon": "📊",
-      "description": "이 데이터베이스에 대한 한국어 설명",
-      "db_properties": {{"이름": "title", "상태": "status", "날짜": "date"}},
-      "views": [
-        {{"type": "board", "title": "칸반 보드", "group_by": {{"property": "상태"}}}},
-        {{"type": "calendar", "title": "캘린더"}},
-        "table"
-      ],
-      "sample_items": [{{"이름": "항목1", "상태": "진행 중", "날짜": "2026-04-01", "icon": "🎯"}}]
-    }}
-  ],
-  "sub_pages": [
-    {{
-      "name": "서브페이지명", "icon": "📁", "description": "설명",
-      "blocks": [
-        {{"type": "callout", "text": "이 페이지 소개", "icon": "📌", "color": "blue_background"}},
-        {{"type": "heading_2", "text": "주요 내용"}},
-        {{"type": "bulleted_list", "text": "항목 1"}},
-        {{"type": "bulleted_list", "text": "항목 2"}},
-        {{"type": "toggle", "text": "상세 안내", "children_text": "자세한 내용"}}
-      ]
-    }}
-  ],
-  "faq": [{{"q": "질문", "a": "답변"}}]
-}}"""
 
 
 # ============================================================
@@ -471,30 +63,145 @@ def _detect_provider_from_key(api_key: str) -> str:
     return ""
 
 
+def _evaluate_ai_output(content: dict[str, Any]) -> tuple[bool, list[str]]:
+    """Gen-Eval: AI 출력의 구조적 결함을 검증. (pass, errors) 반환."""
+    errors: list[str] = []
+
+    # Level 0: 필수 필드 존재
+    if not content.get("databases") and not content.get("db_properties"):
+        errors.append("CRITICAL: 'databases' 또는 'db_properties' 필드가 없습니다. 최소 1개 DB가 필요합니다.")
+
+    if not content.get("blocks"):
+        errors.append("CRITICAL: 'blocks' 배열이 비어있습니다. 최소 3개 블록이 필요합니다.")
+
+    # Level 1: 블록 구조 검증
+    blocks = content.get("blocks", [])
+    for i, block in enumerate(blocks):
+        btype = block.get("type")
+        if not btype:
+            errors.append(f"blocks[{i}]: 'type' 필드가 없습니다.")
+            continue
+        if btype == "database_ref" and "db_index" not in block:
+            errors.append(f"blocks[{i}]: database_ref에 'db_index'가 없습니다.")
+        if btype == "column_list":
+            cols = block.get("columns", [])
+            for ci, col in enumerate(cols):
+                if isinstance(col, list):
+                    for item in col:
+                        if item.get("type") == "database_ref":
+                            errors.append(f"blocks[{i}].columns[{ci}]: database_ref가 column_list 안에 있습니다. page level로 이동 필요.")
+
+    # Level 2: DB 구조 검증
+    for di, db in enumerate(content.get("databases", [])):
+        props = db.get("db_properties", db.get("properties", {}))
+        if not props:
+            errors.append(f"databases[{di}]: 속성(properties)이 비어있습니다.")
+        has_title = any(
+            v == "title" or (isinstance(v, dict) and v.get("type") == "title")
+            for v in props.values()
+        )
+        if not has_title:
+            errors.append(f"databases[{di}]: title 타입 속성이 없습니다. 최소 1개 필요합니다.")
+        samples = db.get("sample_items", [])
+        if len(samples) < 3:
+            errors.append(f"databases[{di}]: sample_items가 {len(samples)}개입니다. 최소 3개 필요합니다.")
+
+    # Level 3: db_index 범위 검증
+    db_count = len(content.get("databases", []))
+    for i, block in enumerate(blocks):
+        if block.get("type") == "database_ref":
+            idx = block.get("db_index", 0)
+            if idx >= db_count:
+                errors.append(f"blocks[{i}]: db_index={idx}이지만 databases는 {db_count}개뿐입니다.")
+
+    is_pass = len(errors) == 0
+    return is_pass, errors
+
+
 async def generate_blueprint(user_message: str, ai_key: str = "", ai_model: str = "") -> dict[str, Any]:
-    """AI가 전체 구조를 자유롭게 설계. 실패 시 스마트 폴백."""
+    """Gen-Eval 피드백 루프: AI 생성 → 검증 → 실패 시 에러 피드백 → 재생성 (최대 3회)"""
+    import time
+
     # 스킬 가이드를 프롬프트에 주입 (내장 + 커스텀)
     skill_guide = ""
     all_skills = _get_all_skills()
     for skill_id in all_skills:
         skill_md = load_skill(skill_id)
         if skill_md:
-            # 스킬 .md에서 핵심만 추출 (토큰 절약 — Groq 8K TPM 제한 대응)
             lines = skill_md.split("\n")[:15]
             skill_guide += f"\n### {skill_id}:\n" + "\n".join(lines) + "\n"
 
-    for attempt in range(2):
+    max_retries = 3
+    feedback_context = ""
+    best_content: dict[str, Any] | None = None
+    best_error_count = 999
+
+    for attempt in range(max_retries):
+        t0 = time.time()
         try:
-            ai_content = await _call_ai_for_content(user_message, ai_key=ai_key, ai_model=ai_model, extra_context=skill_guide)
-            if ai_content and (ai_content.get("databases") or ai_content.get("db_properties")):
+            # 피드백이 있으면 유저 메시지에 추가
+            enhanced_message = user_message
+            if feedback_context:
+                enhanced_message = (
+                    f"{user_message}\n\n"
+                    f"[SYSTEM FEEDBACK — 이전 출력에서 다음 오류가 발견되었습니다. 반드시 수정하세요]\n"
+                    f"{feedback_context}"
+                )
+
+            ai_content = await _call_ai_for_content(
+                enhanced_message, ai_key=ai_key, ai_model=ai_model, extra_context=skill_guide
+            )
+            elapsed = time.time() - t0
+
+            if not ai_content or (not ai_content.get("databases") and not ai_content.get("db_properties")):
+                print(f"[Gen-Eval 시도 {attempt+1}/{max_retries}] AI 응답 파싱 실패 ({elapsed:.1f}s)")
+                feedback_context = "JSON 파싱 실패. 반드시 유효한 JSON으로 응답하세요. databases 배열이 필수입니다."
+                continue
+
+            # Evaluate: 구조적 결함 검증
+            is_pass, eval_errors = _evaluate_ai_output(ai_content)
+
+            if is_pass:
+                # 검증 통과 → Post-processor 보정 → 반환
+                ai_content = blueprint_validator.validate_and_fix(ai_content)
                 blueprint = _assemble_blueprint(ai_content)
                 blueprint["metadata"]["generation_method"] = "ai_dynamic"
                 blueprint["metadata"]["skill_used"] = ai_content.get("skill", "custom")
+                blueprint["metadata"]["gen_eval_attempts"] = attempt + 1
+                blueprint["metadata"]["gen_eval_time"] = round(elapsed, 1)
+                print(f"[Gen-Eval 통과] 시도 {attempt+1}/{max_retries}, {elapsed:.1f}s")
                 return blueprint
-        except Exception as e:
-            print(f"[AI Blueprint 시도 {attempt+1} 실패] {e}")
 
-    print("[AI 실패 → 스마트 폴백 사용]")
+            # 검증 실패 → 에러를 피드백으로 구성
+            error_count = len(eval_errors)
+            print(f"[Gen-Eval 시도 {attempt+1}/{max_retries}] 검증 실패: {error_count}개 오류 ({elapsed:.1f}s)")
+            for err in eval_errors[:5]:
+                print(f"  - {err}")
+
+            # 최선의 결과 추적 (Circuit Breaker: 가장 오류 적은 결과 보관)
+            if error_count < best_error_count:
+                best_error_count = error_count
+                best_content = ai_content
+
+            # 피드백 구성: 에러 메시지를 AI에게 다시 전달
+            feedback_context = "\n".join(eval_errors[:8])
+
+        except Exception as e:
+            elapsed = time.time() - t0
+            print(f"[Gen-Eval 시도 {attempt+1}/{max_retries}] 예외: {str(e)[:100]} ({elapsed:.1f}s)")
+            feedback_context = f"이전 시도에서 오류 발생: {str(e)[:200]}. 올바른 JSON으로 다시 응답하세요."
+
+    # Circuit Breaker: 최대 재시도 초과 → 가장 좋았던 결과 사용 또는 폴백
+    if best_content:
+        print(f"[Gen-Eval 소진] 최선의 결과 사용 (오류 {best_error_count}개, post-processor로 보정)")
+        best_content = blueprint_validator.validate_and_fix(best_content)
+        blueprint = _assemble_blueprint(best_content)
+        blueprint["metadata"]["generation_method"] = "ai_dynamic_partial"
+        blueprint["metadata"]["gen_eval_attempts"] = max_retries
+        blueprint["metadata"]["gen_eval_errors"] = best_error_count
+        return blueprint
+
+    print("[Gen-Eval 전체 실패 → 스마트 폴백 사용]")
     content = _smart_fallback(user_message)
     blueprint = _assemble_blueprint(content)
     blueprint["metadata"]["generation_method"] = "smart_fallback"
@@ -505,15 +212,40 @@ async def generate_blueprint(user_message: str, ai_key: str = "", ai_model: str 
 # AI 호출
 # ============================================================
 
+def _detect_mode(user_message: str) -> str:
+    """유저 메시지에서 복잡도 모드 감지"""
+    msg = user_message.lower()
+    # 명시적 모드 지정
+    if any(kw in msg for kw in ["간단", "심플", "simple", "기본"]):
+        return "simple"
+    if any(kw in msg for kw in ["고급", "복잡", "advanced", "상세", "완벽"]):
+        return "advanced"
+    # 키워드 기반 자동 감지
+    complex_keywords = ["대시보드", "crm", "erp", "허브", "워크스페이스", "학급", "창업", "회사"]
+    simple_keywords = ["기록", "트래커", "물", "습관", "체크", "메모"]
+    if any(kw in msg for kw in complex_keywords):
+        return "advanced"
+    if any(kw in msg for kw in simple_keywords):
+        return "simple"
+    return "standard"
+
+
 async def _call_ai_for_content(user_message: str, ai_key: str = "", ai_model: str = "", extra_context: str = "") -> dict[str, Any] | None:
-    prompt = SYSTEM_PROMPT.format(skills=get_tool_enum_description())
+    mode = _detect_mode(user_message)
+    layout_result = layout_router.route(user_message)
+    skills_desc = get_tool_enum_description()
+    prompt = prompt_assembler.assemble(mode=mode, layout=layout_result.layout, skills=skills_desc)
+    # Copilot/Groq용 compact 프롬프트 (토큰 제한 대응)
+    compact_prompt = prompt_assembler.assemble_compact(mode=mode, layout=layout_result.layout, skills=skills_desc, max_chars=10000)
+    print(f"[Harness] mode={mode}, layout={layout_result.layout} (conf={layout_result.confidence:.2f}, {layout_result.reason})")
     if extra_context:
         prompt += f"\n\n## Skill Guidelines:\n{extra_context[:1200]}"
+        compact_prompt += f"\n\n## Skill Guidelines:\n{extra_context[:600]}"
 
     if ai_key:
         provider = _detect_provider_from_key(ai_key)
         if provider == "groq":
-            return await _groq_call(prompt, user_message, api_key=ai_key, model=ai_model)
+            return await _groq_call(compact_prompt, user_message, api_key=ai_key, model=ai_model)
         elif provider == "gemini":
             return await _gemini_call(prompt, user_message, api_key=ai_key, model=ai_model)
         elif provider == "claude":
@@ -523,11 +255,11 @@ async def _call_ai_for_content(user_message: str, ai_key: str = "", ai_model: st
 
     provider = settings.ai_provider
     if provider == "copilot":
-        return await _copilot_call(prompt, user_message)
+        return await _copilot_call(compact_prompt, user_message)
     elif provider == "gemini":
         return await _gemini_call(prompt, user_message)
     elif provider == "groq":
-        return await _groq_call(prompt, user_message)
+        return await _groq_call(compact_prompt, user_message)
     elif provider == "claude":
         return await _claude_call(prompt, user_message)
     else:
@@ -552,30 +284,23 @@ async def _copilot_call(system: str, user_message: str, model: str = "") -> dict
 
 
 def _truncate_prompt_for_groq(system: str, max_chars: int = 16000) -> str:
-    """Groq 8K TPM 제한 대응 — View Catalog 축약 (OUTPUT FORMAT 보존 필수)"""
+    """Groq 8K TPM 제한 대응 — 이미 길면 잘라냄"""
     if len(system) <= max_chars:
         return system
-
-    # 1) VIEW CATALOG 섹션 축약 (가장 긴 부분)
-    marker_start = "## ═══════════════════════════════════════════\n## VIEW CATALOG"
-    marker_end = "## ═══════════════════════════════════════════\n## RELATION"
-    start_idx = system.find(marker_start)
-    end_idx = system.find(marker_end)
-    if start_idx > 0 and end_idx > start_idx:
-        compact_catalog = """## VIEW CATALOG (compact)
-DB "views" array types: table, board, gallery, calendar, timeline, chart, list, form, map, dashboard.
-View config options: group_by, cover(page_cover/property), cover_size(small/medium/large), chart_type(donut/column/bar/line), x_axis, y_axis, color_theme, date_property, arrows_by, zoom_level, show_data_labels, height.
-Choose views that fit. Simple request = 1-2 views. Complex = 3-4 views.
+    # VIEW CATALOG 섹션 축약
+    vc_start = system.find("## VIEW CATALOG")
+    vc_end = system.find("## RELATION")
+    if vc_start > 0 and vc_end > vc_start:
+        compact = """## VIEW CATALOG (compact)
+DB views: table, board, gallery, calendar, timeline, chart, list, form.
+Config: group_by, cover, cover_size, chart_type, x_axis, color_theme, date_property, zoom_level.
 """
-        system = system[:start_idx] + compact_catalog + system[end_idx:]
-
-    # 2) PROFESSIONAL TEMPLATE PATTERNS 섹션 축약
-    pattern_start = system.find("## PROFESSIONAL TEMPLATE PATTERNS")
-    pattern_end = system.find("## OUTPUT FORMAT")
-    if pattern_start > 0 and pattern_end > pattern_start:
-        system = system[:pattern_start] + system[pattern_end:]
-
-    return system
+        system = system[:vc_start] + compact + system[vc_end:]
+    # DESIGN TOKEN 섹션 제거 (토큰 절약)
+    dt_start = system.find("## BLOCK DIVERSITY")
+    if dt_start > 0:
+        system = system[:dt_start]
+    return system[:max_chars]
 
 
 async def _groq_call(system: str, user_message: str, api_key: str = "", model: str = "") -> dict[str, Any] | None:

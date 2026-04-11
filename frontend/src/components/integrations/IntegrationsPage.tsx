@@ -1,4 +1,4 @@
-import { useState, useCallback, lazy, Suspense, type FormEvent } from "react";
+import { useState, useCallback, useEffect, lazy, Suspense, type FormEvent } from "react";
 import { useChatStore } from "../../stores/chatStore";
 
 const CustomSkills = lazy(() => import("./CustomSkills"));
@@ -31,6 +31,9 @@ function IntegrationsPage() {
   const aiModels = useChatStore((s) => s.aiModels);
   const aiDetecting = useChatStore((s) => s.aiDetecting);
   const detectProvider = useChatStore((s) => s.detectProvider);
+  const copilotStatus = useChatStore((s) => s.copilotStatus);
+  const fetchCopilotStatus = useChatStore((s) => s.fetchCopilotStatus);
+  const setCopilotModel = useChatStore((s) => s.setCopilotModel);
 
   const [notionKey, setNotionKey] = useState(settings.notionKey);
   const [pageId, setPageId] = useState(settings.pageId);
@@ -38,7 +41,18 @@ function IntegrationsPage() {
   const [aiModel, setAiModel] = useState(settings.aiModel);
   const [showToken, setShowToken] = useState(false);
   const [showAiKey, setShowAiKey] = useState(false);
+  const [copilotModelId, setCopilotModelId] = useState("");
   const [testing, setTesting] = useState(false);
+
+  useEffect(() => {
+    fetchCopilotStatus();
+  }, [fetchCopilotStatus]);
+
+  useEffect(() => {
+    if (copilotStatus?.model) {
+      setCopilotModelId(copilotStatus.model);
+    }
+  }, [copilotStatus?.model]);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(
     null
   );
@@ -214,13 +228,101 @@ function IntegrationsPage() {
               </form>
             </div>
 
-            {/* AI Model Settings */}
+            {/* Copilot Model Settings */}
+            <div className="bg-[#1c1b1b] p-8 rounded-xl relative overflow-hidden">
+              <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2 text-[#e5e2e1]">
+                <span className="material-symbols-outlined text-[#7dd3fc]">
+                  auto_awesome
+                </span>
+                AI Model (GitHub Copilot)
+              </h3>
+
+              {copilotStatus?.available ? (
+                <div className="space-y-6">
+                  {/* Status Badge */}
+                  <div className="flex items-center gap-3">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#4edea3] opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-[#4edea3]" />
+                    </span>
+                    <span className="text-sm font-bold text-[#4edea3]">
+                      Copilot Active
+                    </span>
+                    <span className="text-xs text-[#c2c6d8]/60">
+                      No API key required
+                    </span>
+                  </div>
+
+                  {/* Model Selector */}
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#7dd3fc]">
+                      Select Model
+                    </label>
+                    <select
+                      value={copilotModelId}
+                      onChange={(e) => {
+                        setCopilotModelId(e.target.value);
+                        setCopilotModel(e.target.value);
+                      }}
+                      className="w-full bg-[#201f1f] border border-[#424656]/30 py-3 px-3 text-[#e5e2e1] rounded-lg focus:ring-0 focus:border-[#7dd3fc] transition-all outline-none"
+                    >
+                      {(copilotStatus.models ?? []).map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Model Info Cards */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { id: "gpt-4.1", label: "GPT-4.1", desc: "Recommended", color: "text-[#4edea3]" },
+                      { id: "gpt-5.2", label: "GPT-5.2", desc: "Premium", color: "text-[#c4b5fd]" },
+                      { id: "gpt-5-mini", label: "GPT-5 Mini", desc: "Fast", color: "text-[#7dd3fc]" },
+                      { id: "claude-haiku-4.5", label: "Claude Haiku", desc: "Anthropic", color: "text-[#f9a8d4]" },
+                    ].map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          setCopilotModelId(m.id);
+                          setCopilotModel(m.id);
+                        }}
+                        className={`text-left p-3 rounded-lg border transition-all ${
+                          copilotModelId === m.id
+                            ? "border-[#7dd3fc]/50 bg-[#7dd3fc]/10"
+                            : "border-[#424656]/20 hover:border-[#424656]/40"
+                        }`}
+                      >
+                        <div className={`text-sm font-bold ${m.color}`}>{m.label}</div>
+                        <div className="text-[10px] text-[#c2c6d8]/60">{m.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <span className="relative flex h-3 w-3">
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-[#ffb4ab]" />
+                  </span>
+                  <span className="text-sm text-[#ffb4ab]">
+                    Copilot not available
+                  </span>
+                  <span className="text-xs text-[#c2c6d8]/60">
+                    Use an API key below instead
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* AI Model Settings (API Key) */}
             <div className="bg-[#1c1b1b] p-8 rounded-xl relative overflow-hidden">
               <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2 text-[#e5e2e1]">
                 <span className="material-symbols-outlined text-[#ffb59a]">
                   smart_toy
                 </span>
-                AI Model Settings
+                AI Model Settings (API Key)
               </h3>
 
               <div className="space-y-6">

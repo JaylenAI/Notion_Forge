@@ -116,9 +116,11 @@ class CopilotManager:
 
     def get_status(self) -> dict[str, Any]:
         """현재 상태"""
+        from app.config import settings
         return {
             "available": self.is_available(),
             "started": self._started,
+            "current_model": settings.copilot_model,
             "models": self.get_models() if self._started else [],
         }
 

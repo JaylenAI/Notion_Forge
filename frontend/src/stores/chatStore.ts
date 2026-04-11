@@ -84,6 +84,8 @@ interface ChatState {
   aiProvider: string;
   aiModels: AiModel[];
   aiDetecting: boolean;
+  /* Copilot */
+  copilotStatus: { available: boolean; model: string; models: AiModel[] } | null;
   /* Session management */
   sessions: readonly ChatSession[];
   currentSessionId: string | null;
@@ -104,6 +106,8 @@ interface ChatState {
   deleteTemplate: (id: string) => void;
   setConnectionTested: (tested: boolean) => void;
   detectProvider: (apiKey: string) => Promise<void>;
+  fetchCopilotStatus: () => Promise<void>;
+  setCopilotModel: (modelId: string) => Promise<void>;
   /* Library save */
   saveToLibrary: () => boolean;
   /* Session methods */
@@ -137,6 +141,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   aiProvider: "",
   aiModels: [],
   aiDetecting: false,
+  copilotStatus: null,
   generatedTemplates: loadTemplates(),
   sessions: loadSessions(),
   currentSessionId: null,
@@ -443,6 +448,41 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set({ aiProvider: "", aiModels: [] });
     } finally {
       set({ aiDetecting: false });
+    }
+  },
+
+  fetchCopilotStatus: async () => {
+    try {
+      const resp = await fetch(`${API_URL}/api/templates/ai/copilot-status`);
+      const data = await resp.json();
+      set({
+        copilotStatus: {
+          available: data.available ?? false,
+          model: data.current_model ?? "gpt-4.1",
+          models: (data.models ?? []).map((m: { id: string; name: string }) => ({
+            id: m.id,
+            name: m.name,
+          })),
+        },
+      });
+    } catch {
+      set({ copilotStatus: null });
+    }
+  },
+
+  setCopilotModel: async (modelId: string) => {
+    try {
+      await fetch(`${API_URL}/api/templates/ai/copilot-model`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: modelId }),
+      });
+      const prev = get().copilotStatus;
+      if (prev) {
+        set({ copilotStatus: { ...prev, model: modelId } });
+      }
+    } catch {
+      // ignore
     }
   },
 
