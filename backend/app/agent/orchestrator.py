@@ -1207,14 +1207,21 @@ class AgentOrchestrator:
     async def _create_database_with_data(self, parent_id: str, db_spec: dict) -> dict[str, Any]:
         """DB 생성 + 샘플 데이터 + 뷰 자동 생성"""
         # relation/rollup/formula는 후처리에서 추가 (target DB ID 필요)
+        deferred_prop_names: set[str] = set()
         filtered_props = {}
         for k, v in db_spec["properties"].items():
             if isinstance(v, dict) and v.get("type") in ("relation", "rollup"):
-                continue  # 후처리에서 처리
+                deferred_prop_names.add(k)
+                continue
             if isinstance(v, dict) and v.get("type") == "formula":
-                continue  # 후처리에서 처리
+                deferred_prop_names.add(k)
+                continue
             if isinstance(v, dict) and "target_db_index" in v:
-                continue  # relation shorthand
+                deferred_prop_names.add(k)
+                continue
+            if v == "relation" or v == "rollup" or v == "formula":
+                deferred_prop_names.add(k)
+                continue
             filtered_props[k] = v
         properties = build_database_properties(filtered_props)
         db = await self.client.create_database(
@@ -1229,13 +1236,19 @@ class AgentOrchestrator:
 
         db_id = db["id"]
 
-        # 샘플 데이터 추가
+        # 샘플 데이터 추가 (relation/rollup/formula 속성은 제거 — DB에 아직 없으므로)
         if "sample_items" in db_spec and db_spec["sample_items"]:
             try:
+                clean_items = []
+                for item in db_spec["sample_items"]:
+                    if not isinstance(item, dict):
+                        continue
+                    clean_item = {k: v for k, v in item.items() if k not in deferred_prop_names}
+                    clean_items.append(clean_item)
                 sample_result = await self.add_items_tool.execute(
                     database_id=db_id,
-                    items=db_spec["sample_items"],
-                    db_properties=db_spec["properties"],
+                    items=clean_items,
+                    db_properties=filtered_props,
                 )
                 inserted = sample_result.get("item_count", 0)
                 total = len(db_spec["sample_items"])
