@@ -48,6 +48,40 @@ toggle("❓ FAQ")
 3. table (data entry fallback)
 4. calendar (if date property exists)
 
+### JSON Example (adapt, don't copy):
+```json
+{{
+  "blocks": [
+    {{"type": "callout", "icon": "📋", "color": "blue_background", "text": "프로젝트를 체계적으로 관리하세요!",
+      "children": [{{"type": "paragraph", "text": "칸반 보드에서 태스크 상태를 한눈에 확인하고 관리할 수 있습니다."}}]
+    }},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "column_list", "columns": [
+      [{{"type": "callout", "icon": "🔥", "color": "orange_background", "text": "진행 중\n5건"}}],
+      [{{"type": "callout", "icon": "📅", "color": "yellow_background", "text": "이번주 마감\n3건"}}],
+      [{{"type": "callout", "icon": "✅", "color": "green_background", "text": "완료율\n78%"}}]
+    ]}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "heading_2", "text": "📋 태스크 보드", "color": "blue"}},
+    {{"type": "database_ref", "db_index": 0}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "divider"}},
+    {{"type": "heading_2", "text": "✏️ 오늘의 할일", "color": "blue"}},
+    {{"type": "to_do", "text": "우선순위 높은 태스크 확인"}},
+    {{"type": "to_do", "text": "팀 미팅 준비"}},
+    {{"type": "to_do", "text": "코드 리뷰 완료"}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "divider"}},
+    {{"type": "toggle", "text": "📖 워크플로 가이드", "children": [
+      {{"type": "numbered_list", "text": "1. 새 태스크를 추가합니다"}},
+      {{"type": "numbered_list", "text": "2. 상태를 '진행 중'으로 변경합니다"}},
+      {{"type": "numbered_list", "text": "3. 완료되면 '완료'로 이동합니다"}},
+      {{"type": "callout", "icon": "💡", "color": "yellow_background", "text": "팁: 타임라인 뷰에서 마감일을 시각적으로 확인하세요"}}
+    ]}}
+  ]
+}}
+```
+
 ### When This Layout Works Best:
 - Project management
 - Sprint planning

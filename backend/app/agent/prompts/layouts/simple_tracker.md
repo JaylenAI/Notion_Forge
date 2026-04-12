@@ -43,6 +43,36 @@ toggle("❓ FAQ") with 2 common questions
 - NO linked_views (unnecessary complexity)
 - NO more than 1 database
 
+### JSON Example (adapt, don't copy):
+```json
+{{
+  "blocks": [
+    {{"type": "callout", "icon": "💧", "color": "blue_background", "text": "오늘도 한 걸음! 꾸준히 기록해보세요",
+      "children": [{{"type": "paragraph", "text": "매일 조금씩, 건강한 습관을 만들어갑니다."}}]
+    }},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "column_list", "columns": [
+      [{{"type": "callout", "icon": "📊", "color": "blue_background", "text": "이번주 기록\n12회 달성"}}],
+      [{{"type": "callout", "icon": "🎯", "color": "green_background", "text": "목표\n하루 8잔"}}]
+    ]}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "heading_2", "text": "💧 기록 현황", "color": "blue"}},
+    {{"type": "database_ref", "db_index": 0}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "divider"}},
+    {{"type": "quote", "text": "꾸준함이 최고의 재능이다.", "color": "blue"}},
+    {{"type": "toggle", "text": "📖 사용 가이드", "children": [
+      {{"type": "numbered_list", "text": "1. 매일 아침 이 페이지를 열어주세요"}},
+      {{"type": "numbered_list", "text": "2. 기록을 추가하고 체크하세요"}},
+      {{"type": "numbered_list", "text": "3. 캘린더 뷰에서 패턴을 확인하세요"}}
+    ]}},
+    {{"type": "toggle", "text": "❓ FAQ", "children": [
+      {{"type": "paragraph", "text": "Q: 빠진 날은 어떻게 하나요?\nA: 걱정 마세요! 다음 날부터 다시 기록하면 됩니다."}}
+    ]}}
+  ]
+}}
+```
+
 ### When This Layout Works Best:
 - Water intake tracking
 - Exercise/workout logs

@@ -64,6 +64,58 @@ toggle("❓ FAQ")
 - Supporting DBs: table + list (simpler)
 - Use linked_view for filtered dashboard widgets
 
+### JSON Example (adapt, don't copy):
+```json
+{{
+  "blocks": [
+    {{"type": "callout", "icon": "🏢", "color": "blue_background", "text": "대시보드에 오신 것을 환영합니다!",
+      "children": [
+        {{"type": "paragraph", "text": "핵심 지표와 현황을 한눈에 확인하세요."}},
+        {{"type": "bulleted_list", "text": "📊 고객 관리"}},
+        {{"type": "bulleted_list", "text": "💼 거래 현황"}},
+        {{"type": "bulleted_list", "text": "📈 활동 로그"}}
+      ]
+    }},
+    {{"type": "table_of_contents", "color": "gray"}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "column_list", "columns": [
+      [{{"type": "callout", "icon": "📊", "color": "blue_background", "text": "활성 고객\n128명"}}],
+      [{{"type": "callout", "icon": "💰", "color": "green_background", "text": "이번달 매출\n₩45,000,000"}}],
+      [{{"type": "callout", "icon": "📈", "color": "purple_background", "text": "전환율\n23%"}}]
+    ]}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "heading_1", "text": "👥 고객 관리", "color": "blue"}},
+    {{"type": "database_ref", "db_index": 0}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "divider"}},
+    {{"type": "column_list", "columns": [
+      [
+        {{"type": "heading_3", "text": "🔥 긴급 항목"}},
+        {{"type": "linked_view", "db_index": 0, "view_type": "list", "title": "긴급", "filter": {{"property": "우선순위", "select": {{"equals": "높음"}}}}}}
+      ],
+      [
+        {{"type": "heading_3", "text": "✅ 최근 완료"}},
+        {{"type": "linked_view", "db_index": 0, "view_type": "list", "title": "완료", "filter": {{"property": "상태", "status": {{"equals": "완료"}}}}}}
+      ]
+    ]}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "heading_2", "text": "💼 거래 현황", "color": "green"}},
+    {{"type": "database_ref", "db_index": 1}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "divider"}},
+    {{"type": "heading_2", "text": "📊 활동 로그", "color": "purple"}},
+    {{"type": "database_ref", "db_index": 2}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "divider"}},
+    {{"type": "toggle", "text": "📖 대시보드 가이드", "children": [
+      {{"type": "numbered_list", "text": "1. 고객을 등록하고 상태를 관리하세요"}},
+      {{"type": "numbered_list", "text": "2. 거래를 생성하고 파이프라인을 추적하세요"}},
+      {{"type": "numbered_list", "text": "3. 활동 로그로 팀의 업무를 모니터링하세요"}}
+    ]}}
+  ]
+}}
+```
+
 ### When This Layout Works Best:
 - CRM dashboards (customers + deals + activities)
 - Sales pipelines

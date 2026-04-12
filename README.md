@@ -332,13 +332,19 @@ AI 모델은 범용 도구일 뿐, **하네스(harness)가 결과 품질을 결�
 - [x] Copilot 모델 선택 UI (프론트엔드 Integrations 페이지)
 - [x] 테스트 71/71 통과 (하네스 32개 포함)
 
-### 다음 개발 예정 (v8.0.0 — 하네스 고도화)
+### v7.1.0 완료 (2026-04-12) — 하네스 고도화 + 프로 템플릿 품질
+- [x] Nesting 패턴: callout/toggle/heading children 사용법 + JSON 예시 (base.md)
+- [x] 레이아웃 8종에 완성된 JSON blocks[] 예시 추가
+- [x] 스킬 12개 핵심 패턴 추출 (15줄 잘림 → 핵심 섹션 자동 추출)
+- [x] link_to_page 동적 주입: `sub_page_ref` 플레이스홀더 → ID 치환
+- [x] DB 배치 전략: `db_parent` 필드로 서브페이지에 DB 생성 + 메인에 linked_view
+- [x] 2-Stage 파이프라인: advanced 모드에서 자동 활성화 (Architect→Designer→Content→Validator)
+- [x] Model Escalation: GPT-4.1 실패 → GPT-5.2 → GPT-5 Mini 자동 업그레이드
 
-**하네스 강화:**
+### 다음 개발 예정 (v8.0.0)
+
 - [ ] Human-in-the-Loop: "DB 3개 생성합니다. 진행할까요?" 승인 게이트
-- [ ] Model Escalation: 소형 모델 실패 → 더 큰 모델로 자동 업그레이드
 - [ ] Observability 대시보드: 토큰 비용, 재시도 횟수, 소요시간 시각화
-- [ ] LLM-based Evaluator: Post-processor에 AI 리뷰어 추가 (Gen-Eval 2단계)
 
 **기타:**
 - [ ] Vercel (FE) + Railway (BE) 프로덕션 배포

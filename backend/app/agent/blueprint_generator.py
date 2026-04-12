@@ -118,18 +118,43 @@ def _evaluate_ai_output(content: dict[str, Any]) -> tuple[bool, list[str]]:
     return is_pass, errors
 
 
+def _extract_skill_essentials(skill_md: str) -> str:
+    """스킬 .md에서 핵심 패턴만 추출 (Required properties, Views, Block Order)"""
+    lines = skill_md.split("\n")
+    essentials: list[str] = []
+    capture = False
+    for line in lines:
+        lower = line.lower().strip()
+        # 핵심 섹션 캡처
+        if any(kw in lower for kw in ["required properties", "### views", "### layout", "block order", "must-have"]):
+            capture = True
+        elif line.startswith("## ") and capture:
+            capture = False
+        if capture and line.strip():
+            essentials.append(line)
+        if len(essentials) > 12:
+            break
+    return "\n".join(essentials) if essentials else "\n".join(lines[4:12])
+
+
+def _build_skill_guide() -> str:
+    """모든 스킬의 핵심 패턴을 compact하게 빌드"""
+    all_skills = _get_all_skills()
+    parts: list[str] = []
+    for skill_id, info in all_skills.items():
+        skill_md = load_skill(skill_id)
+        if skill_md:
+            essentials = _extract_skill_essentials(skill_md)
+            parts.append(f"### {skill_id} ({info['description'][:40]}):\n{essentials}")
+    return "\n".join(parts)
+
+
 async def generate_blueprint(user_message: str, ai_key: str = "", ai_model: str = "") -> dict[str, Any]:
     """Gen-Eval 피드백 루프: AI 생성 → 검증 → 실패 시 에러 피드백 → 재생성 (최대 3회)"""
     import time
 
-    # 스킬 가이드를 프롬프트에 주입 (내장 + 커스텀)
-    skill_guide = ""
-    all_skills = _get_all_skills()
-    for skill_id in all_skills:
-        skill_md = load_skill(skill_id)
-        if skill_md:
-            lines = skill_md.split("\n")[:15]
-            skill_guide += f"\n### {skill_id}:\n" + "\n".join(lines) + "\n"
+    # 스킬 가이드를 프롬프트에 주입 — 핵심 패턴만 추출
+    skill_guide = _build_skill_guide()
 
     max_retries = 3
     feedback_context = ""
@@ -266,21 +291,42 @@ async def _call_ai_for_content(user_message: str, ai_key: str = "", ai_model: st
         return None
 
 
+# Model Escalation 순서: 기본 → 더 강력한 모델
+COPILOT_ESCALATION = ["gpt-4.1", "gpt-5.2", "gpt-5-mini"]
+
+
 async def _copilot_call(system: str, user_message: str, model: str = "") -> dict[str, Any] | None:
-    """GitHub Copilot SDK를 통한 AI 호출 (API 키 불필요)"""
-    try:
-        from app.core.copilot_client import copilot_manager
-        text = await copilot_manager.send(
-            system_prompt=system,
-            user_message=user_message,
-            model=model or settings.copilot_model,
-        )
-        if text:
-            return _parse_json_response(text)
-        return None
-    except Exception as e:
-        print(f"[Copilot 에러] {str(e)[:120]}")
-        return None
+    """GitHub Copilot SDK를 통한 AI 호출 — Model Escalation 포함"""
+    from app.core.copilot_client import copilot_manager
+
+    primary_model = model or settings.copilot_model
+    models_to_try = [primary_model]
+    # Escalation: 기본 모델이 실패하면 다음 모델 시도
+    for m in COPILOT_ESCALATION:
+        if m != primary_model and m not in models_to_try:
+            models_to_try.append(m)
+    models_to_try = models_to_try[:3]  # 최대 3개 모델
+
+    for i, try_model in enumerate(models_to_try):
+        try:
+            text = await copilot_manager.send(
+                system_prompt=system,
+                user_message=user_message,
+                model=try_model,
+            )
+            if text:
+                result = _parse_json_response(text)
+                if result:
+                    if i > 0:
+                        print(f"[Model Escalation] {primary_model} → {try_model} 성공")
+                    return result
+                print(f"[Copilot {try_model}] JSON 파싱 실패, 다음 모델 시도")
+            else:
+                print(f"[Copilot {try_model}] 빈 응답, 다음 모델 시도")
+        except Exception as e:
+            print(f"[Copilot {try_model} 에러] {str(e)[:80]}")
+
+    return None
 
 
 def _truncate_prompt_for_groq(system: str, max_chars: int = 16000) -> str:

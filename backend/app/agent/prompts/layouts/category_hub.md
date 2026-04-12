@@ -57,6 +57,55 @@ Each hub should have 2-4 sub_pages like:
 - "❓ FAQ" — detailed Q&A
 - "⚙️ 설정" — configuration and preferences
 
+### JSON Example (adapt, don't copy):
+```json
+{{
+  "blocks": [
+    {{"type": "callout", "icon": "🏢", "color": "blue_background", "text": "팀 허브에 오신 것을 환영합니다!",
+      "children": [
+        {{"type": "paragraph", "text": "필요한 모든 자료와 가이드를 한곳에서 찾아보세요."}},
+        {{"type": "bulleted_list", "text": "📋 시작 가이드"}},
+        {{"type": "bulleted_list", "text": "📚 자료실"}},
+        {{"type": "bulleted_list", "text": "❓ FAQ"}}
+      ]
+    }},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "table_of_contents", "color": "gray"}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "column_list", "columns": [
+      [{{"type": "callout", "icon": "👥", "color": "blue_background", "text": "팀원\n12명"}}],
+      [{{"type": "callout", "icon": "📄", "color": "green_background", "text": "문서\n34개"}}],
+      [{{"type": "callout", "icon": "✅", "color": "purple_background", "text": "완료율\n89%"}}]
+    ]}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "divider"}},
+    {{"type": "heading_1", "text": "📁 카테고리별 안내", "color": "blue"}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "heading_3", "text": "📋 시작하기", "is_toggleable": true, "children": [
+      {{"type": "numbered_list", "text": "1. 팀 소개 문서를 읽어주세요"}},
+      {{"type": "numbered_list", "text": "2. 필수 도구를 설치하세요"}},
+      {{"type": "numbered_list", "text": "3. 슬랙 채널에 인사해주세요"}},
+      {{"type": "callout", "icon": "💡", "color": "yellow_background", "text": "첫 주에 모든 것을 완료하지 않아도 괜찮아요!"}}
+    ]}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "heading_3", "text": "📚 자료실", "is_toggleable": true, "children": [
+      {{"type": "bulleted_list", "text": "회사 소개서"}},
+      {{"type": "bulleted_list", "text": "브랜드 가이드라인"}},
+      {{"type": "bulleted_list", "text": "기술 문서"}}
+    ]}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "heading_3", "text": "❓ 자주 묻는 질문", "is_toggleable": true, "children": [
+      {{"type": "toggle", "text": "Q: 비밀번호를 잊었어요", "children": [{{"type": "paragraph", "text": "A: IT 지원팀에 문의하세요."}}]}},
+      {{"type": "toggle", "text": "Q: 재택근무 신청은 어떻게?", "children": [{{"type": "paragraph", "text": "A: HR 포탈에서 신청서를 작성하세요."}}]}}
+    ]}},
+    {{"type": "paragraph", "text": ""}},
+    {{"type": "divider"}},
+    {{"type": "heading_2", "text": "📊 진행 현황", "color": "blue"}},
+    {{"type": "database_ref", "db_index": 0}}
+  ]
+}}
+```
+
 ### When This Layout Works Best:
 - Company/team wikis and hubs
 - Onboarding portals

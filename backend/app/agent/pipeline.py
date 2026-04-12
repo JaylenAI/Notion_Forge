@@ -105,9 +105,9 @@ If no fixes needed, output the same JSON unchanged.
 
 
 async def _call_agent(system_prompt: str, user_content: str, ai_key: str = "", ai_model: str = "") -> dict[str, Any] | None:
-    """단일 에이전트 호출"""
+    """단일 에이전트 호출 (Copilot 포함)"""
     from app.agent.blueprint_generator import (
-        _detect_provider_from_key, _groq_call, _gemini_call, _claude_call, _openai_call, _parse_json_response
+        _detect_provider_from_key, _copilot_call, _groq_call, _gemini_call, _claude_call, _openai_call, _parse_json_response
     )
 
     if ai_key:
@@ -115,15 +115,22 @@ async def _call_agent(system_prompt: str, user_content: str, ai_key: str = "", a
     else:
         provider = settings.ai_provider
 
+    # Copilot용 compact 프롬프트 (10K 제한)
+    prompt = system_prompt
+    if provider in ("copilot", "groq") and len(prompt) > 10000:
+        prompt = prompt[:10000]
+
     result = None
-    if provider == "groq":
-        result = await _groq_call(system_prompt, user_content, api_key=ai_key, model=ai_model)
+    if provider == "copilot":
+        result = await _copilot_call(prompt, user_content)
+    elif provider == "groq":
+        result = await _groq_call(prompt, user_content, api_key=ai_key, model=ai_model)
     elif provider == "gemini":
-        result = await _gemini_call(system_prompt, user_content, api_key=ai_key, model=ai_model)
+        result = await _gemini_call(prompt, user_content, api_key=ai_key, model=ai_model)
     elif provider == "claude":
-        result = await _claude_call(system_prompt, user_content, api_key=ai_key, model=ai_model)
+        result = await _claude_call(prompt, user_content, api_key=ai_key, model=ai_model)
     elif provider == "openai":
-        result = await _openai_call(system_prompt, user_content, api_key=ai_key, model=ai_model)
+        result = await _openai_call(prompt, user_content, api_key=ai_key, model=ai_model)
 
     return result
 

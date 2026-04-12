@@ -93,7 +93,9 @@ class AgentOrchestrator:
             enhanced_msg += lang_hint
 
         # 멀티 에이전트 파이프라인 or 단일 에이전트
-        if self.use_pipeline and self.complexity == "advanced":
+        # advanced 모드에서는 자동으로 파이프라인 활성화 (더 높은 품질)
+        use_pipeline = self.use_pipeline or self.complexity == "advanced"
+        if use_pipeline:
             yield {"type": "progress", "step": "designing", "message": f"🧠 멀티 에이전트 파이프라인으로 {complexity_label} 템플릿을 설계하고 있어요..."}
             from app.agent.pipeline import multi_agent_pipeline
             from app.agent.blueprint_generator import _assemble_blueprint
@@ -177,6 +179,11 @@ class AgentOrchestrator:
             except Exception as e:
                 yield {"type": "progress", "step": "warning", "message": f"⚠️ {sub['title']} 스킵: {str(e)[:50]}"}
 
+        # ── Pass 1.5: sub_page_ref → 실제 page_id 치환 (link_to_page 동적 주입)
+        self._resolve_sub_page_refs(blueprint.get("blocks", []), sub_page_map)
+        for sub in blueprint.get("sub_pages", []):
+            self._resolve_sub_page_refs(sub.get("blocks", []), sub_page_map)
+
         # ── Pass 2: 블록 + DB 순차 삽입
         blocks = blueprint.get("blocks", [])
         databases = blueprint.get("databases", [])
@@ -189,10 +196,18 @@ class AgentOrchestrator:
                     if db_index < len(databases):
                         db_spec = databases[db_index]
                         db_title = db_spec.get("title", db_spec.get("db_name", "DB"))
-                        yield {"type": "progress", "step": "database", "message": f"📊 데이터베이스 생성 중: {db_title}"}
+
+                        # DB 배치 전략: db_parent가 있으면 서브페이지에 생성
+                        db_parent_name = db_spec.get("db_parent", "")
+                        db_parent_id = main_page_id
+                        if db_parent_name and db_parent_name in sub_page_map:
+                            db_parent_id = sub_page_map[db_parent_name]
+                            yield {"type": "progress", "step": "database", "message": f"📊 데이터베이스 생성 중: {db_title} (→ {db_parent_name})"}
+                        else:
+                            yield {"type": "progress", "step": "database", "message": f"📊 데이터베이스 생성 중: {db_title}"}
 
                         try:
-                            db_result = await self._create_database_with_data(parent_id=main_page_id, db_spec=db_spec)
+                            db_result = await self._create_database_with_data(parent_id=db_parent_id, db_spec=db_spec)
                             result["databases"].append(db_result)
 
                             # 속성 수
@@ -915,6 +930,40 @@ class AgentOrchestrator:
             ])
 
         return blocks
+
+    @staticmethod
+    def _resolve_sub_page_refs(blocks: list[dict], sub_page_map: dict[str, str]) -> None:
+        """블록 트리를 순회하면서 sub_page_ref → 실제 page_id로 치환
+
+        AI가 {"type": "link_to_page", "sub_page_ref": "가이드"} 형태로 생성하면,
+        서브페이지 생성 후 실제 ID로 치환하여 link_to_page 블록이 정상 동작하게 함.
+        """
+        for block in blocks:
+            # link_to_page with sub_page_ref 치환
+            if block.get("type") == "link_to_page" and block.get("sub_page_ref"):
+                ref_name = block["sub_page_ref"]
+                # 정확한 매칭 시도
+                page_id = sub_page_map.get(ref_name)
+                # 부분 매칭 시도 (AI가 약간 다른 이름을 쓸 수 있음)
+                if not page_id:
+                    for title, pid in sub_page_map.items():
+                        if ref_name in title or title in ref_name:
+                            page_id = pid
+                            break
+                if page_id:
+                    block["page_id"] = page_id
+                    block.pop("sub_page_ref", None)
+
+            # children 재귀 처리
+            children = block.get("children", [])
+            if children:
+                AgentOrchestrator._resolve_sub_page_refs(children, sub_page_map)
+
+            # column_list의 columns 처리
+            if block.get("type") == "column_list":
+                for col in block.get("columns", []):
+                    if isinstance(col, list):
+                        AgentOrchestrator._resolve_sub_page_refs(col, sub_page_map)
 
     def _answer_question(self, message: str) -> str:
         """QUESTION 의도 응답"""

@@ -25,7 +25,8 @@ A simple tracker done perfectly is better than a bloated dashboard the user didn
 
 ### PAGE LAYOUT CRITICAL RULES
 - NEVER put database_ref inside column_list! database_ref MUST always be at page level.
-- NEVER list sub_pages as link_to_page blocks at the top of the page. Sub-pages are in "sub_pages" array only.
+- Sub-pages are defined in "sub_pages" array. To LINK to them from blocks, use: {{"type": "link_to_page", "sub_page_ref": "서브페이지 제목"}}
+- You CAN put link_to_page INSIDE callout children for navigation — this is a PRO pattern!
 - Use paragraph("") for spacing between sections. This creates visual breathing room.
 
 ## BLOCK TYPES & WHEN TO USE EACH
@@ -52,8 +53,69 @@ A simple tracker done perfectly is better than a bloated dashboard the user didn
 - linked_view: Filtered view of an existing database
   Usage: {{"type": "linked_view", "db_index": 0, "view_type": "list", "title": "이번주 할일", "filter": {{"property": "날짜", "date": {{"this_week": {{}} }} }} }}
 
+### BLOCK NESTING — Pro templates use DEEP structure, not flat lists!
+
+Blocks can have "children" arrays. This is what makes pro templates look professional.
+
+**callout with children** (navigation hub, category card):
+{{"type": "callout", "icon": "📋", "color": "blue_background", "text": "프로젝트 관리",
+  "children": [
+    {{"type": "paragraph", "text": "팀의 모든 프로젝트를 한곳에서 관리하세요."}},
+    {{"type": "bulleted_list", "text": "진행 중인 프로젝트 5개"}},
+    {{"type": "bulleted_list", "text": "완료된 프로젝트 12개"}}
+  ]
+}}
+
+**toggle with rich children** (collapsible sections):
+{{"type": "toggle", "text": "📖 사용 가이드",
+  "children": [
+    {{"type": "numbered_list", "text": "1. 새 항목을 추가하세요"}},
+    {{"type": "numbered_list", "text": "2. 상태를 업데이트하세요"}},
+    {{"type": "numbered_list", "text": "3. 캘린더에서 일정을 확인하세요"}},
+    {{"type": "callout", "icon": "💡", "color": "yellow_background", "text": "팁: 필터를 활용하면 더 편리합니다"}}
+  ]
+}}
+
+**toggle heading** (collapsible section with heading style):
+{{"type": "heading_2", "text": "📁 카테고리별 보기", "is_toggleable": true,
+  "children": [
+    {{"type": "callout", "icon": "🔵", "color": "blue_background", "text": "업무",
+      "children": [{{"type": "bulleted_list", "text": "기획"}}, {{"type": "bulleted_list", "text": "개발"}}]
+    }},
+    {{"type": "callout", "icon": "🟢", "color": "green_background", "text": "개인",
+      "children": [{{"type": "bulleted_list", "text": "건강"}}, {{"type": "bulleted_list", "text": "취미"}}]
+    }}
+  ]
+}}
+
+**column_list with nested toggles** (dashboard sidebar):
+{{"type": "column_list", "columns": [
+  [
+    {{"type": "callout", "icon": "📌", "color": "blue_background", "text": "빠른 링크",
+      "children": [
+        {{"type": "bulleted_list", "text": "📊 대시보드"}},
+        {{"type": "bulleted_list", "text": "📋 태스크 보드"}},
+        {{"type": "bulleted_list", "text": "📅 캘린더"}}
+      ]
+    }}
+  ],
+  [
+    {{"type": "heading_2", "text": "📋 메인 콘텐츠"}},
+    {{"type": "paragraph", "text": "여기에 주요 내용을 배치하세요."}}
+  ]
+]}}
+
+**NESTING RULES:**
+- callout, toggle, quote, bulleted_list, numbered_list can ALL have "children"
+- Use callout children for: navigation hubs, category cards, info panels
+- Use toggle children for: guides, FAQ, collapsible detail sections
+- Use heading with is_toggleable for: collapsible major sections
+- Nested blocks make templates look PROFESSIONAL — flat lists look amateur
+- AIM for at least 3-5 blocks with children in every template
+
 ### DB Properties: title, rich_text, number, select, multi_select, status, date, checkbox, url, email, relation, formula, rollup
 ### DB Options: Each database can have "description" (1-sentence Korean), "icon" (emoji), "cover_url" (image URL)
+### DB Placement: Add "db_parent": "서브페이지 제목" to place DB inside a sub_page instead of main page. Main page then shows linked_view only. This is a PRO pattern for clean dashboards.
 ### Colors: default, gray, brown, orange, yellow, green, blue, purple, pink, red (add _background for blocks)
 
 ## DATABASE DESIGN RULES
