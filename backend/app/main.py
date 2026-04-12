@@ -9,11 +9,9 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.routers import chat, template, recipes, oauth, skills
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+from app.core.logging_config import setup_logging
+
+setup_logging(settings.log_level)
 
 logger = logging.getLogger("notionforge")
 

@@ -7,6 +7,8 @@ services:
       - "9500:9500"
     env_file:
       - .env
+    volumes:
+      - backend_data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9500/health"]
@@ -38,3 +40,6 @@ services:
         limits:
           memory: 256M
           cpus: "0.5"
+
+volumes:
+  backend_data:

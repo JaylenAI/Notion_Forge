@@ -1,9 +1,12 @@
 """WebSocket 채팅 라우터"""
 
 import json
+import logging
 import traceback
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
+logger = logging.getLogger("notionforge.chat")
 
 from app.agent.orchestrator import AgentOrchestrator
 
@@ -53,6 +56,15 @@ async def websocket_chat(websocket: WebSocket):
                 await websocket.send_json({"type": "system", "content": f"AI 모드: {mode}"})
                 continue
 
+            # Approval Gate 응답
+            if msg_type == "confirm_create" and agent:
+                agent.approve_creation(approved=True)
+                continue
+
+            if msg_type == "cancel_create" and agent:
+                agent.approve_creation(approved=False)
+                continue
+
             if msg_type == "cancel":
                 continue
 
@@ -67,7 +79,7 @@ async def websocket_chat(websocket: WebSocket):
                         break
             except Exception as e:
                 tb = traceback.format_exc()
-                print(f"[Agent 에러]\n{tb}")
+                logger.error(f"[Agent 에러]\n{tb}")
                 try:
                     await websocket.send_json({
                         "type": "error",
@@ -79,7 +91,7 @@ async def websocket_chat(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     except Exception as e:
-        print(f"[WebSocket 에러] {e}")
+        logger.error(f"[WebSocket 에러] {e}")
         try:
             await websocket.send_json({"type": "error", "content": str(e)[:200]})
         except Exception:

@@ -258,6 +258,9 @@ function ChatPanel() {
                       </ReactMarkdown>
                     </div>
                   ) : null}
+                  {msg.metadata?.type === "approval_request" && (
+                    <ApprovalActions />
+                  )}
                   {msg.metadata?.type === "complete" && msg.metadata.notionUrl && (
                     <CompletionActions notionUrl={msg.metadata.notionUrl} />
                   )}
@@ -284,8 +287,8 @@ function ChatPanel() {
         onSelect={handleSend}
       />
 
-      {/* Complexity & Language Selector */}
-      <div className="px-3 sm:px-4 pt-2 pb-0 bg-[var(--surface-low,#1c1b1b)] border-t border-[var(--border-color,#424656)]/10 flex items-center gap-3 text-xs">
+      {/* Complexity & Language & Model Selector */}
+      <div className="px-3 sm:px-4 pt-2 pb-0 bg-[var(--surface-low,#1c1b1b)] border-t border-[var(--border-color,#424656)]/10 flex items-center gap-3 text-xs flex-wrap">
         <div className="flex items-center gap-1">
           <span className="text-[var(--text-muted,#c2c6d8)]/50">Complexity:</span>
           {(["simple", "standard", "advanced"] as const).map((c) => (
@@ -320,6 +323,8 @@ function ChatPanel() {
             </button>
           ))}
         </div>
+        {/* Model Quick Display */}
+        <ModelBadgeInline />
       </div>
 
       {/* Input Area */}
@@ -467,6 +472,41 @@ function NotionUrlLink({ url }: { readonly url: string }) {
   );
 }
 
+function ApprovalActions() {
+  const pendingApproval = useChatStore((s) => s.pendingApproval);
+  const confirmCreate = useChatStore((s) => s.confirmCreate);
+  const cancelCreate = useChatStore((s) => s.cancelCreate);
+
+  if (!pendingApproval) {
+    return (
+      <div className="mt-3 text-xs text-[var(--text-muted,#c2c6d8)]/50">
+        (응답 완료)
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 flex gap-2">
+      <button
+        type="button"
+        onClick={confirmCreate}
+        className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#adc6ff]/20 text-[#adc6ff] hover:bg-[#adc6ff]/30 transition-colors text-sm font-medium"
+      >
+        <span className="material-symbols-outlined text-sm">check_circle</span>
+        생성하기
+      </button>
+      <button
+        type="button"
+        onClick={cancelCreate}
+        className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#ffb4ab]/10 text-[#ffb4ab] hover:bg-[#ffb4ab]/20 transition-colors text-sm font-medium"
+      >
+        <span className="material-symbols-outlined text-sm">cancel</span>
+        취소
+      </button>
+    </div>
+  );
+}
+
 function CompletionActions({ notionUrl }: { readonly notionUrl: string }) {
   const clearMessages = useChatStore((s) => s.clearMessages);
   const saveToLibrary = useChatStore((s) => s.saveToLibrary);
@@ -529,6 +569,31 @@ function CompletionActions({ notionUrl }: { readonly notionUrl: string }) {
         Create Another
       </button>
     </div>
+  );
+}
+
+function ModelBadgeInline() {
+  const settings = useChatStore((s) => s.settings);
+  const aiProvider = useChatStore((s) => s.aiProvider);
+  const copilotStatus = useChatStore((s) => s.copilotStatus);
+
+  const provider = copilotStatus?.available ? "copilot" : aiProvider;
+  const model = copilotStatus?.available ? copilotStatus.model : (settings.aiModel || "default");
+
+  const providerConfig: Record<string, { emoji: string; color: string }> = {
+    copilot: { emoji: "C", color: "text-cyan-400 bg-cyan-400/10" },
+    google: { emoji: "G", color: "text-blue-400 bg-blue-400/10" },
+    groq: { emoji: "G", color: "text-orange-400 bg-orange-400/10" },
+    anthropic: { emoji: "A", color: "text-purple-400 bg-purple-400/10" },
+    openai: { emoji: "O", color: "text-green-400 bg-green-400/10" },
+  };
+  const config = providerConfig[provider] ?? { emoji: "?", color: "text-gray-400 bg-gray-400/10" };
+
+  return (
+    <span className={`inline-flex items-center gap-1 text-[11px] ${config.color} px-2 py-0.5 rounded-full ml-auto`}>
+      <span className="font-bold text-[10px]">{config.emoji}</span>
+      <span className="font-medium truncate max-w-[100px]">{model}</span>
+    </span>
   );
 }
 

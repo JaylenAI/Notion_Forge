@@ -91,12 +91,16 @@ interface ChatState {
   currentSessionId: string | null;
   /* Abort controller for cancel */
   abortController: AbortController | null;
+  /* Approval Gate */
+  pendingApproval: boolean;
   /* Complexity & Language */
   complexity: "simple" | "standard" | "advanced";
   language: "ko" | "en" | "ja";
   connect: () => void;
   disconnect: () => void;
   sendMessage: (content: string) => void;
+  confirmCreate: () => void;
+  cancelCreate: () => void;
   cancelGeneration: () => void;
   updateSettings: (settings: Settings) => void;
   toggleSettings: () => void;
@@ -146,6 +150,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   sessions: loadSessions(),
   currentSessionId: null,
   abortController: null,
+  pendingApproval: false,
   complexity: "standard",
   language: "ko",
 
@@ -201,6 +206,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
             set((state) => ({
               messages: [...state.messages, msg],
               isLoading: false,
+            }));
+            return;
+          }
+
+          // approval_request: Approval Gate 대기
+          if (eventType === "approval_request") {
+            const msg: Message = {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: data.content ?? "템플릿 설계를 확인해주세요. 생성을 진행할까요?",
+              timestamp: new Date(),
+              metadata: { type: "approval_request", blueprint: data.blueprint },
+            };
+            set((state) => ({
+              messages: [...state.messages, msg],
+              pendingApproval: true,
+              isLoading: false,
+              currentStep: "",
             }));
             return;
           }
@@ -336,6 +359,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
           }));
         });
     }
+  },
+
+  confirmCreate: () => {
+    const { ws } = get();
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "confirm_create" }));
+    }
+    set({ pendingApproval: false, isLoading: true, currentStep: "creating" });
+  },
+
+  cancelCreate: () => {
+    const { ws } = get();
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "cancel_create" }));
+    }
+    set({ pendingApproval: false, isLoading: false });
   },
 
   cancelGeneration: () => {

@@ -295,3 +295,12 @@ async def archive_page(page_id: str):
     client = NotionClient(token=settings.notion_api_key, parent_page_id=settings.notion_parent_page_id)
     result = await client.archive_page(page_id)
     return result
+
+
+@router.get("/history/recent")
+async def get_generation_history(days: int = 7, limit: int = 50):
+    """최근 생성 이력 조회"""
+    from app.core.history import get_recent_history
+
+    records = get_recent_history(days=days, limit=limit)
+    return {"records": records, "count": len(records)}

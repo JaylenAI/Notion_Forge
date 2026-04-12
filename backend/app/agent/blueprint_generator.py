@@ -148,6 +148,9 @@ TIER2_SKILLS = {
     "project", "sprint", "bug", "meeting", "travel", "wedding", "goals",
     "bookmark", "inventory", "contact", "budget", "investment", "subscription",
     "study", "language", "sales",
+    # Phase 4 추가
+    "onboarding", "wiki", "sop", "team_home", "life_os",
+    "diary", "gratitude", "review", "blog", "youtube", "social",
 }
 
 
@@ -212,7 +215,12 @@ def _build_skill_guide(user_message: str = "") -> str:
     return "\n".join(parts)
 
 
-async def generate_blueprint(user_message: str, ai_key: str = "", ai_model: str = "") -> dict[str, Any]:
+async def generate_blueprint(
+    user_message: str,
+    ai_key: str = "",
+    ai_model: str = "",
+    conversation_history: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
     """Gen-Eval 피드백 루프: AI 생성 → 검증 → 실패 시 에러 피드백 → 재생성 (최대 3회)"""
     import time
 
@@ -237,7 +245,8 @@ async def generate_blueprint(user_message: str, ai_key: str = "", ai_model: str 
                 )
 
             ai_content = await _call_ai_for_content(
-                enhanced_message, ai_key=ai_key, ai_model=ai_model, extra_context=skill_guide
+                enhanced_message, ai_key=ai_key, ai_model=ai_model,
+                extra_context=skill_guide, conversation_history=conversation_history,
             )
             elapsed = time.time() - t0
 
@@ -264,7 +273,7 @@ async def generate_blueprint(user_message: str, ai_key: str = "", ai_model: str 
             error_count = len(eval_errors)
             logger.info(f"[Gen-Eval 시도 {attempt+1}/{max_retries}] 검증 실패: {error_count}개 오류 ({elapsed:.1f}s)")
             for err in eval_errors[:5]:
-                print(f"  - {err}")
+                logger.info(f"  - {err}")
 
             # 최선의 결과 추적 (Circuit Breaker: 가장 오류 적은 결과 보관)
             if error_count < best_error_count:
@@ -273,6 +282,14 @@ async def generate_blueprint(user_message: str, ai_key: str = "", ai_model: str 
 
             # 피드백 구성: 에러 메시지를 AI에게 다시 전달
             feedback_context = "\n".join(eval_errors[:8])
+
+            # 전략 변경: 마지막 재시도에서는 간소화 힌트 추가
+            if attempt == max_retries - 2:
+                feedback_context += (
+                    "\n\n[STRATEGY CHANGE] 이전 시도들이 실패했습니다. "
+                    "더 간단한 구조로 생성하세요: DB 1-2개, 블록 8-12개, "
+                    "복잡한 중첩 구조 대신 평면적 배치를 사용하세요."
+                )
 
         except Exception as e:
             elapsed = time.time() - t0
@@ -289,7 +306,7 @@ async def generate_blueprint(user_message: str, ai_key: str = "", ai_model: str 
         blueprint["metadata"]["gen_eval_errors"] = best_error_count
         return blueprint
 
-    print("[Gen-Eval 전체 실패 → 스마트 폴백 사용]")
+    logger.info("[Gen-Eval 전체 실패 → 스마트 폴백 사용]")
     content = _smart_fallback(user_message)
     blueprint = _assemble_blueprint(content)
     blueprint["metadata"]["generation_method"] = "smart_fallback"
@@ -318,7 +335,13 @@ def _detect_mode(user_message: str) -> str:
     return "standard"
 
 
-async def _call_ai_for_content(user_message: str, ai_key: str = "", ai_model: str = "", extra_context: str = "") -> dict[str, Any] | None:
+async def _call_ai_for_content(
+    user_message: str,
+    ai_key: str = "",
+    ai_model: str = "",
+    extra_context: str = "",
+    conversation_history: list[dict[str, str]] | None = None,
+) -> dict[str, Any] | None:
     mode = _detect_mode(user_message)
     layout_result = layout_router.route(user_message)
     skills_desc = get_tool_enum_description()
@@ -329,6 +352,13 @@ async def _call_ai_for_content(user_message: str, ai_key: str = "", ai_model: st
     if extra_context:
         prompt += f"\n\n## Skill Guidelines:\n{extra_context[:1200]}"
         compact_prompt += f"\n\n## Skill Guidelines:\n{extra_context[:600]}"
+
+    # 대화 히스토리 컨텍스트 추가 (최근 3턴)
+    if conversation_history and len(conversation_history) > 1:
+        recent = conversation_history[-6:]  # 최근 3턴 (user+assistant 쌍)
+        history_text = "\n".join(f"[{m['role']}]: {m['content'][:150]}" for m in recent[:-1])
+        prompt += f"\n\n## Conversation History:\n{history_text}"
+        compact_prompt += f"\n\n## History:\n{history_text[:400]}"
 
     if ai_key:
         provider = _detect_provider_from_key(ai_key)

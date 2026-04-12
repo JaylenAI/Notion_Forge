@@ -80,7 +80,7 @@ SKILL_REGISTRY: dict[str, dict[str, str]] = {
         "keywords": "고객,CRM,영업,세일즈,리드,미팅,거래,계약,클라이언트,파트너,제안,비즈니스,crm,client,sales,lead,meeting,deal,pipeline,customer",
     },
     # ── 세분화 스킬 (Tier 2) ──
-    "fitness": {"name": "fitness", "description": "Exercise & workout tracking (sets, reps, body parts, calories)", "keywords": "운동,헬스,피트니스,러닝,웨이트,요가,수영,스쿼트,벤치프레스,유산소,근력,스트레칭,fitness,exercise,workout,gym"},
+    "fitness": {"name": "fitness", "description": "Exercise & workout tracking (sets, reps, body parts, calories)", "keywords": "운동,헬스,피트니스,러닝,웨이트,요가,수영,스쿼트,벤치프레스,유산소,근력,스트레칭,운동기록,운동일지,운동일기,fitness,exercise,workout,gym"},
     "habit": {"name": "habit", "description": "Habit tracking & streaks (daily check, streak count, routines)", "keywords": "습관,루틴,매일,출석,streak,도전,30일,체크,daily,routine,habit"},
     "health": {"name": "health", "description": "Health tracking (sleep, water, weight, blood pressure, mood)", "keywords": "수면,물,체중,혈압,건강,기분,무드,에너지,수분,sleep,water,weight,health,mood"},
     "diet": {"name": "diet", "description": "Diet & nutrition tracking (meals, calories, macros, recipes)", "keywords": "식단,칼로리,영양,단백질,탄수화물,다이어트,식사,아침,점심,저녁,diet,nutrition,meal,calorie"},
@@ -105,6 +105,18 @@ SKILL_REGISTRY: dict[str, dict[str, str]] = {
     "study": {"name": "study", "description": "Study log (subject, duration, comprehension, topic, date)", "keywords": "공부,스터디,과목,시험,수능,공시,자격증,토익,study,exam,test"},
     "language": {"name": "language", "description": "Language learning (word, meaning, example, mastery, review date)", "keywords": "어학,영어,일본어,중국어,단어,문법,회화,토플,language,english,vocabulary"},
     "sales": {"name": "sales", "description": "Sales pipeline (customer, stage, amount, probability, close date)", "keywords": "세일즈,파이프라인,거래,계약,영업기회,제안서,견적,sales,pipeline,deal,opportunity"},
+    # ── Phase 4 추가 스킬 (Tier 2) ──
+    "onboarding": {"name": "onboarding", "description": "Onboarding guide (steps, checklist, responsible person, timeline)", "keywords": "온보딩,신입,입사,적응,환영,안내,체크리스트,OJT,onboarding,welcome,new hire"},
+    "wiki": {"name": "wiki", "description": "Team wiki & knowledge base (category, author, tags, last updated)", "keywords": "위키,지식베이스,문서화,사내,매뉴얼,정책,절차,나무위키,wiki,knowledge,docs"},
+    "sop": {"name": "sop", "description": "Standard operating procedures (process, steps, responsible, frequency)", "keywords": "SOP,표준업무,절차서,프로세스,매뉴얼,규정,가이드라인,업무절차,sop,procedure,process"},
+    "team_home": {"name": "team_home", "description": "Team home dashboard (members, links, announcements, goals)", "keywords": "팀홈,팀대시보드,팀페이지,부서,조직,팀원,공지,team home,team page,department"},
+    "life_os": {"name": "life_os", "description": "Life OS & personal dashboard (areas, projects, goals, routines)", "keywords": "라이프OS,개인대시보드,삶관리,영역,프로젝트,습관,인생,life os,personal,dashboard,second brain"},
+    "diary": {"name": "diary", "description": "Daily diary & journal (date, mood, weather, content, photo)", "keywords": "다이어리,하루,오늘,매일,일상,diary,daily,journal"},
+    "gratitude": {"name": "gratitude", "description": "Gratitude journal (date, grateful for, category, mood)", "keywords": "감사,감사일기,감사노트,감사일지,고마운,행복,긍정,gratitude,thankful,grateful"},
+    "review": {"name": "review", "description": "Weekly/monthly review (period, achievements, lessons, next goals)", "keywords": "회고,리뷰,주간,월간,분기,연간,성찰,피드백,review,retrospective,weekly,monthly"},
+    "blog": {"name": "blog", "description": "Blog content management (title, category, status, publish date, SEO)", "keywords": "블로그,포스팅,글쓰기,발행,SEO,키워드,카테고리,blog,post,article,writing"},
+    "youtube": {"name": "youtube", "description": "YouTube content planning (title, script status, filming, editing, upload)", "keywords": "유튜브,영상,촬영,편집,업로드,스크립트,썸네일,youtube,video,filming,editing"},
+    "social": {"name": "social", "description": "Social media calendar (platform, content type, schedule, hashtags, analytics)", "keywords": "SNS,소셜미디어,인스타,틱톡,트위터,페이스북,해시태그,일정,social media,instagram,tiktok"},
 }
 
 

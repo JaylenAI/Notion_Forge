@@ -8,6 +8,10 @@
 - Search / Users / Comments / Archive / Lock / Markdown / Custom Emoji — 2026-03-27
 """
 
+import logging
+
+logger = logging.getLogger("notionforge.notion_client")
+
 import uuid
 from typing import Any
 
@@ -91,7 +95,7 @@ class NotionClient:
                 error_text = resp.text[:300]
                 # 이모지 에러 시 아이콘 없이 재시도
                 if "icon.emoji" in error_text and icon:
-                    print(f"[Icon 폴백] 잘못된 이모지 '{icon}' → 아이콘 없이 재시도")
+                    logger.warning(f"[Icon 폴백] 잘못된 이모지 '{icon}' → 아이콘 없이 재시도")
                     body.pop("icon", None)
                     await self.rate_limiter.acquire()
                     resp = await self._http_client.post("/pages", json=body)
@@ -139,15 +143,15 @@ class NotionClient:
             resp = await self._http_legacy.post("/databases", json=db_data)
             if resp.status_code >= 400:
                 error_text = resp.text[:500]
-                print(f"[DB 생성 에러 상세] {error_text}")
+                logger.warning(f"[DB 생성 에러 상세] {error_text}")
                 # 속성 문제로 실패 시, 기본 속성만으로 재시도
                 if "validation" in error_text.lower() or "property" in error_text.lower():
-                    print("[DB 생성] 속성 문제 → 기본 속성(title만)으로 재시도")
+                    logger.info("[DB 생성] 속성 문제 → 기본 속성(title만)으로 재시도")
                     db_data["properties"] = {"이름": {"title": {}}}
                     await self.rate_limiter.acquire()
                     resp2 = await self._http_legacy.post("/databases", json=db_data)
                     if resp2.status_code < 400:
-                        print("[DB 생성] 기본 속성으로 재시도 성공")
+                        logger.info("[DB 생성] 기본 속성으로 재시도 성공")
                         return resp2.json()
                 raise RuntimeError(f"DB 생성 API 에러 ({resp.status_code}): {error_text[:200]}")
             return resp.json()
@@ -260,11 +264,11 @@ class NotionClient:
             resp = await self._http_legacy.post("/pages", json=page_data)
             if resp.status_code >= 400:
                 error_text = resp.text[:500]
-                print(f"[DB Item 에러 상세] {error_text}")
-                print(f"[DB Item 전송 데이터] properties keys: {list(properties.keys())}")
+                logger.warning(f"[DB Item 에러 상세] {error_text}")
+                logger.info(f"[DB Item 전송 데이터] properties keys: {list(properties.keys())}")
                 # 이모지 에러 시 아이콘 없이 재시도
                 if "icon.emoji" in error_text and icon:
-                    print(f"[DB Item Icon 폴백] 잘못된 이모지 '{icon}' → 아이콘 없이 재시도")
+                    logger.warning(f"[DB Item Icon 폴백] 잘못된 이모지 '{icon}' → 아이콘 없이 재시도")
                     page_data.pop("icon", None)
                     await self.rate_limiter.acquire()
                     resp = await self._http_legacy.post("/pages", json=page_data)
@@ -276,15 +280,15 @@ class NotionClient:
                     retry_props = dict(properties)
                     if "status" in error_text.lower():
                         retry_props = {k: v for k, v in retry_props.items() if not (isinstance(v, dict) and "status" in v)}
-                        print(f"[DB Item 폴백] status 속성 제거 후 재시도")
+                        logger.warning(f"[DB Item 폴백] status 속성 제거 후 재시도")
                     elif "select" in error_text.lower():
                         retry_props = {k: v for k, v in retry_props.items() if not (isinstance(v, dict) and "select" in v)}
-                        print(f"[DB Item 폴백] select 속성 제거 후 재시도")
+                        logger.warning(f"[DB Item 폴백] select 속성 제거 후 재시도")
                     else:
                         # 알 수 없는 속성 에러 → title만 남기기
                         title_only = {k: v for k, v in retry_props.items() if isinstance(v, dict) and "title" in v}
                         retry_props = title_only if title_only else retry_props
-                        print(f"[DB Item 폴백] title만으로 재시도")
+                        logger.warning(f"[DB Item 폴백] title만으로 재시도")
                     page_data["properties"] = retry_props
                     page_data.pop("icon", None)
                     await self.rate_limiter.acquire()
@@ -368,10 +372,10 @@ class NotionClient:
             resp = await self._http_client.post("/views", json=body)
             if resp.status_code >= 400:
                 error_body = resp.text[:200]
-                print(f"[Views API {resp.status_code}] {view_type}: {error_body}")
+                logger.warning(f"[Views API {resp.status_code}] {view_type}: {error_body}")
                 # configuration이 문제일 수 있으므로 config 없이 재시도
                 if configuration:
-                    print(f"[Views API 폴백] configuration 제거 후 재시도")
+                    logger.warning(f"[Views API 폴백] configuration 제거 후 재시도")
                     body.pop("configuration", None)
                     await self.rate_limiter.acquire()
                     resp2 = await self._http_client.post("/views", json=body)
@@ -380,7 +384,7 @@ class NotionClient:
                 return {"id": self._mock_id(), "type": view_type, "name": title, "fallback": True}
             return resp.json()
         except Exception as e:
-            print(f"[Views API 에러] {view_type}: {str(e)[:100]}")
+            logger.warning(f"[Views API 에러] {view_type}: {str(e)[:100]}")
             return {"id": self._mock_id(), "type": view_type, "name": title, "fallback": True}
 
     # ========================================
@@ -396,11 +400,11 @@ class NotionClient:
         try:
             resp = await self._http_client.patch(f"/views/{view_id}", json=body)
             if resp.status_code >= 400:
-                print(f"[update_view 에러 {resp.status_code}] {resp.text[:200]}")
+                logger.warning(f"[update_view 에러 {resp.status_code}] {resp.text[:200]}")
                 return {"id": view_id, "fallback": True}
             return resp.json()
         except Exception as e:
-            print(f"[update_view 에러] {str(e)[:100]}")
+            logger.warning(f"[update_view 에러] {str(e)[:100]}")
             return {"id": view_id, "fallback": True}
 
     async def delete_view(self, view_id: str) -> bool:
@@ -411,11 +415,11 @@ class NotionClient:
         try:
             resp = await self._http_client.delete(f"/views/{view_id}")
             if resp.status_code >= 400:
-                print(f"[delete_view 에러 {resp.status_code}] {resp.text[:200]}")
+                logger.warning(f"[delete_view 에러 {resp.status_code}] {resp.text[:200]}")
                 return False
             return True
         except Exception as e:
-            print(f"[delete_view 에러] {str(e)[:100]}")
+            logger.warning(f"[delete_view 에러] {str(e)[:100]}")
             return False
 
     async def list_views(self, database_id: str) -> list[dict]:
@@ -426,11 +430,11 @@ class NotionClient:
         try:
             resp = await self._http_client.get(f"/databases/{database_id}/views")
             if resp.status_code >= 400:
-                print(f"[list_views 에러 {resp.status_code}] {resp.text[:200]}")
+                logger.warning(f"[list_views 에러 {resp.status_code}] {resp.text[:200]}")
                 return []
             return resp.json().get("results", [])
         except Exception as e:
-            print(f"[list_views 에러] {str(e)[:100]}")
+            logger.warning(f"[list_views 에러] {str(e)[:100]}")
             return []
 
     async def get_view(self, view_id: str) -> dict[str, Any]:
@@ -444,7 +448,7 @@ class NotionClient:
                 return {"id": view_id}
             return resp.json()
         except Exception as e:
-            print(f"[get_view 에러] {str(e)[:100]}")
+            logger.warning(f"[get_view 에러] {str(e)[:100]}")
             return {"id": view_id}
 
     # ========================================
@@ -462,7 +466,7 @@ class NotionClient:
                 return {"id": block_id}
             return resp.json()
         except Exception as e:
-            print(f"[get_block 에러] {str(e)[:100]}")
+            logger.warning(f"[get_block 에러] {str(e)[:100]}")
             return {"id": block_id}
 
     async def get_block_children(self, block_id: str, page_size: int = 100) -> list[dict]:
@@ -489,7 +493,7 @@ class NotionClient:
                     break
                 start_cursor = data.get("next_cursor")
             except Exception as e:
-                print(f"[get_block_children 에러] {str(e)[:100]}")
+                logger.warning(f"[get_block_children 에러] {str(e)[:100]}")
                 break
         return all_children
 
@@ -501,11 +505,11 @@ class NotionClient:
         try:
             resp = await self._http_client.patch(f"/blocks/{block_id}", json=block_data)
             if resp.status_code >= 400:
-                print(f"[update_block 에러 {resp.status_code}] {resp.text[:200]}")
+                logger.warning(f"[update_block 에러 {resp.status_code}] {resp.text[:200]}")
                 return {"id": block_id, "fallback": True}
             return resp.json()
         except Exception as e:
-            print(f"[update_block 에러] {str(e)[:100]}")
+            logger.warning(f"[update_block 에러] {str(e)[:100]}")
             return {"id": block_id, "fallback": True}
 
     async def delete_block(self, block_id: str) -> bool:
@@ -516,11 +520,11 @@ class NotionClient:
         try:
             resp = await self._http_client.delete(f"/blocks/{block_id}")
             if resp.status_code >= 400:
-                print(f"[delete_block 에러 {resp.status_code}] {resp.text[:200]}")
+                logger.warning(f"[delete_block 에러 {resp.status_code}] {resp.text[:200]}")
                 return False
             return True
         except Exception as e:
-            print(f"[delete_block 에러] {str(e)[:100]}")
+            logger.warning(f"[delete_block 에러] {str(e)[:100]}")
             return False
 
     # ========================================
@@ -546,11 +550,11 @@ class NotionClient:
         try:
             resp = await self._http_legacy.post(f"/databases/{database_id}/query", json=body)
             if resp.status_code >= 400:
-                print(f"[query_database 에러 {resp.status_code}] {resp.text[:200]}")
+                logger.warning(f"[query_database 에러 {resp.status_code}] {resp.text[:200]}")
                 return []
             return resp.json().get("results", [])
         except Exception as e:
-            print(f"[query_database 에러] {str(e)[:100]}")
+            logger.warning(f"[query_database 에러] {str(e)[:100]}")
             return []
 
     # ========================================
@@ -568,7 +572,7 @@ class NotionClient:
                 return {"id": page_id}
             return resp.json()
         except Exception as e:
-            print(f"[get_page 에러] {str(e)[:100]}")
+            logger.warning(f"[get_page 에러] {str(e)[:100]}")
             return {"id": page_id}
 
     async def update_page(self, page_id: str, **kwargs) -> dict[str, Any]:
@@ -579,11 +583,11 @@ class NotionClient:
         try:
             resp = await self._http_client.patch(f"/pages/{page_id}", json=kwargs)
             if resp.status_code >= 400:
-                print(f"[update_page 에러 {resp.status_code}] {resp.text[:200]}")
+                logger.warning(f"[update_page 에러 {resp.status_code}] {resp.text[:200]}")
                 return {"id": page_id, "fallback": True}
             return resp.json()
         except Exception as e:
-            print(f"[update_page 에러] {str(e)[:100]}")
+            logger.warning(f"[update_page 에러] {str(e)[:100]}")
             return {"id": page_id, "fallback": True}
 
     async def delete_page(self, page_id: str) -> bool:
@@ -594,11 +598,11 @@ class NotionClient:
         try:
             resp = await self._http_client.delete(f"/pages/{page_id}")
             if resp.status_code >= 400:
-                print(f"[delete_page 에러 {resp.status_code}] {resp.text[:200]}")
+                logger.warning(f"[delete_page 에러 {resp.status_code}] {resp.text[:200]}")
                 return False
             return True
         except Exception as e:
-            print(f"[delete_page 에러] {str(e)[:100]}")
+            logger.warning(f"[delete_page 에러] {str(e)[:100]}")
             return False
 
     # ========================================
@@ -686,7 +690,7 @@ class NotionClient:
             json={"parent": {"type": "page_id", "page_id": new_parent_id}},
         )
         if resp.status_code >= 400:
-            print(f"[페이지 이동 에러] {resp.text[:200]}")
+            logger.warning(f"[페이지 이동 에러] {resp.text[:200]}")
             return {"id": page_id}
         return resp.json()
 
@@ -700,7 +704,7 @@ class NotionClient:
             json={"replace_content": {"markdown": markdown}},
         )
         if resp.status_code >= 400:
-            print(f"[마크다운 교체 에러] {resp.text[:200]}")
+            logger.warning(f"[마크다운 교체 에러] {resp.text[:200]}")
             return {"id": page_id}
         return resp.json()
 
@@ -751,7 +755,7 @@ class NotionClient:
         await self.rate_limiter.acquire()
         resp = await self._http_client.post("/pages", json=body)
         if resp.status_code >= 400:
-            print(f"[Markdown API {resp.status_code}] {resp.text[:100]}")
+            logger.info(f"[Markdown API {resp.status_code}] {resp.text[:100]}")
             return self._mock_page(parent_id, title, icon, None)
         return resp.json()
 
@@ -830,11 +834,11 @@ class NotionClient:
         try:
             resp = await self._http_client.post("/views", json=body)
             if resp.status_code >= 400:
-                print(f"[Linked View API {resp.status_code}] {resp.text[:200]}")
+                logger.info(f"[Linked View API {resp.status_code}] {resp.text[:200]}")
                 return {"id": self._mock_id(), "type": view_type, "name": title, "fallback": True}
             return resp.json()
         except Exception as e:
-            print(f"[Linked View API 에러] {e}")
+            logger.warning(f"[Linked View API 에러] {e}")
             return {"id": self._mock_id(), "type": view_type, "name": title, "fallback": True}
 
     # NOTE: 전체 너비(Full Width) 설정은 Notion 공식 API에서 미지원.

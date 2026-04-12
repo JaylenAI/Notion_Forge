@@ -6,18 +6,24 @@
 3. 스킬 동적 로딩 (AI가 .md 읽고 Blueprint 생성)
 """
 
+import asyncio
 import logging
 
 logger = logging.getLogger("notionforge.orchestrator")
 
 from typing import Any, AsyncGenerator
 
+import uuid
+
+from app.agent.input_guardrail import validate_input
 from app.agent.intent_analyzer import analyze_intent
 from app.agent.blueprint_generator import generate_blueprint  # now async, takes message string
 from app.agent.tools.add_blocks import AddBlocksTool, spec_to_block
 from app.agent.tools.add_database_items import AddDatabaseItemsTool
 from app.notion.client import NotionClient
 from app.notion.block_builder import build_database_properties
+from app.core.metrics import GenerationMetrics
+from app.core.history import save_generation_record
 from app.schemas.blueprint import IntentResult
 
 
@@ -46,14 +52,33 @@ class AgentOrchestrator:
         self.language: str = "ko"  # ko, en, ja
         self.use_pipeline: bool = False  # 멀티 에이전트 파이프라인 사용 여부
 
+        # Approval Gate
+        self._approval_event: asyncio.Event = asyncio.Event()
+        self._approval_granted: bool = False
+
     async def process(self, message: str) -> AsyncGenerator[dict[str, Any], None]:
         """메인 처리 파이프라인 — 실시간 스트리밍"""
 
+        # ⓪ Input Guardrail — 입력 검증
+        guard = validate_input(message)
+        if not guard.is_valid:
+            yield {"type": "error", "content": guard.error_message}
+            return
+
         self._conversation.append({"role": "user", "content": message})
 
+        # 메트릭 초기화
+        metrics = GenerationMetrics(
+            session_id=str(uuid.uuid4())[:8],
+            user_input=message,
+            complexity=self.complexity,
+        )
+
         # ① 의도 분석
+        metrics.start_stage("intent_analysis")
         yield {"type": "progress", "step": "intent_analysis", "message": "🔍 요청을 분석하고 있어요..."}
         intent = await analyze_intent(message)
+        metrics.end_stage()
         yield {"type": "progress", "step": "intent_done", "message": f"✅ 의도 파악: {intent.intent} ({intent.template_type})"}
 
         # 이전 생성 결과가 있고 수정 의도가 감지되면 멀티턴 수정 모드
@@ -86,6 +111,7 @@ class AgentOrchestrator:
             return
 
         # ② AI 설계
+        metrics.start_stage("blueprint_generation")
         complexity_label = {"simple": "간단한", "standard": "표준", "advanced": "고급"}.get(self.complexity, "표준")
         # 복잡도 + 언어 힌트를 메시지에 추가
         enhanced_msg = message
@@ -118,10 +144,18 @@ class AgentOrchestrator:
                 blueprint["metadata"]["skill_used"] = pipeline_result.get("skill", "custom")
             else:
                 yield {"type": "progress", "step": "designing", "message": f"🎨 AI가 {complexity_label} 템플릿을 설계하고 있어요... (단일 에이전트 폴백)"}
-                blueprint = await generate_blueprint(enhanced_msg, ai_key=self.ai_key, ai_model=self.ai_model)
+                blueprint = await generate_blueprint(
+                    enhanced_msg, ai_key=self.ai_key, ai_model=self.ai_model,
+                    conversation_history=self._conversation,
+                )
         else:
             yield {"type": "progress", "step": "designing", "message": f"🎨 AI가 {complexity_label} 템플릿을 설계하고 있어요..."}
-            blueprint = await generate_blueprint(enhanced_msg, ai_key=self.ai_key, ai_model=self.ai_model)
+            blueprint = await generate_blueprint(
+                enhanced_msg, ai_key=self.ai_key, ai_model=self.ai_model,
+                conversation_history=self._conversation,
+            )
+
+        metrics.end_stage()
 
         meta = blueprint.get("metadata", {})
         method = meta.get("generation_method", "?")
@@ -143,7 +177,30 @@ class AgentOrchestrator:
 
         yield {"type": "blueprint_preview", "content": self._format_preview(blueprint), "blueprint": blueprint}
 
+        # ── Approval Gate: 유저 확인 대기
+        self._approval_event.clear()
+        self._approval_granted = False
+        yield {"type": "approval_request", "content": "템플릿 설계를 확인해주세요. 생성을 진행할까요?", "blueprint": blueprint}
+
+        # 60초 대기 — confirm_create 또는 cancel_create 메시지 수신 시 해제
+        try:
+            await asyncio.wait_for(self._approval_event.wait(), timeout=60.0)
+        except asyncio.TimeoutError:
+            yield {"type": "error", "content": "60초 동안 응답이 없어 생성을 취소했습니다."}
+            return
+
+        if not self._approval_granted:
+            yield {"type": "system", "content": "생성이 취소되었습니다. 새로운 요청을 입력해주세요."}
+            return
+
+        # 메트릭에 블루프린트 정보 기록
+        metrics.skill = meta.get("skill_used", "custom")
+        metrics.layout = meta.get("layout", "")
+        metrics.model = meta.get("model", self.ai_model)
+        metrics.gen_eval_attempts = meta.get("gen_eval_attempts", 1)
+
         # ③ Notion 생성 (실시간 스트리밍)
+        metrics.start_stage("notion_creation")
         yield {"type": "progress", "step": "creating", "message": "🏗️ 노션에 생성을 시작합니다..."}
 
         result: dict[str, Any] = {"pages": [], "databases": [], "blocks": 0}
@@ -382,13 +439,56 @@ class AgentOrchestrator:
         else:
             yield {"type": "progress", "step": "validation", "message": "✅ 생성 결과 검증 완료 — 모든 항목 정상"}
 
+        metrics.end_stage()  # notion_creation 종료
+
+        # ── Rollback 판단: 블록 0개 + DB 0개이면 빈 페이지 → 롤백
+        expected_blocks = len(blueprint.get("blocks", []))
+        expected_dbs = len(blueprint.get("databases", []))
+        if result["blocks"] == 0 and len(result["databases"]) == 0 and (expected_blocks > 0 or expected_dbs > 0):
+            yield {"type": "progress", "step": "rollback", "message": "⚠️ 생성 결과가 비어있어 롤백을 진행합니다..."}
+            rolled = await self._rollback(result)
+            metrics.finish(success=False, error="empty_result_rollback")
+            save_generation_record(metrics.to_dict(), blueprint)
+            if rolled:
+                yield {"type": "error", "content": f"생성 실패로 롤백 완료: {', '.join(rolled)} 삭제됨.\n다시 시도해주세요."}
+            else:
+                yield {"type": "error", "content": "생성 실패. 다시 시도해주세요."}
+            return
+
         # 결과 저장
         self._last_intent = intent
         self._last_result = result
         self._last_blueprint = blueprint
 
+        # 메트릭 종료 + 이력 저장
+        metrics.blocks_count = result["blocks"]
+        metrics.databases_count = len(result["databases"])
+        metrics.sub_pages_count = len(result.get("pages", [])) - 1
+        metrics.finish(success=True)
+        save_generation_record(metrics.to_dict(), blueprint)
+
         # ④ 완료
         yield {"type": "complete", "content": self._format_complete(result), "result": result}
+
+    def approve_creation(self, approved: bool = True) -> None:
+        """Approval Gate 응답 — WebSocket에서 confirm_create / cancel_create 수신 시 호출"""
+        self._approval_granted = approved
+        self._approval_event.set()
+
+    async def _rollback(self, result: dict[str, Any]) -> list[str]:
+        """생성 실패 시 롤백 — 생성된 페이지들을 아카이브(삭제) 처리"""
+        rolled_back: list[str] = []
+        # 페이지를 역순으로 삭제 (하위 → 메인)
+        for page in reversed(result.get("pages", [])):
+            page_id = page.get("id")
+            if not page_id:
+                continue
+            try:
+                await self.client.archive_page(page_id)
+                rolled_back.append(page.get("title", page_id))
+            except Exception as e:
+                logger.warning(f"[Rollback 실패] {page.get('title', '?')}: {str(e)[:80]}")
+        return rolled_back
 
     async def _handle_modify(self, message: str, intent: IntentResult) -> AsyncGenerator[dict[str, Any], None]:
         """후속 수정 처리 — AI 기반 멀티턴 대화형 수정
