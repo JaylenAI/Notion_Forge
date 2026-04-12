@@ -1,5 +1,9 @@
 """DB에 샘플 항목 추가 -- 실제 속성명 자동 매핑 (퍼지 매칭 포함)"""
 
+import logging
+
+logger = logging.getLogger("notionforge.add_database_items")
+
 import asyncio
 from difflib import SequenceMatcher
 from typing import Any
@@ -30,13 +34,13 @@ class AddDatabaseItemsTool(BaseTool):
             real_props = await self._get_real_property_map(database_id)
 
         if not real_props:
-            print(f"[샘플 데이터] 실제 DB 속성을 조회할 수 없음 → blueprint 속성으로 폴백")
+            logger.info(f"[샘플 데이터] 실제 DB 속성을 조회할 수 없음 → blueprint 속성으로 폴백")
             # blueprint 속성을 real_props 형태로 변환해서 사용
             real_props = _blueprint_to_real_props(db_properties)
 
         # blueprint 속성명 -> 실제 속성명 매핑 테이블 구축
         prop_name_map = _build_property_name_map(db_properties, real_props)
-        print(f"[샘플 데이터] 속성 매핑: {prop_name_map}")
+        logger.info(f"[샘플 데이터] 속성 매핑: {prop_name_map}")
 
         results = []
         errors = []
@@ -44,7 +48,7 @@ class AddDatabaseItemsTool(BaseTool):
             try:
                 props = _build_item_props(item, db_properties, real_props, prop_name_map)
                 if not props:
-                    print(f"[샘플 항목 {i+1}] 속성 변환 결과 비어있음, 스킵")
+                    logger.info(f"[샘플 항목 {i+1}] 속성 변환 결과 비어있음, 스킵")
                     continue
                 result = await self.client.add_database_item(
                     database_id=database_id,
@@ -56,10 +60,10 @@ class AddDatabaseItemsTool(BaseTool):
             except Exception as e:
                 err_msg = str(e)[:120]
                 errors.append(err_msg)
-                print(f"[샘플 항목 {i+1} 실패] {err_msg}")
+                logger.info(f"[샘플 항목 {i+1} 실패] {err_msg}")
                 continue
 
-        print(f"[샘플 데이터] 결과: {len(results)}/{len(items)} 성공, {len(errors)} 실패")
+        logger.info(f"[샘플 데이터] 결과: {len(results)}/{len(items)} 성공, {len(errors)} 실패")
         return {"item_count": len(results), "results": results, "errors": errors}
 
     async def _get_real_property_map(self, database_id: str) -> dict[str, dict]:
@@ -72,10 +76,10 @@ class AddDatabaseItemsTool(BaseTool):
                     "type": prop_data.get("type", "rich_text"),
                     "id": prop_data.get("id", ""),
                 }
-            print(f"[샘플 데이터] 실제 DB 속성 {len(real_props)}개 조회됨: {list(real_props.keys())}")
+            logger.info(f"[샘플 데이터] 실제 DB 속성 {len(real_props)}개 조회됨: {list(real_props.keys())}")
             return real_props
         except Exception as e:
-            print(f"[샘플 데이터] DB 속성 조회 실패: {e}")
+            logger.info(f"[샘플 데이터] DB 속성 조회 실패: {e}")
             return {}
 
 

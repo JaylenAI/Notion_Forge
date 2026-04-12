@@ -6,6 +6,10 @@
 - 스킬 .md는 AI에게 규칙/가이드만 제공
 """
 
+import logging
+
+logger = logging.getLogger("notionforge.blueprint_generator")
+
 import json
 import re
 from typing import Any
@@ -197,7 +201,7 @@ def _build_skill_guide(user_message: str = "") -> str:
             essentials = _extract_skill_essentials(skill_md)
             info = all_skills.get(matched_skill, {})
             parts.append(f"## MATCHED SKILL: {matched_skill} ({info.get('description', '')[:50]})\n{essentials}\n⚠️ FOLLOW THIS SKILL'S DB PROPERTIES AND VIEWS EXACTLY!")
-            print(f"[Skill Match] {matched_skill} (키워드 매칭)")
+            logger.info(f"[Skill Match] {matched_skill} (키워드 매칭)")
 
     # 2. 나머지 스킬은 이름+설명만 (토큰 절약)
     parts.append("## Available Skills (use matched skill above if available):")
@@ -238,7 +242,7 @@ async def generate_blueprint(user_message: str, ai_key: str = "", ai_model: str 
             elapsed = time.time() - t0
 
             if not ai_content or (not ai_content.get("databases") and not ai_content.get("db_properties")):
-                print(f"[Gen-Eval 시도 {attempt+1}/{max_retries}] AI 응답 파싱 실패 ({elapsed:.1f}s)")
+                logger.info(f"[Gen-Eval 시도 {attempt+1}/{max_retries}] AI 응답 파싱 실패 ({elapsed:.1f}s)")
                 feedback_context = "JSON 파싱 실패. 반드시 유효한 JSON으로 응답하세요. databases 배열이 필수입니다."
                 continue
 
@@ -253,12 +257,12 @@ async def generate_blueprint(user_message: str, ai_key: str = "", ai_model: str 
                 blueprint["metadata"]["skill_used"] = ai_content.get("skill", "custom")
                 blueprint["metadata"]["gen_eval_attempts"] = attempt + 1
                 blueprint["metadata"]["gen_eval_time"] = round(elapsed, 1)
-                print(f"[Gen-Eval 통과] 시도 {attempt+1}/{max_retries}, {elapsed:.1f}s")
+                logger.info(f"[Gen-Eval 통과] 시도 {attempt+1}/{max_retries}, {elapsed:.1f}s")
                 return blueprint
 
             # 검증 실패 → 에러를 피드백으로 구성
             error_count = len(eval_errors)
-            print(f"[Gen-Eval 시도 {attempt+1}/{max_retries}] 검증 실패: {error_count}개 오류 ({elapsed:.1f}s)")
+            logger.info(f"[Gen-Eval 시도 {attempt+1}/{max_retries}] 검증 실패: {error_count}개 오류 ({elapsed:.1f}s)")
             for err in eval_errors[:5]:
                 print(f"  - {err}")
 
@@ -272,12 +276,12 @@ async def generate_blueprint(user_message: str, ai_key: str = "", ai_model: str 
 
         except Exception as e:
             elapsed = time.time() - t0
-            print(f"[Gen-Eval 시도 {attempt+1}/{max_retries}] 예외: {str(e)[:100]} ({elapsed:.1f}s)")
+            logger.info(f"[Gen-Eval 시도 {attempt+1}/{max_retries}] 예외: {str(e)[:100]} ({elapsed:.1f}s)")
             feedback_context = f"이전 시도에서 오류 발생: {str(e)[:200]}. 올바른 JSON으로 다시 응답하세요."
 
     # Circuit Breaker: 최대 재시도 초과 → 가장 좋았던 결과 사용 또는 폴백
     if best_content:
-        print(f"[Gen-Eval 소진] 최선의 결과 사용 (오류 {best_error_count}개, post-processor로 보정)")
+        logger.info(f"[Gen-Eval 소진] 최선의 결과 사용 (오류 {best_error_count}개, post-processor로 보정)")
         best_content = blueprint_validator.validate_and_fix(best_content)
         blueprint = _assemble_blueprint(best_content)
         blueprint["metadata"]["generation_method"] = "ai_dynamic_partial"
@@ -321,7 +325,7 @@ async def _call_ai_for_content(user_message: str, ai_key: str = "", ai_model: st
     prompt = prompt_assembler.assemble(mode=mode, layout=layout_result.layout, skills=skills_desc)
     # Copilot/Groq용 compact 프롬프트 (토큰 제한 대응)
     compact_prompt = prompt_assembler.assemble_compact(mode=mode, layout=layout_result.layout, skills=skills_desc, max_chars=12000)
-    print(f"[Harness] mode={mode}, layout={layout_result.layout} (conf={layout_result.confidence:.2f}, {layout_result.reason})")
+    logger.info(f"[Harness] mode={mode}, layout={layout_result.layout} (conf={layout_result.confidence:.2f}, {layout_result.reason})")
     if extra_context:
         prompt += f"\n\n## Skill Guidelines:\n{extra_context[:1200]}"
         compact_prompt += f"\n\n## Skill Guidelines:\n{extra_context[:600]}"
@@ -377,13 +381,13 @@ async def _copilot_call(system: str, user_message: str, model: str = "") -> dict
                 result = _parse_json_response(text)
                 if result:
                     if i > 0:
-                        print(f"[Model Escalation] {primary_model} → {try_model} 성공")
+                        logger.info(f"[Model Escalation] {primary_model} → {try_model} 성공")
                     return result
-                print(f"[Copilot {try_model}] JSON 파싱 실패, 다음 모델 시도")
+                logger.info(f"[Copilot {try_model}] JSON 파싱 실패, 다음 모델 시도")
             else:
-                print(f"[Copilot {try_model}] 빈 응답, 다음 모델 시도")
+                logger.info(f"[Copilot {try_model}] 빈 응답, 다음 모델 시도")
         except Exception as e:
-            print(f"[Copilot {try_model} 에러] {str(e)[:80]}")
+            logger.info(f"[Copilot {try_model} 에러] {str(e)[:80]}")
 
     return None
 
@@ -420,7 +424,7 @@ async def _groq_call(system: str, user_message: str, api_key: str = "", model: s
         )
         return _parse_json_response(response.choices[0].message.content or "")
     except Exception as e:
-        print(f"[Groq 에러] {e}")
+        logger.info(f"[Groq 에러] {e}")
         return None
 
 
@@ -434,7 +438,7 @@ async def _gemini_call(system: str, user_message: str, api_key: str = "", model:
         )
         return _parse_json_response(response.text or "")
     except Exception as e:
-        print(f"[Gemini 에러] {e}")
+        logger.info(f"[Gemini 에러] {e}")
         return None
 
 
@@ -448,7 +452,7 @@ async def _claude_call(system: str, user_message: str, api_key: str = "", model:
         )
         return _parse_json_response(response.content[0].text)
     except Exception as e:
-        print(f"[Claude 에러] {e}")
+        logger.info(f"[Claude 에러] {e}")
         return None
 
 
@@ -466,7 +470,7 @@ async def _openai_call(system: str, user_message: str, api_key: str = "", model:
             )
             return _parse_json_response(resp.json()["choices"][0]["message"]["content"] or "")
     except Exception as e:
-        print(f"[OpenAI 에러] {e}")
+        logger.info(f"[OpenAI 에러] {e}")
         return None
 
 

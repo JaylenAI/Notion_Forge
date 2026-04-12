@@ -6,6 +6,10 @@
 3. 스킬 동적 로딩 (AI가 .md 읽고 Blueprint 생성)
 """
 
+import logging
+
+logger = logging.getLogger("notionforge.orchestrator")
+
 from typing import Any, AsyncGenerator
 
 from app.agent.intent_analyzer import analyze_intent
@@ -265,7 +269,7 @@ class AgentOrchestrator:
                             await self.client.add_blocks(main_page_id, [column_block])
                             result["blocks"] += 1
                         except Exception as e:
-                            print(f"[칼럼 블록 추가 실패] {str(e)[:100]}")
+                            logger.info(f"[칼럼 블록 추가 실패] {str(e)[:100]}")
                     yield {"type": "progress", "step": "block_done", "message": "✅ 칼럼 레이아웃 생성됨"}
 
                     # column 안에 있던 DB를 page level에 inline으로 표시
@@ -297,7 +301,7 @@ class AgentOrchestrator:
                                 )
                                 result["blocks"] += 1
                             except Exception as e:
-                                print(f"[링크드 뷰 스킵] {view_title}: {str(e)[:80]}")
+                                logger.info(f"[링크드 뷰 스킵] {view_title}: {str(e)[:80]}")
 
                 else:
                     # 일반 블록 (주요 블록만 로그)
@@ -310,10 +314,10 @@ class AgentOrchestrator:
                         await self.client.add_blocks(main_page_id, [notion_block])
                         result["blocks"] += 1
                     except Exception as e:
-                        print(f"[블록 스킵] {block_type}: {str(e)[:80]}")
+                        logger.info(f"[블록 스킵] {block_type}: {str(e)[:80]}")
 
             except Exception as e:
-                print(f"[블록 처리 오류] {block_type}: {str(e)[:80]}")
+                logger.info(f"[블록 처리 오류] {block_type}: {str(e)[:80]}")
 
         # 남은 DB
         while db_index < len(databases):
@@ -338,7 +342,7 @@ class AgentOrchestrator:
                         await self.client.add_blocks(sub_id, notion_blocks)
                         yield {"type": "progress", "step": "sub_page_blocks", "message": f"  📝 {sub.get('icon','')} {sub['title']} 내용 추가됨"}
                 except Exception as e:
-                    print(f"[하위 페이지 블록 스킵] {sub['title']}: {str(e)[:80]}")
+                    logger.info(f"[하위 페이지 블록 스킵] {sub['title']}: {str(e)[:80]}")
             else:
                 # blocks가 없으면 기본 블록 자동 생성
                 color = blueprint.get("metadata", {}).get("color_theme", "blue")
@@ -359,7 +363,7 @@ class AgentOrchestrator:
                     await self.client.add_blocks(sub_id, default_blocks)
                     yield {"type": "progress", "step": "sub_page_blocks", "message": f"  📝 {sub.get('icon','')} {sub['title']} 기본 내용 추가됨"}
                 except Exception as e:
-                    print(f"[하위 페이지 기본 블록 실패] {sub['title']}: {str(e)[:80]}")
+                    logger.info(f"[하위 페이지 기본 블록 실패] {sub['title']}: {str(e)[:80]}")
 
         # ── Pass 4: Relation / Rollup / Formula 후처리 (DB 간 연결)
         await self._post_process_relations(blueprint, result, lambda msg: None)
@@ -967,7 +971,7 @@ class AgentOrchestrator:
                 issues.append(f"서브페이지 부족: 기대 {expected_subs}개, 실제 {actual_subs}개")
 
         except Exception as e:
-            print(f"[Post-Creation Validation 스킵] {str(e)[:80]}")
+            logger.info(f"[Post-Creation Validation 스킵] {str(e)[:80]}")
 
         return issues
 
@@ -1051,7 +1055,7 @@ class AgentOrchestrator:
                 cover_url=main.get("cover_url"),
             )
         except Exception as e:
-            print(f"[MODIFY 페이지 생성 실패] {e}")
+            logger.info(f"[MODIFY 페이지 생성 실패] {e}")
             return result
 
         main_page_id = page["id"]
@@ -1070,7 +1074,7 @@ class AgentOrchestrator:
                 sub_page_map[sub["title"]] = sub_page["id"]
                 result["pages"].append({"id": sub_page["id"], "title": sub["title"]})
             except Exception as e:
-                print(f"[하위 페이지 생성 스킵] {sub.get('title', '?')}: {str(e)[:100]}")
+                logger.info(f"[하위 페이지 생성 스킵] {sub.get('title', '?')}: {str(e)[:100]}")
 
         # 3. 블록 + DB를 순서대로 삽입
         blocks = blueprint.get("blocks", [])
@@ -1088,7 +1092,7 @@ class AgentOrchestrator:
                             )
                             result["databases"].append(db_result)
                         except Exception as e:
-                            print(f"[DB 생성 스킵] {str(e)[:100]}")
+                            logger.info(f"[DB 생성 스킵] {str(e)[:100]}")
                         db_index += 1
 
                 elif block.get("type") == "column_list":
@@ -1102,7 +1106,7 @@ class AgentOrchestrator:
                                 )
                                 result["databases"].append(db_result)
                             except Exception as e:
-                                print(f"[칼럼 내 DB 스킵] {str(e)[:100]}")
+                                logger.info(f"[칼럼 내 DB 스킵] {str(e)[:100]}")
                             db_index += 1
 
                     column_block = await self._build_column_with_db(block, main_page_id, sub_page_map, result)
@@ -1111,7 +1115,7 @@ class AgentOrchestrator:
                             await self.client.add_blocks(main_page_id, [column_block])
                             result["blocks"] += 1
                         except Exception as e:
-                            print(f"[칼럼 블록 스킵] {str(e)[:100]}")
+                            logger.info(f"[칼럼 블록 스킵] {str(e)[:100]}")
 
                 else:
                     notion_block = spec_to_block(block)
@@ -1119,10 +1123,10 @@ class AgentOrchestrator:
                         await self.client.add_blocks(main_page_id, [notion_block])
                         result["blocks"] += 1
                     except Exception as e:
-                        print(f"[블록 스킵] {block.get('type', '?')}: {str(e)[:100]}")
+                        logger.info(f"[블록 스킵] {block.get('type', '?')}: {str(e)[:100]}")
 
             except Exception as e:
-                print(f"[블록 처리 오류] {block.get('type', '?')}: {str(e)[:100]}")
+                logger.info(f"[블록 처리 오류] {block.get('type', '?')}: {str(e)[:100]}")
 
         # 남은 DB 추가
         while db_index < len(databases):
@@ -1133,7 +1137,7 @@ class AgentOrchestrator:
                 )
                 result["databases"].append(db_result)
             except Exception as e:
-                print(f"[DB 생성 스킵] {str(e)[:100]}")
+                logger.info(f"[DB 생성 스킵] {str(e)[:100]}")
             db_index += 1
 
         # 4. 하위 페이지에 블록 추가
@@ -1145,7 +1149,7 @@ class AgentOrchestrator:
                     if notion_blocks:
                         await self.client.add_blocks(sub_id, notion_blocks)
                 except Exception as e:
-                    print(f"[하위 페이지 블록 스킵] {sub['title']}: {str(e)[:80]}")
+                    logger.info(f"[하위 페이지 블록 스킵] {sub['title']}: {str(e)[:80]}")
 
         return result
 
@@ -1200,9 +1204,9 @@ class AgentOrchestrator:
             if relation_props:
                 try:
                     await self.client.update_database(db_id, {"properties": relation_props})
-                    print(f"[Relation 후처리] {created_dbs[i]['title']}: {list(relation_props.keys())}")
+                    logger.info(f"[Relation 후처리] {created_dbs[i]['title']}: {list(relation_props.keys())}")
                 except Exception as e:
-                    print(f"[Relation 후처리 실패] {created_dbs[i]['title']}: {str(e)[:100]}")
+                    logger.info(f"[Relation 후처리 실패] {created_dbs[i]['title']}: {str(e)[:100]}")
 
     async def _create_database_with_data(self, parent_id: str, db_spec: dict) -> dict[str, Any]:
         """DB 생성 + 샘플 데이터 + 뷰 자동 생성"""
@@ -1253,11 +1257,11 @@ class AgentOrchestrator:
                 inserted = sample_result.get("item_count", 0)
                 total = len(db_spec["sample_items"])
                 if inserted < total:
-                    print(f"[샘플 데이터] {inserted}/{total}개만 성공")
+                    logger.info(f"[샘플 데이터] {inserted}/{total}개만 성공")
                 else:
-                    print(f"[샘플 데이터] {inserted}개 전부 성공")
+                    logger.info(f"[샘플 데이터] {inserted}개 전부 성공")
             except Exception as e:
-                print(f"[샘플 데이터 실패] {str(e)[:120]}")
+                logger.info(f"[샘플 데이터 실패] {str(e)[:120]}")
 
         # 뷰 자동 생성 (Views API — group_by, quick_filters, configuration 포함)
         # property name → ID 매핑 (calendar/timeline의 date_property_id 변환에 필요)
@@ -1292,7 +1296,7 @@ class AgentOrchestrator:
                     configuration=configuration,
                 )
             except Exception as e:
-                print(f"[뷰 생성 스킵] {view.get('type', '?')}: {str(e)[:80]}")
+                logger.info(f"[뷰 생성 스킵] {view.get('type', '?')}: {str(e)[:80]}")
 
         return {"id": db_id, "title": db_spec["title"], "views": len(views)}
 

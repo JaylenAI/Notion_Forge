@@ -10,6 +10,10 @@
 7. status 속성값 한국어 매핑
 """
 
+import logging
+
+logger = logging.getLogger("notionforge.post_processor")
+
 from typing import Any
 
 
@@ -186,7 +190,7 @@ class BlueprintValidator:
             items = db.get("sample_items", [])
             if len(items) < 3:
                 # 최소 개수 미달이면 경고만 (자동 생성은 위험)
-                print(f"[PostProcessor] 경고: DB '{db.get('title', '?')}' sample_items {len(items)}개 (최소 3개 권장)")
+                logger.info(f"[PostProcessor] 경고: DB '{db.get('title', '?')}' sample_items {len(items)}개 (최소 3개 권장)")
         return content
 
     def _ensure_cover_category(self, content: dict[str, Any]) -> dict[str, Any]:
