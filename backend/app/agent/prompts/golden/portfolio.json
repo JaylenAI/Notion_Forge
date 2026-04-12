@@ -1,0 +1,75 @@
+{
+  "skill": "hub",
+  "title": "👤 포트폴리오",
+  "icon": "👤",
+  "color": "purple",
+  "cover_category": "creative",
+  "blocks": [
+    {"type": "callout", "icon": "👤", "color": "purple_background", "text": "포트폴리오",
+      "rich_text": [{"text": "홍길동", "bold": true, "color": "purple"}, {"text": " — 풀스택 개발자 | 3년차"}]
+    },
+    {"type": "paragraph", "text": ""},
+    {"type": "column_list", "columns": [
+      [
+        {"type": "heading_3", "text": "📍 기본 정보"},
+        {"type": "paragraph", "text": "📧 hello@example.com"},
+        {"type": "paragraph", "text": "📍 서울특별시"},
+        {"type": "paragraph", "text": "🔗 github.com/username"},
+        {"type": "paragraph", "text": ""},
+        {"type": "heading_3", "text": "🛠️ 기술 스택"},
+        {"type": "bulleted_list", "text": "Python / FastAPI / Django"},
+        {"type": "bulleted_list", "text": "React / TypeScript / Next.js"},
+        {"type": "bulleted_list", "text": "PostgreSQL / Redis / Docker"}
+      ],
+      [
+        {"type": "heading_3", "text": "💼 경력 요약"},
+        {"type": "callout", "icon": "🏢", "color": "gray_background", "text": "현) ABC 테크 — 백엔드 엔지니어 (2024~)"},
+        {"type": "callout", "icon": "🏠", "color": "gray_background", "text": "전) XYZ 스타트업 — 풀스택 개발 (2023~2024)"},
+        {"type": "paragraph", "text": ""},
+        {"type": "quote", "text": "좋은 코드는 읽기 쉬운 코드입니다.", "color": "purple"}
+      ]
+    ]},
+    {"type": "paragraph", "text": ""},
+    {"type": "divider"},
+    {"type": "heading_1", "text": "🎨 프로젝트", "color": "purple"},
+    {"type": "paragraph", "text": "주요 프로젝트를 갤러리에서 둘러보세요."},
+    {"type": "database_ref", "db_index": 0},
+    {"type": "paragraph", "text": ""},
+    {"type": "divider"},
+    {"type": "heading_2", "text": "🏆 수상 및 자격", "color": "purple"},
+    {"type": "bulleted_list", "text": "🏅 AWS Solutions Architect — 2025"},
+    {"type": "bulleted_list", "text": "🏅 정보처리기사 — 2024"},
+    {"type": "bulleted_list", "text": "🏅 해커톤 대상 (AI Challenge) — 2024"},
+    {"type": "paragraph", "text": ""},
+    {"type": "divider"},
+    {"type": "heading_2", "text": "📫 연락하기", "color": "purple"},
+    {"type": "callout", "icon": "📬", "color": "purple_background", "text": "프로젝트 협업이나 문의는 아래로 연락 주세요!"},
+    {"type": "bookmark", "url": "https://github.com/username"},
+    {"type": "bookmark", "url": "https://linkedin.com/in/username"}
+  ],
+  "databases": [{
+    "title": "프로젝트",
+    "icon": "🎨",
+    "description": "주요 프로젝트와 작업물",
+    "db_properties": {
+      "프로젝트명": "title",
+      "기술스택": "multi_select",
+      "기간": "date",
+      "역할": "rich_text",
+      "링크": "url",
+      "상태": "status"
+    },
+    "views": [
+      {"type": "gallery", "title": "갤러리", "cover": {"type": "page_cover"}, "cover_size": "large"},
+      {"type": "table", "title": "전체 목록"}
+    ],
+    "sample_items": [
+      {"프로젝트명": "NotionForge — AI 노션 템플릿 생성", "역할": "풀스택 개발", "링크": "https://github.com/example", "icon": "🤖"},
+      {"프로젝트명": "실시간 채팅 서비스", "역할": "백엔드 리드", "링크": "https://github.com/example", "icon": "💬"},
+      {"프로젝트명": "이커머스 플랫폼", "역할": "풀스택 개발", "링크": "https://github.com/example", "icon": "🛒"},
+      {"프로젝트명": "데이터 대시보드", "역할": "프론트엔드", "링크": "https://github.com/example", "icon": "📊"},
+      {"프로젝트명": "모바일 피트니스 앱", "역할": "React Native", "링크": "https://github.com/example", "icon": "💪"}
+    ]
+  }],
+  "sub_pages": []
+}

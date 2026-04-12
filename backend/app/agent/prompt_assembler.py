@@ -4,10 +4,12 @@ Phase 1: base + mode + views_catalog + relations + design_tokens
 Phase 2+: base + mode + layout + views_catalog + relations + design_tokens
 """
 
+import json
 from pathlib import Path
 from functools import lru_cache
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
+GOLDEN_DIR = PROMPTS_DIR / "golden"
 
 
 @lru_cache(maxsize=32)
@@ -17,6 +19,35 @@ def _load_module(relative_path: str) -> str:
     if not path.exists():
         raise FileNotFoundError(f"Prompt module not found: {path}")
     return path.read_text(encoding="utf-8")
+
+
+@lru_cache(maxsize=16)
+def _load_golden(layout: str) -> str:
+    """골든 블루프린트 JSON을 Few-Shot 예시 문자열로 변환"""
+    path = GOLDEN_DIR / f"{layout}.json"
+    if not path.exists():
+        return ""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        # 핵심만 추출: blocks 앞 5개 + databases 구조 (sample_items 제외)
+        compact = {
+            "title": data.get("title", ""),
+            "icon": data.get("icon", ""),
+            "color": data.get("color", ""),
+            "blocks": data.get("blocks", [])[:8],
+            "databases": [],
+        }
+        for db in data.get("databases", [])[:2]:
+            compact["databases"].append({
+                "title": db.get("title", ""),
+                "db_properties": db.get("db_properties", {}),
+                "views": db.get("views", []),
+            })
+        if data.get("sub_pages"):
+            compact["sub_pages"] = [{"name": sp.get("name", ""), "icon": sp.get("icon", "")} for sp in data["sub_pages"][:3]]
+        return f"## GOLDEN EXAMPLE (adapt this to the user's request, don't copy directly):\n```json\n{json.dumps(compact, ensure_ascii=False, indent=2)}\n```"
+    except Exception:
+        return ""
 
 
 def _load_module_safe(relative_path: str) -> str:
@@ -70,12 +101,18 @@ class PromptAssembler:
             if layout_prompt:
                 sections.append(layout_prompt)
 
-        # 4. Views catalog
+        # 4. Golden blueprint (Few-Shot 예시)
+        if layout:
+            golden = _load_golden(layout)
+            if golden:
+                sections.append(golden)
+
+        # 5. Views catalog
         views = _load_module_safe("views_catalog.md")
         if views:
             sections.append(views)
 
-        # 5. Relations & formulas
+        # 6. Relations & formulas
         relations = _load_module_safe("relations.md")
         if relations:
             sections.append(relations)
@@ -117,6 +154,12 @@ class PromptAssembler:
             layout_prompt = _load_module_safe(f"layouts/{layout}.md")
             if layout_prompt:
                 sections.append(layout_prompt)
+
+        # 3.5. Golden blueprint (Few-Shot — compact에서도 포함, 임팩트 최고)
+        if layout:
+            golden = _load_golden(layout)
+            if golden:
+                sections.append(golden)
 
         # 4. Views catalog (축약)
         compact_views = """## VIEW CATALOG (compact)

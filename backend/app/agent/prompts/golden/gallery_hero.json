@@ -1,0 +1,74 @@
+{
+  "skill": "collect",
+  "title": "📚 독서 기록장",
+  "icon": "📚",
+  "color": "green",
+  "cover_category": "study",
+  "blocks": [
+    {"type": "callout", "icon": "📚", "color": "green_background", "text": "나만의 서재를 만들어보세요",
+      "children": [{"type": "paragraph", "text": "읽은 책을 기록하고, 감상을 남기고, 나만의 독서 패턴을 발견하세요."}]
+    },
+    {"type": "paragraph", "text": ""},
+    {"type": "quote", "text": "책을 읽는다는 것은 다른 사람의 생각으로 생각하는 것이다. — 쇼펜하우어", "color": "green"},
+    {"type": "paragraph", "text": ""},
+    {"type": "heading_1", "text": "📚 나의 서재", "color": "green"},
+    {"type": "paragraph", "text": "갤러리 뷰에서 읽은 책들을 한눈에 둘러보세요."},
+    {"type": "database_ref", "db_index": 0},
+    {"type": "paragraph", "text": ""},
+    {"type": "divider"},
+    {"type": "column_list", "columns": [
+      [
+        {"type": "heading_3", "text": "📊 독서 통계"},
+        {"type": "callout", "icon": "📈", "color": "green_background", "text": "올해 읽은 책\n24권"},
+        {"type": "paragraph", "text": ""},
+        {"type": "heading_3", "text": "🏷️ 장르별"},
+        {"type": "bulleted_list", "text": "소설 (8)"},
+        {"type": "bulleted_list", "text": "자기계발 (6)"},
+        {"type": "bulleted_list", "text": "기술 (5)"},
+        {"type": "bulleted_list", "text": "에세이 (5)"}
+      ],
+      [
+        {"type": "heading_3", "text": "⭐ 최고 평점"},
+        {"type": "callout", "icon": "🏆", "color": "yellow_background", "text": "올해 베스트: 원씽 ⭐5.0"},
+        {"type": "paragraph", "text": ""},
+        {"type": "heading_3", "text": "💡 독서 팁"},
+        {"type": "bulleted_list", "text": "커버 이미지를 추가하면 갤러리가 예뻐져요"},
+        {"type": "bulleted_list", "text": "독후감은 짧게라도 꼭 남기세요"},
+        {"type": "bulleted_list", "text": "평점을 매기면 나중에 추천 목록을 만들 수 있어요"}
+      ]
+    ]},
+    {"type": "paragraph", "text": ""},
+    {"type": "divider"},
+    {"type": "toggle", "text": "📖 사용 가이드", "children": [
+      {"type": "numbered_list", "text": "1. 새 책을 추가하고 기본 정보를 입력하세요"},
+      {"type": "numbered_list", "text": "2. 커버 이미지를 설정하면 갤러리가 풍성해집니다"},
+      {"type": "numbered_list", "text": "3. 완독 후 평점과 독후감을 남겨보세요"}
+    ]}
+  ],
+  "databases": [{
+    "title": "독서 기록",
+    "icon": "📚",
+    "description": "읽은 책과 읽고 싶은 책을 기록하세요",
+    "db_properties": {
+      "책 제목": "title",
+      "저자": "rich_text",
+      "장르": {"type": "select", "options": [{"name": "소설", "color": "blue"}, {"name": "자기계발", "color": "green"}, {"name": "기술", "color": "orange"}, {"name": "에세이", "color": "purple"}, {"name": "역사", "color": "brown"}]},
+      "상태": "status",
+      "평점": "number",
+      "날짜": "date"
+    },
+    "views": [
+      {"type": "gallery", "title": "갤러리", "cover": {"type": "page_cover"}, "cover_size": "medium"},
+      {"type": "table", "title": "전체 목록"},
+      {"type": "calendar", "title": "읽은 날짜", "date_property": "날짜"}
+    ],
+    "sample_items": [
+      {"책 제목": "원씽", "저자": "게리 켈러", "장르": "자기계발", "평점": 5, "날짜": "2026-03-15", "icon": "📕"},
+      {"책 제목": "클린 코드", "저자": "로버트 마틴", "장르": "기술", "평점": 5, "날짜": "2026-03-22", "icon": "📘"},
+      {"책 제목": "데미안", "저자": "헤르만 헤세", "장르": "소설", "평점": 4, "날짜": "2026-04-01", "icon": "📗"},
+      {"책 제목": "아토믹 해빗", "저자": "제임스 클리어", "장르": "자기계발", "평점": 5, "날짜": "2026-04-05", "icon": "📙"},
+      {"책 제목": "나는 나로 살기로 했다", "저자": "김수현", "장르": "에세이", "평점": 4, "날짜": "2026-04-10", "icon": "📔"}
+    ]
+  }],
+  "sub_pages": []
+}

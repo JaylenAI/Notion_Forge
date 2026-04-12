@@ -1,0 +1,80 @@
+{
+  "skill": "content",
+  "title": "📅 콘텐츠 캘린더",
+  "icon": "📅",
+  "color": "blue",
+  "cover_category": "creative",
+  "blocks": [
+    {"type": "callout", "icon": "📅", "color": "blue_background", "text": "콘텐츠 일정을 체계적으로 관리하세요!",
+      "children": [{"type": "paragraph", "text": "기획부터 발행까지, 모든 콘텐츠의 라이프사이클을 추적합니다."}]
+    },
+    {"type": "paragraph", "text": ""},
+    {"type": "column_list", "columns": [
+      [
+        {"type": "callout", "icon": "📅", "color": "blue_background", "text": "이번주 예정\n5건"},
+        {"type": "paragraph", "text": ""},
+        {"type": "callout", "icon": "⏰", "color": "orange_background", "text": "오늘 마감\n2건"}
+      ],
+      [
+        {"type": "heading_3", "text": "⚡ 빠른 추가"},
+        {"type": "to_do", "text": "블로그 포스트 초안 작성"},
+        {"type": "to_do", "text": "인스타 이미지 제작"},
+        {"type": "to_do", "text": "유튜브 썸네일 확인"},
+        {"type": "paragraph", "text": ""},
+        {"type": "heading_3", "text": "🏷️ 플랫폼"},
+        {"type": "bulleted_list", "text": "📝 블로그"},
+        {"type": "bulleted_list", "text": "📸 인스타그램"},
+        {"type": "bulleted_list", "text": "🎬 유튜브"},
+        {"type": "bulleted_list", "text": "📬 뉴스레터"}
+      ]
+    ]},
+    {"type": "paragraph", "text": ""},
+    {"type": "heading_2", "text": "📅 캘린더", "color": "blue"},
+    {"type": "database_ref", "db_index": 0},
+    {"type": "paragraph", "text": ""},
+    {"type": "divider"},
+    {"type": "quote", "text": "꾸준한 콘텐츠가 최고의 마케팅이다.", "color": "blue"},
+    {"type": "paragraph", "text": ""},
+    {"type": "toggle", "text": "📖 사용 가이드", "children": [
+      {"type": "numbered_list", "text": "1. 캘린더에서 날짜를 클릭하여 새 콘텐츠 추가"},
+      {"type": "numbered_list", "text": "2. 플랫폼과 상태를 지정하세요"},
+      {"type": "numbered_list", "text": "3. 보드 뷰에서 상태별 진행 현황 확인"}
+    ]}
+  ],
+  "databases": [{
+    "title": "콘텐츠",
+    "icon": "📅",
+    "description": "모든 콘텐츠의 기획부터 발행까지 관리하세요",
+    "db_properties": {
+      "제목": "title",
+      "상태": "status",
+      "플랫폼": {"type": "select", "options": [{"name": "블로그", "color": "blue"}, {"name": "인스타", "color": "pink"}, {"name": "유튜브", "color": "red"}, {"name": "뉴스레터", "color": "green"}]},
+      "발행일": "date",
+      "형태": {"type": "select", "options": [{"name": "글", "color": "gray"}, {"name": "영상", "color": "orange"}, {"name": "이미지", "color": "purple"}]},
+      "메모": "rich_text"
+    },
+    "views": [
+      {"type": "calendar", "title": "캘린더", "date_property": "발행일"},
+      {"type": "board", "title": "상태별", "group_by": {"property": "상태"}},
+      {"type": "table", "title": "전체 목록"}
+    ],
+    "sample_items": [
+      {"제목": "AI 도구 비교 리뷰", "플랫폼": "블로그", "형태": "글", "발행일": "2026-04-14", "메모": "ChatGPT vs Claude 비교", "icon": "📝"},
+      {"제목": "일상 브이로그", "플랫폼": "유튜브", "형태": "영상", "발행일": "2026-04-16", "메모": "주말 일상 촬영", "icon": "🎬"},
+      {"제목": "디자인 팁 카드뉴스", "플랫폼": "인스타", "형태": "이미지", "발행일": "2026-04-18", "메모": "피그마 단축키 모음", "icon": "🎨"},
+      {"제목": "주간 뉴스레터 #12", "플랫폼": "뉴스레터", "형태": "글", "발행일": "2026-04-20", "메모": "이번 주 테크 뉴스", "icon": "📬"},
+      {"제목": "코딩 튜토리얼", "플랫폼": "유튜브", "형태": "영상", "발행일": "2026-04-22", "메모": "React 19 새 기능", "icon": "💻"}
+    ]
+  }],
+  "sub_pages": [
+    {"name": "💡 아이디어 뱅크", "icon": "💡", "description": "콘텐츠 아이디어 모음",
+      "blocks": [
+        {"type": "callout", "icon": "💡", "color": "yellow_background", "text": "떠오르는 아이디어를 바로 기록하세요!"},
+        {"type": "heading_2", "text": "🧠 아이디어"},
+        {"type": "bulleted_list", "text": "AI 활용 생산성 시리즈"},
+        {"type": "bulleted_list", "text": "개발자 일상 브이로그"},
+        {"type": "bulleted_list", "text": "노션 활용 팁 모음"}
+      ]
+    }
+  ]
+}

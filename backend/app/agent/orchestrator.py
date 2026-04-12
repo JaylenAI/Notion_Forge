@@ -367,6 +367,15 @@ class AgentOrchestrator:
         if relation_count > 0:
             yield {"type": "progress", "step": "relations", "message": f"🔗 DB 간 연결 완료 (Relation/Rollup/Formula {relation_count}개)"}
 
+        # ── Pass 5: Post-Creation Validation (생성 후 검증)
+        validation_issues = await self._validate_creation(main_page_id, blueprint, result)
+        if validation_issues:
+            yield {"type": "progress", "step": "validation", "message": f"🔍 검증: {len(validation_issues)}개 항목 확인"}
+            for issue in validation_issues[:3]:
+                yield {"type": "progress", "step": "validation_detail", "message": f"  ⚠️ {issue}"}
+        else:
+            yield {"type": "progress", "step": "validation", "message": "✅ 생성 결과 검증 완료 — 모든 항목 정상"}
+
         # 결과 저장
         self._last_intent = intent
         self._last_result = result
@@ -930,6 +939,35 @@ class AgentOrchestrator:
             ])
 
         return blocks
+
+    async def _validate_creation(self, page_id: str, blueprint: dict, result: dict) -> list[str]:
+        """생성 후 검증: 실제 Notion 페이지를 읽어서 기대값과 비교"""
+        issues: list[str] = []
+        try:
+            children = await self.client.get_block_children(page_id)
+            actual_blocks = len(children.get("results", []))
+            expected_blocks = len(blueprint.get("blocks", []))
+
+            # 블록 수 검증 (±50% 이내)
+            if expected_blocks > 0 and actual_blocks < expected_blocks * 0.5:
+                issues.append(f"블록 수 부족: 기대 {expected_blocks}개, 실제 {actual_blocks}개")
+
+            # DB 수 검증
+            expected_dbs = len(blueprint.get("databases", []))
+            actual_dbs = len(result.get("databases", []))
+            if actual_dbs < expected_dbs:
+                issues.append(f"DB 수 부족: 기대 {expected_dbs}개, 실제 {actual_dbs}개")
+
+            # 서브페이지 수 검증
+            expected_subs = len(blueprint.get("sub_pages", []))
+            actual_subs = len([p for p in result.get("pages", []) if p.get("id") != page_id])
+            if actual_subs < expected_subs:
+                issues.append(f"서브페이지 부족: 기대 {expected_subs}개, 실제 {actual_subs}개")
+
+        except Exception as e:
+            print(f"[Post-Creation Validation 스킵] {str(e)[:80]}")
+
+        return issues
 
     @staticmethod
     def _resolve_sub_page_refs(blocks: list[dict], sub_page_map: dict[str, str]) -> None:

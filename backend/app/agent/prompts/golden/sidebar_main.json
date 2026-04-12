@@ -1,0 +1,89 @@
+{
+  "skill": "organize",
+  "title": "🏠 나의 워크스페이스",
+  "icon": "🏠",
+  "color": "blue",
+  "cover_category": "minimal",
+  "blocks": [
+    {"type": "callout", "icon": "🏠", "color": "blue_background", "text": "나만의 워크스페이스",
+      "children": [
+        {"type": "paragraph", "text": "모든 것을 한곳에서 관리하세요."},
+        {"type": "link_to_page", "sub_page_ref": "📝 노트"},
+        {"type": "link_to_page", "sub_page_ref": "📁 자료 정리"}
+      ]
+    },
+    {"type": "paragraph", "text": ""},
+    {"type": "column_list", "width_ratios": [30, 70], "columns": [
+      [
+        {"type": "callout", "icon": "📌", "color": "blue_background", "text": "빠른 링크",
+          "children": [
+            {"type": "bulleted_list", "text": "📋 할일 목록"},
+            {"type": "bulleted_list", "text": "📅 이번주 일정"},
+            {"type": "bulleted_list", "text": "📝 빠른 메모"}
+          ]
+        },
+        {"type": "paragraph", "text": ""},
+        {"type": "callout", "icon": "📈", "color": "green_background", "text": "이번주 요약\n완료 8건 / 진행 3건"}
+      ],
+      [
+        {"type": "heading_2", "text": "📋 할일 목록", "color": "blue"},
+        {"type": "database_ref", "db_index": 0},
+        {"type": "paragraph", "text": ""},
+        {"type": "heading_3", "text": "✏️ 빠른 메모"},
+        {"type": "to_do", "text": "주간 리뷰 작성"},
+        {"type": "to_do", "text": "팀 미팅 안건 정리"},
+        {"type": "to_do", "text": "자료 정리 마무리"}
+      ]
+    ]},
+    {"type": "paragraph", "text": ""},
+    {"type": "divider"},
+    {"type": "toggle", "text": "📖 사용 가이드", "children": [
+      {"type": "numbered_list", "text": "1. 왼쪽 사이드바에서 빠르게 이동하세요"},
+      {"type": "numbered_list", "text": "2. 할일을 추가하고 상태를 관리하세요"},
+      {"type": "numbered_list", "text": "3. 서브페이지에서 자료를 정리하세요"}
+    ]}
+  ],
+  "databases": [{
+    "title": "할일 목록",
+    "icon": "📋",
+    "description": "할 일을 추가하고 관리하세요",
+    "db_properties": {
+      "할일": "title",
+      "상태": "status",
+      "카테고리": {"type": "select", "options": [{"name": "업무", "color": "blue"}, {"name": "개인", "color": "green"}, {"name": "학습", "color": "purple"}]},
+      "마감일": "date",
+      "우선순위": {"type": "select", "options": [{"name": "높음", "color": "red"}, {"name": "보통", "color": "yellow"}, {"name": "낮음", "color": "gray"}]}
+    },
+    "views": [
+      {"type": "table", "title": "전체 목록"},
+      {"type": "board", "title": "상태별", "group_by": {"property": "상태"}},
+      {"type": "calendar", "title": "캘린더", "date_property": "마감일"}
+    ],
+    "sample_items": [
+      {"할일": "프로젝트 기획서 작성", "카테고리": "업무", "우선순위": "높음", "마감일": "2026-04-14", "icon": "📝"},
+      {"할일": "React 강의 수강", "카테고리": "학습", "우선순위": "보통", "마감일": "2026-04-16", "icon": "📚"},
+      {"할일": "운동 루틴 정리", "카테고리": "개인", "우선순위": "낮음", "마감일": "2026-04-18", "icon": "💪"},
+      {"할일": "코드 리뷰 완료", "카테고리": "업무", "우선순위": "높음", "마감일": "2026-04-15", "icon": "🔍"},
+      {"할일": "독서 30분", "카테고리": "개인", "우선순위": "보통", "마감일": "2026-04-14", "icon": "📖"}
+    ]
+  }],
+  "sub_pages": [
+    {"name": "📝 노트", "icon": "📝", "description": "빠른 메모와 아이디어",
+      "blocks": [
+        {"type": "callout", "icon": "📝", "color": "blue_background", "text": "떠오르는 생각을 바로 기록하세요"},
+        {"type": "heading_2", "text": "💡 아이디어"},
+        {"type": "bulleted_list", "text": "새 프로젝트 구상"},
+        {"type": "bulleted_list", "text": "블로그 주제 아이디어"},
+        {"type": "bulleted_list", "text": "읽고 싶은 책 목록"}
+      ]
+    },
+    {"name": "📁 자료 정리", "icon": "📁", "description": "자료 및 리소스 모음",
+      "blocks": [
+        {"type": "callout", "icon": "📁", "color": "green_background", "text": "유용한 자료를 정리해두세요"},
+        {"type": "heading_2", "text": "🔗 자주 쓰는 링크"},
+        {"type": "bookmark", "url": "https://notion.so"},
+        {"type": "bookmark", "url": "https://github.com"}
+      ]
+    }
+  ]
+}

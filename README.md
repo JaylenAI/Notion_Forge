@@ -216,7 +216,7 @@ NotionForge/
 
 ---
 
-## 스킬 시스템 (12개)
+## 스킬 시스템 (37개: 12 카테고리 + 25 세분화)
 
 | 스킬 | 용도 | 뷰 |
 |------|------|-----|
@@ -232,6 +232,19 @@ NotionForge/
 | content | 콘텐츠 캘린더/SNS | board, calendar |
 | learn | 학습/시험/어학 | table, board |
 | crm | 고객 관리/영업 | board, timeline |
+
+**세분화 스킬 (25개):**
+
+| 카테고리 | 세분화 | 용도 |
+|---------|--------|------|
+| track | fitness, habit, health, diet | 운동/습관/건강/식단 |
+| collect | reading, recipe, movie, music, cafe | 독서/레시피/영화/음악/카페 |
+| manage | project, sprint, bug, meeting | 프로젝트/스프린트/버그/회의록 |
+| plan | travel, wedding, goals | 여행/결혼/목표(OKR) |
+| organize | bookmark, inventory, contact | 북마크/재고/연락처 |
+| finance | budget, investment, subscription | 가계부/투자/구독관리 |
+| learn | study, language | 공부/어학 |
+| crm | sales | 영업 파이프라인 |
 
 ---
 
@@ -340,6 +353,13 @@ AI 모델은 범용 도구일 뿐, **하네스(harness)가 결과 품질을 결�
 - [x] DB 배치 전략: `db_parent` 필드로 서브페이지에 DB 생성 + 메인에 linked_view
 - [x] 2-Stage 파이프라인: advanced 모드에서 자동 활성화 (Architect→Designer→Content→Validator)
 - [x] Model Escalation: GPT-4.1 실패 → GPT-5.2 → GPT-5 Mini 자동 업그레이드
+
+### v7.2.0 완료 (2026-04-12) — 프로 템플릿 + 스킬 확장
+- [x] 골든 블루프린트 8개: 레이아웃별 검증된 완성 JSON Few-Shot 예시
+- [x] 스킬 세분화 37개: 12개 범용 → 25개 도메인 특화 추가 (fitness, reading, budget 등)
+- [x] 2-Tier 스킬 매칭: 세분화 스킬(Tier 2) 우선 → 범용 카테고리(Tier 1) 폴백
+- [x] Post-Creation Validation: Notion 생성 후 실제 결과 검증 (블록/DB/서브페이지 수 비교)
+- [x] PromptAssembler Few-Shot: 골든 블루프린트를 compact 프롬프트에 자동 삽입
 
 ### 다음 개발 예정 (v8.0.0)
 

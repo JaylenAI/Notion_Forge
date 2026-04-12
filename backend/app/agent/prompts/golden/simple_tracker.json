@@ -1,0 +1,64 @@
+{
+  "skill": "track",
+  "title": "💧 물 섭취 트래커",
+  "icon": "💧",
+  "color": "blue",
+  "cover_category": "health",
+  "blocks": [
+    {"type": "callout", "icon": "💧", "color": "blue_background", "text": "오늘도 한 잔! 건강한 습관을 만들어가요",
+      "children": [{"type": "paragraph", "text": "매일 꾸준히 기록하면 변화가 보입니다."}]
+    },
+    {"type": "paragraph", "text": ""},
+    {"type": "column_list", "columns": [
+      [{"type": "callout", "icon": "📊", "color": "blue_background", "text": "이번주 기록\n35잔 달성"}],
+      [{"type": "callout", "icon": "🎯", "color": "green_background", "text": "일일 목표\n8잔"}]
+    ]},
+    {"type": "paragraph", "text": ""},
+    {"type": "heading_2", "text": "💧 물 섭취 기록", "color": "blue"},
+    {"type": "database_ref", "db_index": 0},
+    {"type": "paragraph", "text": ""},
+    {"type": "divider"},
+    {"type": "quote", "text": "물은 생명의 근원입니다. 꾸준함이 건강을 만듭니다.", "color": "blue"},
+    {"type": "paragraph", "text": ""},
+    {"type": "toggle", "text": "📖 사용 가이드", "children": [
+      {"type": "numbered_list", "text": "1. 물을 마실 때마다 새 항목을 추가하세요"},
+      {"type": "numbered_list", "text": "2. 캘린더 뷰에서 주간 패턴을 확인하세요"},
+      {"type": "numbered_list", "text": "3. 목표 달성 시 체크박스를 눌러주세요"},
+      {"type": "callout", "icon": "💡", "color": "yellow_background", "text": "팁: 아침/점심/저녁으로 나눠서 기록하면 패턴을 파악하기 쉬워요"}
+    ]},
+    {"type": "toggle", "text": "❓ FAQ", "children": [
+      {"type": "paragraph", "text": "Q: 하루 목표량은 얼마인가요?\nA: 일반적으로 체중(kg) × 30ml이 권장됩니다."},
+      {"type": "paragraph", "text": "Q: 빠진 날은 어떻게 하나요?\nA: 걱정 마세요! 다음 날부터 다시 시작하면 됩니다."}
+    ]}
+  ],
+  "databases": [{
+    "title": "물 섭취 기록",
+    "icon": "💧",
+    "description": "매일 물 섭취량을 기록하고 건강한 습관을 만들어보세요",
+    "db_properties": {
+      "기록": "title",
+      "잔 수": "number",
+      "시간대": {"type": "select", "options": [
+        {"name": "아침", "color": "blue"},
+        {"name": "점심", "color": "green"},
+        {"name": "저녁", "color": "purple"},
+        {"name": "야간", "color": "gray"}
+      ]},
+      "날짜": "date",
+      "목표달성": "checkbox"
+    },
+    "views": [
+      {"type": "table", "title": "전체 기록"},
+      {"type": "calendar", "title": "캘린더", "date_property": "날짜"}
+    ],
+    "sample_items": [
+      {"기록": "아침 기상 후 물 2잔", "잔 수": 2, "시간대": "아침", "날짜": "2026-04-10", "목표달성": false, "icon": "🌅"},
+      {"기록": "점심 식사 전 물 1잔", "잔 수": 1, "시간대": "점심", "날짜": "2026-04-10", "목표달성": false, "icon": "☀️"},
+      {"기록": "운동 후 물 3잔", "잔 수": 3, "시간대": "저녁", "날짜": "2026-04-10", "목표달성": true, "icon": "💪"},
+      {"기록": "아침 물 2잔", "잔 수": 2, "시간대": "아침", "날짜": "2026-04-11", "목표달성": false, "icon": "🌅"},
+      {"기록": "회의 중 물 1잔", "잔 수": 1, "시간대": "점심", "날짜": "2026-04-11", "목표달성": false, "icon": "📋"}
+    ]
+  }],
+  "sub_pages": [],
+  "faq": []
+}

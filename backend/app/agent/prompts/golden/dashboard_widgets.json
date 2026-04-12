@@ -1,0 +1,149 @@
+{
+  "skill": "crm",
+  "title": "🏢 CRM 대시보드",
+  "icon": "🏢",
+  "color": "blue",
+  "cover_category": "business",
+  "blocks": [
+    {"type": "callout", "icon": "🏢", "color": "blue_background", "text": "CRM 대시보드에 오신 것을 환영합니다!",
+      "children": [
+        {"type": "paragraph", "text": "핵심 지표와 현황을 한눈에 확인하세요."},
+        {"type": "bulleted_list", "text": "👥 고객 관리"},
+        {"type": "bulleted_list", "text": "💼 거래 현황"},
+        {"type": "bulleted_list", "text": "📊 활동 로그"}
+      ]
+    },
+    {"type": "table_of_contents", "color": "gray"},
+    {"type": "paragraph", "text": ""},
+    {"type": "column_list", "columns": [
+      [{"type": "callout", "icon": "👥", "color": "blue_background", "text": "활성 고객\n128명"}],
+      [{"type": "callout", "icon": "💰", "color": "green_background", "text": "이번달 매출\n₩45,000,000"}],
+      [{"type": "callout", "icon": "📈", "color": "purple_background", "text": "전환율\n23%"}]
+    ]},
+    {"type": "paragraph", "text": ""},
+    {"type": "heading_1", "text": "👥 고객 관리", "color": "blue"},
+    {"type": "database_ref", "db_index": 0},
+    {"type": "paragraph", "text": ""},
+    {"type": "divider"},
+    {"type": "column_list", "columns": [
+      [
+        {"type": "heading_3", "text": "🔥 긴급 팔로업"},
+        {"type": "linked_view", "db_index": 0, "view_type": "list", "title": "긴급", "filter": {"property": "등급", "select": {"equals": "VIP"}}}
+      ],
+      [
+        {"type": "heading_3", "text": "✅ 최근 계약"},
+        {"type": "linked_view", "db_index": 1, "view_type": "list", "title": "최근 완료", "filter": {"property": "상태", "status": {"equals": "완료"}}}
+      ]
+    ]},
+    {"type": "paragraph", "text": ""},
+    {"type": "heading_2", "text": "💼 거래 현황", "color": "green"},
+    {"type": "database_ref", "db_index": 1},
+    {"type": "paragraph", "text": ""},
+    {"type": "divider"},
+    {"type": "heading_2", "text": "📊 활동 로그", "color": "purple"},
+    {"type": "database_ref", "db_index": 2},
+    {"type": "paragraph", "text": ""},
+    {"type": "divider"},
+    {"type": "toggle", "text": "📖 CRM 사용 가이드", "children": [
+      {"type": "numbered_list", "text": "1. 고객을 등록하고 등급을 지정하세요"},
+      {"type": "numbered_list", "text": "2. 거래를 생성하고 파이프라인을 추적하세요"},
+      {"type": "numbered_list", "text": "3. 활동 로그로 모든 커뮤니케이션을 기록하세요"},
+      {"type": "callout", "icon": "💡", "color": "yellow_background", "text": "팁: VIP 고객은 주 1회 이상 팔로업하세요"}
+    ]}
+  ],
+  "databases": [
+    {
+      "title": "고객",
+      "icon": "👥",
+      "description": "모든 고객 정보를 관리하세요",
+      "db_properties": {
+        "고객명": "title",
+        "상태": "status",
+        "등급": {"type": "select", "options": [{"name": "VIP", "color": "red"}, {"name": "일반", "color": "blue"}, {"name": "잠재", "color": "gray"}]},
+        "담당자": "rich_text",
+        "이메일": "email",
+        "최근연락": "date"
+      },
+      "views": [
+        {"type": "board", "title": "상태별", "group_by": {"property": "상태"}},
+        {"type": "table", "title": "전체 목록"},
+        {"type": "gallery", "title": "카드뷰"}
+      ],
+      "sample_items": [
+        {"고객명": "김대표 (스타트업A)", "등급": "VIP", "담당자": "이과장", "이메일": "kim@startup.com", "최근연락": "2026-04-10", "icon": "🏢"},
+        {"고객명": "박부장 (대기업B)", "등급": "VIP", "담당자": "최대리", "이메일": "park@corp.com", "최근연락": "2026-04-08", "icon": "🏦"},
+        {"고객명": "이사장 (중소기업C)", "등급": "일반", "담당자": "이과장", "이메일": "lee@sme.com", "최근연락": "2026-04-05", "icon": "🏠"},
+        {"고객명": "정팀장 (에이전시D)", "등급": "일반", "담당자": "최대리", "이메일": "jung@agency.com", "최근연락": "2026-04-03", "icon": "🎯"},
+        {"고객명": "한과장 (신규문의)", "등급": "잠재", "담당자": "이과장", "이메일": "han@new.com", "최근연락": "2026-04-12", "icon": "📞"}
+      ]
+    },
+    {
+      "title": "거래",
+      "icon": "💼",
+      "description": "모든 거래와 파이프라인을 추적하세요",
+      "db_properties": {
+        "거래명": "title",
+        "상태": "status",
+        "금액": "number",
+        "고객": {"type": "relation", "target_db_index": 0},
+        "마감일": "date",
+        "담당자": "rich_text"
+      },
+      "views": [
+        {"type": "board", "title": "파이프라인", "group_by": {"property": "상태"}},
+        {"type": "table", "title": "전체 목록"}
+      ],
+      "sample_items": [
+        {"거래명": "스타트업A 연간 계약", "금액": 50000000, "마감일": "2026-04-30", "담당자": "이과장", "icon": "💰"},
+        {"거래명": "대기업B 파일럿", "금액": 20000000, "마감일": "2026-05-15", "담당자": "최대리", "icon": "🔄"},
+        {"거래명": "중소기업C 기본 플랜", "금액": 10000000, "마감일": "2026-04-20", "담당자": "이과장", "icon": "📋"},
+        {"거래명": "에이전시D 컨설팅", "금액": 15000000, "마감일": "2026-05-01", "담당자": "최대리", "icon": "🤝"},
+        {"거래명": "신규문의 제안서", "금액": 8000000, "마감일": "2026-04-25", "담당자": "이과장", "icon": "📝"}
+      ]
+    },
+    {
+      "title": "활동 로그",
+      "icon": "📊",
+      "description": "고객과의 모든 커뮤니케이션을 기록하세요",
+      "db_properties": {
+        "활동": "title",
+        "유형": {"type": "select", "options": [{"name": "미팅", "color": "blue"}, {"name": "전화", "color": "green"}, {"name": "이메일", "color": "purple"}, {"name": "기타", "color": "gray"}]},
+        "날짜": "date",
+        "고객": {"type": "relation", "target_db_index": 0},
+        "메모": "rich_text"
+      },
+      "views": [
+        {"type": "table", "title": "전체 로그"},
+        {"type": "calendar", "title": "활동 캘린더", "date_property": "날짜"}
+      ],
+      "sample_items": [
+        {"활동": "스타트업A 계약 미팅", "유형": "미팅", "날짜": "2026-04-10", "메모": "계약 조건 협의 완료", "icon": "🤝"},
+        {"활동": "대기업B 팔로업 전화", "유형": "전화", "날짜": "2026-04-09", "메모": "다음 주 데모 일정 확정", "icon": "📞"},
+        {"활동": "중소기업C 제안서 발송", "유형": "이메일", "날짜": "2026-04-08", "메모": "기본 플랜 제안서 전달", "icon": "📧"},
+        {"활동": "에이전시D 요구사항 정리", "유형": "미팅", "날짜": "2026-04-07", "메모": "컨설팅 범위 확정", "icon": "📋"},
+        {"활동": "신규 리드 인바운드 문의", "유형": "이메일", "날짜": "2026-04-12", "메모": "웹사이트에서 문의 접수", "icon": "📬"}
+      ]
+    }
+  ],
+  "sub_pages": [
+    {"name": "📋 영업 프로세스", "icon": "📋", "description": "영업 파이프라인 가이드",
+      "blocks": [
+        {"type": "callout", "icon": "📋", "color": "blue_background", "text": "영업 프로세스 가이드"},
+        {"type": "heading_2", "text": "🔄 파이프라인 단계"},
+        {"type": "numbered_list", "text": "1. 리드 발굴 → 2. 제안서 → 3. 협상 → 4. 계약 → 5. 온보딩"},
+        {"type": "toggle", "text": "💡 단계별 상세", "children": [
+          {"type": "paragraph", "text": "각 단계에서 해야 할 일과 체크리스트를 확인하세요."}
+        ]}
+      ]
+    },
+    {"name": "📊 리포트 템플릿", "icon": "📊", "description": "주간/월간 리포트",
+      "blocks": [
+        {"type": "callout", "icon": "📊", "color": "green_background", "text": "리포트 작성 가이드"},
+        {"type": "heading_2", "text": "📈 주간 리포트"},
+        {"type": "bulleted_list", "text": "신규 리드 수"},
+        {"type": "bulleted_list", "text": "미팅 건수"},
+        {"type": "bulleted_list", "text": "계약 전환율"}
+      ]
+    }
+  ]
+}
