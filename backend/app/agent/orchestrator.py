@@ -407,7 +407,8 @@ class AgentOrchestrator:
         meta = blueprint["metadata"]
         lines = [f"📄 **{meta['title']}** ({meta['template_type']})", f"🎨 색상: {meta['color_theme']}"]
         for db in blueprint.get("databases", []):
-            lines.append(f"📊 DB: {db['title']} ({', '.join(db['properties'].keys())})")
+            props = db.get("properties") or db.get("db_properties") or {}
+            lines.append(f"📊 DB: {db['title']} ({', '.join(props.keys())})")
         for sub in blueprint.get("sub_pages", []):
             lines.append(f"📁 하위: {sub['title']}")
         return "\n".join(lines)

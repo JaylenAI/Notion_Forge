@@ -25,7 +25,10 @@ async def generate_template(req: TemplateGenerateRequest):
 
     result = None
     async for event in agent.process(req.prompt):
-        if event["type"] == "complete":
+        if event["type"] == "approval_request":
+            # REST API에서는 자동 승인 (WebSocket이 아니므로 유저 입력 불가)
+            agent.approve_creation(approved=True)
+        elif event["type"] == "complete":
             result = event.get("result", {})
         elif event["type"] == "question":
             return TemplateGenerateResponse(

@@ -27,9 +27,11 @@ class CreationExecutor:
     async def create_database_with_data(self, parent_id: str, db_spec: dict) -> dict[str, Any]:
         """DB 생성 + 샘플 데이터 + 뷰 자동 생성"""
         # relation/rollup/formula는 후처리에서 추가 (target DB ID 필요)
+        # AI가 "properties" 또는 "db_properties" 키를 사용할 수 있음
+        all_props = db_spec.get("properties") or db_spec.get("db_properties") or {}
         deferred_prop_names: set[str] = set()
         filtered_props = {}
-        for k, v in db_spec["properties"].items():
+        for k, v in all_props.items():
             if isinstance(v, dict) and v.get("type") in ("relation", "rollup"):
                 deferred_prop_names.add(k)
                 continue
