@@ -75,6 +75,8 @@ class BlueprintValidator:
         extracted_refs: list[dict] = []
 
         for block in blocks:
+            if not isinstance(block, dict):
+                continue
             if block.get("type") == "column_list":
                 columns = block.get("columns", [])
                 clean_columns = []
@@ -113,6 +115,8 @@ class BlueprintValidator:
 
         for i in range(1, len(blocks)):
             curr = blocks[i]
+            if not isinstance(curr, dict):
+                continue
             prev = spaced[-1] if spaced else {}
 
             # 섹션 블록 앞에 spacing이 없으면 추가
@@ -138,12 +142,13 @@ class BlueprintValidator:
 
         blocks = content.get("blocks", [])
         for block in blocks:
+            if not isinstance(block, dict):
+                continue
             if block.get("type") == "database_ref":
                 idx = block.get("db_index", 0)
                 if idx >= db_count:
-                    block["db_index"] = 0  # 유효하지 않으면 첫 번째 DB로
+                    block["db_index"] = 0
 
-            # linked_view도 검증
             if block.get("type") == "linked_view":
                 idx = block.get("db_index", 0)
                 if idx >= db_count:

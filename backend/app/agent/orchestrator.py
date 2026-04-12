@@ -190,6 +190,8 @@ class AgentOrchestrator:
         db_index = 0
 
         for i, block in enumerate(blocks):
+            if not isinstance(block, dict):
+                continue  # AI가 string을 넣은 경우 스킵
             block_type = block.get("type", "?")
             try:
                 if block_type == "database_ref":
@@ -331,7 +333,7 @@ class AgentOrchestrator:
             sub_blocks = sub.get("blocks", [])
             if sub_blocks:
                 try:
-                    notion_blocks = [spec_to_block(b) for b in sub_blocks if b.get("type") != "database_ref"]
+                    notion_blocks = [spec_to_block(b) for b in sub_blocks if isinstance(b, dict) and b.get("type") != "database_ref"]
                     if notion_blocks:
                         await self.client.add_blocks(sub_id, notion_blocks)
                         yield {"type": "progress", "step": "sub_page_blocks", "message": f"  📝 {sub.get('icon','')} {sub['title']} 내용 추가됨"}
@@ -977,6 +979,8 @@ class AgentOrchestrator:
         서브페이지 생성 후 실제 ID로 치환하여 link_to_page 블록이 정상 동작하게 함.
         """
         for block in blocks:
+            if not isinstance(block, dict):
+                continue
             # link_to_page with sub_page_ref 치환
             if block.get("type") == "link_to_page" and block.get("sub_page_ref"):
                 ref_name = block["sub_page_ref"]

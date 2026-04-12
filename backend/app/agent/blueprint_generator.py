@@ -77,6 +77,8 @@ def _evaluate_ai_output(content: dict[str, Any]) -> tuple[bool, list[str]]:
     # Level 1: 블록 구조 검증
     blocks = content.get("blocks", [])
     for i, block in enumerate(blocks):
+        if not isinstance(block, dict):
+            continue  # string 등 잘못된 타입 스킵
         btype = block.get("type")
         if not btype:
             errors.append(f"blocks[{i}]: 'type' 필드가 없습니다.")
@@ -557,6 +559,8 @@ def _assemble_blueprint(content: dict) -> dict[str, Any]:
     # sub_pages: AI가 blocks를 설계했으면 그대로 사용, 없으면 기본 블록
     bg = f"{color}_background" if color != "default" else "default"
     for sub in content.get("sub_pages", []):
+        if not isinstance(sub, dict):
+            continue
         sub_blocks = sub.get("blocks", [])
         if not sub_blocks:
             # AI가 블록을 설계하지 않은 경우에만 기본 블록 생성
