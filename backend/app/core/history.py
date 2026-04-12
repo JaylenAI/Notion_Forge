@@ -60,6 +60,32 @@ def save_generation_record(metrics_dict: dict, blueprint: dict | None = None) ->
         return None
 
 
+def cleanup_old_history(retention_days: int = 30) -> int:
+    """오래된 이력 파일 삭제 (보존 정책)
+
+    Returns:
+        삭제된 파일 수
+    """
+    if not HISTORY_DIR.exists():
+        return 0
+
+    cutoff = datetime.now(timezone.utc) - __import__("datetime").timedelta(days=retention_days)
+    cutoff_str = cutoff.strftime("%Y-%m-%d")
+    deleted = 0
+
+    for filepath in HISTORY_DIR.glob("*.jsonl"):
+        if filepath.stem < cutoff_str:
+            try:
+                filepath.unlink()
+                deleted += 1
+            except Exception:
+                continue
+
+    if deleted > 0:
+        logger.info(f"[History] {deleted}개 오래된 이력 파일 삭제 (>{retention_days}일)")
+    return deleted
+
+
 def get_recent_history(days: int = 7, limit: int = 50) -> list[dict]:
     """최근 생성 이력 조회"""
     records: list[dict] = []

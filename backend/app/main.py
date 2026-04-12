@@ -25,6 +25,11 @@ async def lifespan(app: FastAPI):
             await copilot_manager.start()
         except Exception as e:
             logger.warning(f"Copilot 시작 스킵: {e}")
+
+    # 이력 보존 정책 — 30일 이상 된 파일 자동 정리
+    from app.core.history import cleanup_old_history
+    cleanup_old_history(retention_days=30)
+
     yield
     if settings.copilot_enabled:
         try:
@@ -48,8 +53,8 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "X-Notion-Token"],
     )
 
     @app.exception_handler(Exception)
@@ -82,13 +87,51 @@ def create_app() -> FastAPI:
             copilot_status = copilot_manager.get_status()
         except ImportError:
             copilot_status = {"available": False}
+
+        from app.core.history import get_recent_history
+        recent = get_recent_history(days=1, limit=100)
+        total = len(recent)
+        success_count = sum(1 for r in recent if r.get("metrics", {}).get("success"))
+
         return {
             "status": "ok",
-            "version": "6.1.0",
+            "version": "7.3.0",
             "ai_provider": settings.ai_provider,
             "notion_ready": settings.notion_ready,
             "copilot": copilot_status,
             "features": 74,
+            "skills": 48,
+            "today_stats": {
+                "total": total,
+                "success": success_count,
+                "success_rate": round(success_count / total * 100, 1) if total > 0 else 0,
+            },
+        }
+
+    @app.get("/api/metrics/summary")
+    async def metrics_summary():
+        """메트릭 요약 — 최근 7일 통계"""
+        from app.core.history import get_recent_history
+
+        records = get_recent_history(days=7, limit=500)
+        total = len(records)
+        success = sum(1 for r in records if r.get("metrics", {}).get("success"))
+
+        skills_used: dict[str, int] = {}
+        total_duration = 0
+        for r in records:
+            m = r.get("metrics", {})
+            skill = m.get("skill", "unknown")
+            skills_used[skill] = skills_used.get(skill, 0) + 1
+            total_duration += m.get("total_duration_ms", 0)
+
+        return {
+            "period": "7d",
+            "total_generations": total,
+            "success_count": success,
+            "success_rate": round(success / total * 100, 1) if total > 0 else 0,
+            "avg_duration_ms": round(total_duration / total) if total > 0 else 0,
+            "top_skills": dict(sorted(skills_used.items(), key=lambda x: -x[1])[:10]),
         }
 
     return app

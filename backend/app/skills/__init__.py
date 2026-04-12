@@ -233,8 +233,20 @@ def load_custom_skills() -> dict[str, dict[str, str]]:
     return skills
 
 
+def _validate_skill_id(skill_id: str) -> bool:
+    """스킬 ID 안전성 검증 — Path Traversal 방지"""
+    import re
+    if not skill_id or not re.match(r'^[a-z][a-z0-9_]{0,49}$', skill_id):
+        return False
+    if '..' in skill_id or '/' in skill_id or '\\' in skill_id:
+        return False
+    return True
+
+
 def save_custom_skill(skill_id: str, content: str) -> bool:
-    """커스텀 스킬 저장 (SKILL.md)"""
+    """커스텀 스킬 저장 (SKILL.md) — Path Traversal 방지"""
+    if not _validate_skill_id(skill_id):
+        raise ValueError(f"Invalid skill ID: {skill_id}. Must be lowercase alphanumeric + underscore, max 50 chars.")
     skill_dir = CUSTOM_SKILLS_DIR / skill_id
     skill_dir.mkdir(parents=True, exist_ok=True)
     (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
@@ -242,7 +254,9 @@ def save_custom_skill(skill_id: str, content: str) -> bool:
 
 
 def delete_custom_skill(skill_id: str) -> bool:
-    """커스텀 스킬 삭제"""
+    """커스텀 스킬 삭제 — Path Traversal 방지"""
+    if not _validate_skill_id(skill_id):
+        raise ValueError(f"Invalid skill ID: {skill_id}")
     import shutil
     skill_dir = CUSTOM_SKILLS_DIR / skill_id
     if skill_dir.exists():

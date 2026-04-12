@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     copilot_enabled: bool = True
     copilot_model: str = "gpt-4.1"
 
+    # Guardrail 설정
+    input_min_length: int = 2
+    input_max_length: int = 2000
+    approval_timeout_seconds: int = 60
+    gen_eval_max_retries: int = 3
+
     @property
     def ai_provider(self) -> str:
         """사용할 AI 프로바이더 결정 (우선순위: Copilot > Claude > Gemini > Groq > Mock)"""

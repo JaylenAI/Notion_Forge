@@ -1,0 +1,22 @@
+{
+  "blue": "https://images.unsplash.com/photo-1557683316-973673baf926?w=1600",
+  "orange": "https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=1600",
+  "green": "https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?w=1600",
+  "red": "https://images.unsplash.com/photo-1557682260-96773eb01377?w=1600",
+  "purple": "https://images.unsplash.com/photo-1557682257-2f9c37a3a5f3?w=1600",
+  "pink": "https://images.unsplash.com/photo-1557682268-e3955ed5d83f?w=1600",
+  "yellow": "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1600",
+  "gray": "https://images.unsplash.com/photo-1553095066-5e3f2b0e6b2e?w=1600",
+  "brown": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1600",
+  "default": "https://images.unsplash.com/photo-1557683316-973673baf926?w=1600",
+  "business": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1600",
+  "finance": "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1600",
+  "fitness": "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1600",
+  "study": "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=1600",
+  "travel": "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1600",
+  "food": "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=1600",
+  "creative": "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=1600",
+  "nature": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1600",
+  "tech": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1600",
+  "minimal": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1600"
+}

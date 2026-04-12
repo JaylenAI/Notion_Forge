@@ -31,9 +31,16 @@ _INJECTION_PATTERNS: list[re.Pattern] = [
     re.compile(r"DAN\s+mode", re.I),
 ]
 
-MIN_LENGTH = 2
-MAX_LENGTH = 2000
 MAX_REPEAT_RATIO = 0.7  # 단일 문자 70% 이상 반복 → 스팸
+
+
+def _get_limits() -> tuple[int, int]:
+    """설정에서 길이 제한 로드"""
+    try:
+        from app.config import settings
+        return settings.input_min_length, settings.input_max_length
+    except Exception:
+        return 2, 2000
 
 
 @dataclass
@@ -60,17 +67,18 @@ def validate_input(message: str) -> GuardrailResult:
         )
 
     # 2. 길이 검증
-    if len(stripped) < MIN_LENGTH:
+    min_len, max_len = _get_limits()
+    if len(stripped) < min_len:
         return GuardrailResult(
             is_valid=False,
-            error_message=f"메시지가 너무 짧습니다. (최소 {MIN_LENGTH}자)",
+            error_message=f"메시지가 너무 짧습니다. (최소 {min_len}자)",
             risk_level="low",
         )
 
-    if len(stripped) > MAX_LENGTH:
+    if len(stripped) > max_len:
         return GuardrailResult(
             is_valid=False,
-            error_message=f"메시지가 너무 깁니다. ({len(stripped)}자 / 최대 {MAX_LENGTH}자)",
+            error_message=f"메시지가 너무 깁니다. ({len(stripped)}자 / 최대 {max_len}자)",
             risk_level="low",
         )
 
