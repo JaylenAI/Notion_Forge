@@ -1,22 +1,127 @@
 {
-  "blue": "https://images.unsplash.com/photo-1557683316-973673baf926?w=1600",
-  "orange": "https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=1600",
-  "green": "https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?w=1600",
-  "red": "https://images.unsplash.com/photo-1557682260-96773eb01377?w=1600",
-  "purple": "https://images.unsplash.com/photo-1557682257-2f9c37a3a5f3?w=1600",
-  "pink": "https://images.unsplash.com/photo-1557682268-e3955ed5d83f?w=1600",
-  "yellow": "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1600",
-  "gray": "https://images.unsplash.com/photo-1553095066-5e3f2b0e6b2e?w=1600",
-  "brown": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1600",
-  "default": "https://images.unsplash.com/photo-1557683316-973673baf926?w=1600",
-  "business": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1600",
-  "finance": "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1600",
-  "fitness": "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1600",
-  "study": "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=1600",
-  "travel": "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1600",
-  "food": "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=1600",
-  "creative": "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=1600",
-  "nature": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1600",
-  "tech": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1600",
-  "minimal": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1600"
+  "blue": [
+    "https://images.unsplash.com/photo-1557683316-973673baf926?w=1600",
+    "https://images.unsplash.com/photo-1507400492013-162706c8c05e?w=1600",
+    "https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=1600"
+  ],
+  "orange": [
+    "https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=1600",
+    "https://images.unsplash.com/photo-1504297050568-910d24c426d3?w=1600",
+    "https://images.unsplash.com/photo-1495195129352-aeb325a55b65?w=1600"
+  ],
+  "green": [
+    "https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?w=1600",
+    "https://images.unsplash.com/photo-1418065460487-3e41a6c84dc5?w=1600",
+    "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1600"
+  ],
+  "red": [
+    "https://images.unsplash.com/photo-1557682260-96773eb01377?w=1600",
+    "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1600",
+    "https://images.unsplash.com/photo-1504164996022-09080787dec9?w=1600"
+  ],
+  "purple": [
+    "https://images.unsplash.com/photo-1557682257-2f9c37a3a5f3?w=1600",
+    "https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?w=1600",
+    "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1600"
+  ],
+  "pink": [
+    "https://images.unsplash.com/photo-1557682268-e3955ed5d83f?w=1600",
+    "https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=1600",
+    "https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?w=1600"
+  ],
+  "yellow": [
+    "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1600",
+    "https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=1600",
+    "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=1600"
+  ],
+  "gray": [
+    "https://images.unsplash.com/photo-1553095066-5e3f2b0e6b2e?w=1600",
+    "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?w=1600",
+    "https://images.unsplash.com/photo-1533134486753-c833f0ed4866?w=1600"
+  ],
+  "brown": [
+    "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1600",
+    "https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=1600",
+    "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=1600"
+  ],
+  "default": [
+    "https://images.unsplash.com/photo-1557683316-973673baf926?w=1600",
+    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1600",
+    "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1600"
+  ],
+  "business": [
+    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1600",
+    "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600",
+    "https://images.unsplash.com/photo-1497215842964-222b430dc094?w=1600"
+  ],
+  "finance": [
+    "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1600",
+    "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1600",
+    "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1600"
+  ],
+  "fitness": [
+    "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1600",
+    "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1600",
+    "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1600"
+  ],
+  "study": [
+    "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=1600",
+    "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=1600",
+    "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=1600"
+  ],
+  "travel": [
+    "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1600",
+    "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1600",
+    "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1600"
+  ],
+  "food": [
+    "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=1600",
+    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1600",
+    "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=1600"
+  ],
+  "creative": [
+    "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=1600",
+    "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=1600",
+    "https://images.unsplash.com/photo-1547826039-bfc35e0f1ea8?w=1600"
+  ],
+  "nature": [
+    "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1600",
+    "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=1600",
+    "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=1600"
+  ],
+  "tech": [
+    "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1600",
+    "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=1600",
+    "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=1600"
+  ],
+  "minimal": [
+    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1600",
+    "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?w=1600",
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1600"
+  ],
+  "wedding": [
+    "https://images.unsplash.com/photo-1519741497674-611481863552?w=1600",
+    "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=1600",
+    "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=1600"
+  ],
+  "health": [
+    "https://images.unsplash.com/photo-1505576399279-565b52d4ac71?w=1600",
+    "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=1600",
+    "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=1600"
+  ],
+  "lifestyle": [
+    "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=1600",
+    "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=1600",
+    "https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=1600"
+  ],
+  "music": [
+    "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=1600",
+    "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1600",
+    "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1600"
+  ],
+  "social": [
+    "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=1600",
+    "https://images.unsplash.com/photo-1562577309-4932fdd64cd1?w=1600",
+    "https://images.unsplash.com/photo-1432888622747-4eb9a8f5a70a?w=1600"
+  ]
 }

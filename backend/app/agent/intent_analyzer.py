@@ -1,9 +1,12 @@
 """사용자 의도 분석: Gemini (무료) / Claude (유료) / Mock 지원"""
 
 import json
+import logging
 import re
 
 from app.config import settings
+
+logger = logging.getLogger("notionforge.intent_analyzer")
 from app.schemas.blueprint import IntentResult
 
 # 색상 매핑
@@ -79,7 +82,7 @@ async def _copilot_analyze(message: str) -> IntentResult:
         if text:
             return _parse_ai_response(text)
     except Exception as e:
-        print(f"[Copilot 의도분석 에러] {str(e)[:100]}")
+        logger.warning(f"[Copilot 의도분석 에러] {str(e)[:100]}")
     return _mock_analyze(message)
 
 
@@ -105,7 +108,7 @@ async def _groq_analyze(message: str) -> IntentResult:
             return result
         return _mock_analyze(message)
     except Exception as e:
-        print(f"[Groq 폴백] {e}")
+        logger.warning(f"[Groq 폴백] {e}")
         return _mock_analyze(message)
 
 
@@ -126,7 +129,7 @@ async def _gemini_analyze(message: str) -> IntentResult:
             return result
         return _mock_analyze(message)
     except Exception as e:
-        print(f"[Gemini 폴백] {e}")
+        logger.warning(f"[Gemini 폴백] {e}")
         return _mock_analyze(message)
 
 

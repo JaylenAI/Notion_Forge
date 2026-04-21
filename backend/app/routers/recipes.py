@@ -1,9 +1,12 @@
 """커뮤니티 레시피 갤러리 API"""
 
 import json
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter
+
+logger = logging.getLogger("notionforge.recipes")
 
 router = APIRouter(prefix="/api/recipes", tags=["recipes"])
 
@@ -32,7 +35,7 @@ def _load_recipes() -> list[dict]:
                 "complexity": data.get("complexity", "standard"),
             })
         except Exception as e:
-            print(f"[Recipe 로드 실패] {fp.name}: {e}")
+            logger.warning(f"[Recipe 로드 실패] {fp.name}: {e}")
     return recipes
 
 

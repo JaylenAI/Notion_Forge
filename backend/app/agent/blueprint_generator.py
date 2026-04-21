@@ -22,13 +22,23 @@ from app.agent.post_processor import blueprint_validator
 
 from pathlib import Path as _Path
 
-def _load_cover_urls() -> dict[str, str]:
+import random as _random
+
+def _load_cover_urls() -> dict[str, list[str]]:
     p = _Path(__file__).parent / "data" / "cover_urls.json"
     if p.exists():
-        return json.loads(p.read_text(encoding="utf-8"))
-    return {"default": "https://images.unsplash.com/photo-1557683316-973673baf926?w=1600"}
+        data = json.loads(p.read_text(encoding="utf-8"))
+        # 하위 호환: string → list 변환
+        return {k: (v if isinstance(v, list) else [v]) for k, v in data.items()}
+    return {"default": ["https://images.unsplash.com/photo-1557683316-973673baf926?w=1600"]}
 
-COVER_URLS: dict[str, str] = _load_cover_urls()
+COVER_URLS: dict[str, list[str]] = _load_cover_urls()
+
+
+def _pick_cover(category: str, color: str = "default") -> str:
+    """카테고리/색상에 맞는 커버 URL을 랜덤 선택"""
+    urls = COVER_URLS.get(category) or COVER_URLS.get(color) or COVER_URLS.get("default", [])
+    return _random.choice(urls) if urls else ""
 
 # ============================================================
 # 시스템 프롬프트: PromptAssembler가 동적 조립 (Phase 1)
@@ -513,7 +523,7 @@ def _assemble_blueprint(content: dict) -> dict[str, Any]:
 
     # Pick cover: prefer category-specific, fallback to color-based
     cover_category = content.get("cover_category", "")
-    cover_url = COVER_URLS.get(cover_category, COVER_URLS.get(color, COVER_URLS["default"]))
+    cover_url = _pick_cover(cover_category, color)
 
     blueprint: dict[str, Any] = {
         "version": "3.0",

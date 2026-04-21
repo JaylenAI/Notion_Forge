@@ -4,13 +4,18 @@
   NOTION_OAUTH_CLIENT_ID
   NOTION_OAUTH_CLIENT_SECRET
   NOTION_OAUTH_REDIRECT_URI (기본: http://localhost:9500/api/oauth/callback)
+  FRONTEND_URL (기본: http://localhost:9501)
 """
+
+import logging
 
 import httpx
 from fastapi import APIRouter
 from fastapi.responses import RedirectResponse
 
 from app.config import settings
+
+logger = logging.getLogger("notionforge.oauth")
 
 router = APIRouter(prefix="/api/oauth", tags=["oauth"])
 
@@ -21,8 +26,8 @@ NOTION_TOKEN_URL = "https://api.notion.com/v1/oauth/token"
 @router.get("/authorize")
 async def authorize():
     """Notion OAuth 인증 시작 — 브라우저 리디렉트"""
-    client_id = getattr(settings, "notion_oauth_client_id", "")
-    redirect_uri = getattr(settings, "notion_oauth_redirect_uri", "http://localhost:9500/api/oauth/callback")
+    client_id = settings.notion_oauth_client_id
+    redirect_uri = settings.notion_oauth_redirect_uri
 
     if not client_id:
         return {"error": "NOTION_OAUTH_CLIENT_ID가 설정되지 않았습니다. .env 파일을 확인하세요."}
@@ -40,15 +45,17 @@ async def authorize():
 @router.get("/callback")
 async def callback(code: str = "", error: str = ""):
     """Notion OAuth 콜백 — 토큰 교환"""
+    frontend_url = settings.frontend_url
+
     if error:
-        return RedirectResponse(url=f"http://localhost:9501?oauth_error={error}")
+        return RedirectResponse(url=f"{frontend_url}?oauth_error={error}")
 
     if not code:
         return {"error": "인증 코드가 없습니다."}
 
-    client_id = getattr(settings, "notion_oauth_client_id", "")
-    client_secret = getattr(settings, "notion_oauth_client_secret", "")
-    redirect_uri = getattr(settings, "notion_oauth_redirect_uri", "http://localhost:9500/api/oauth/callback")
+    client_id = settings.notion_oauth_client_id
+    client_secret = settings.notion_oauth_client_secret
+    redirect_uri = settings.notion_oauth_redirect_uri
 
     if not client_id or not client_secret:
         return {"error": "OAuth 클라이언트 설정이 없습니다."}
@@ -79,7 +86,7 @@ async def callback(code: str = "", error: str = ""):
 
     return RedirectResponse(
         url=(
-            f"http://localhost:9501"
+            f"{frontend_url}"
             f"?oauth_token={access_token}"
             f"&workspace_name={workspace_name}"
             f"&workspace_id={workspace_id}"
@@ -90,8 +97,8 @@ async def callback(code: str = "", error: str = ""):
 @router.get("/status")
 async def oauth_status():
     """OAuth 설정 상태 확인"""
-    client_id = getattr(settings, "notion_oauth_client_id", "")
     return {
-        "oauth_configured": bool(client_id),
-        "redirect_uri": getattr(settings, "notion_oauth_redirect_uri", "http://localhost:9500/api/oauth/callback"),
+        "oauth_configured": bool(settings.notion_oauth_client_id),
+        "redirect_uri": settings.notion_oauth_redirect_uri,
+        "frontend_url": settings.frontend_url,
     }

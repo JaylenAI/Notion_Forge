@@ -58,6 +58,13 @@ class NotionClient:
                 timeout=30.0,
             )
 
+    async def close(self):
+        """HTTP 클라이언트 정리 — 앱 종료 시 호출"""
+        if self._http_client:
+            await self._http_client.aclose()
+        if hasattr(self, "_http_legacy") and self._http_legacy:
+            await self._http_legacy.aclose()
+
     # ========================================
     # 페이지
     # ========================================

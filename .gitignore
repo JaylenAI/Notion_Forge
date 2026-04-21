@@ -40,6 +40,10 @@ htmlcov/
 .coverage
 .pytest_cache/
 
+# Data (history, logs)
+data/
+backend/data/
+
 # Build
 *.tsbuildinfo
 claude-code-notion-plugin/

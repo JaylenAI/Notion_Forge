@@ -3,6 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      target: prod
     ports:
       - "9500:9500"
     env_file:

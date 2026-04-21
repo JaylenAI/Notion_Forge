@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # Server
     backend_port: int = 9500
     frontend_port: int = 9501
+    frontend_url: str = "http://localhost:9501"
     cors_origins: list[str] = ["http://localhost:9501", "http://localhost:3000"]
 
     # Optional

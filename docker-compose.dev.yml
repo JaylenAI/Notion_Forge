@@ -7,7 +7,7 @@ services:
       target: dev
     volumes:
       - ./backend:/app
-    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 9500 --reload
     env_file:
       - .env
 

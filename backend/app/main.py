@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="NotionForge API",
         description="AI 기반 노션 템플릿 자동 생성 에이전트",
-        version="6.1.0",
+        version="7.5.0",
         docs_url="/docs",
         redoc_url="/redoc",
         lifespan=lifespan,
@@ -62,7 +62,7 @@ def create_app() -> FastAPI:
         logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}")
         return JSONResponse(
             status_code=500,
-            content={"error": str(exc), "detail": "Internal server error"},
+            content={"error": "Internal server error"},
         )
 
     @app.middleware("http")
@@ -95,7 +95,7 @@ def create_app() -> FastAPI:
 
         return {
             "status": "ok",
-            "version": "7.3.0",
+            "version": "7.5.0",
             "ai_provider": settings.ai_provider,
             "notion_ready": settings.notion_ready,
             "copilot": copilot_status,

@@ -5,7 +5,10 @@ API 키 없이 접근 가능. GitHub Copilot 구독 인증 기반.
 """
 
 import asyncio
+import logging
 from typing import Any
+
+logger = logging.getLogger("notionforge.copilot")
 
 
 # 사용 가능한 모델 목록 (런타임에 동적 확인 가능)
@@ -46,7 +49,7 @@ class CopilotManager:
     async def start(self):
         """CopilotClient 초기화 (앱 시작 시 1회)"""
         if not self.is_available():
-            print("[Copilot] SDK를 찾을 수 없습니다. Copilot 비활성화.")
+            logger.info("[Copilot] SDK를 찾을 수 없습니다. Copilot 비활성화.")
             return
         if self._started:
             return
@@ -55,9 +58,9 @@ class CopilotManager:
             self._client = CopilotClient()
             await self._client.start()
             self._started = True
-            print("[Copilot] ✅ CopilotClient 시작됨")
+            logger.info("[Copilot] CopilotClient 시작됨")
         except Exception as e:
-            print(f"[Copilot] 시작 실패: {e}")
+            logger.warning(f"[Copilot] 시작 실패: {e}")
             self._client = None
             self._available = False
 
@@ -66,9 +69,9 @@ class CopilotManager:
         if self._client and self._started:
             try:
                 await self._client.stop()
-                print("[Copilot] CopilotClient 종료됨")
+                logger.info("[Copilot] CopilotClient 종료됨")
             except Exception as e:
-                print(f"[Copilot] 종료 에러: {e}")
+                logger.warning(f"[Copilot] 종료 에러: {e}")
             finally:
                 self._client = None
                 self._started = False
@@ -104,10 +107,10 @@ class CopilotManager:
             return None
 
         except TimeoutError:
-            print(f"[Copilot 타임아웃] {model}: {timeout}초 초과")
+            logger.warning(f"[Copilot 타임아웃] {model}: {timeout}초 초과")
             return None
         except Exception as e:
-            print(f"[Copilot 에러] {model}: {str(e)[:120]}")
+            logger.warning(f"[Copilot 에러] {model}: {str(e)[:120]}")
             return None
 
     def get_models(self) -> list[dict[str, str]]:
