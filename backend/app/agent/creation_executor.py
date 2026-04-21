@@ -1,10 +1,13 @@
 """CreationExecutor: Blueprint 실행 로직 (DB 생성, 블록 배치, 후처리, 검증, 롤백)
 
 orchestrator.py에서 분리된 생성 실행 전담 클래스.
+스트리밍/논스트리밍 두 인터페이스를 제공:
+- execute_streaming(): AsyncGenerator — 진행 이벤트를 yield, 최종 결과는 "result" 이벤트로 반환
+- execute_blueprint(): 논스트리밍 편의 래퍼 — 결과 dict만 반환
 """
 
 import logging
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from app.agent.tools.add_blocks import spec_to_block
 from app.agent.tools.add_database_items import AddDatabaseItemsTool
@@ -345,14 +348,25 @@ class CreationExecutor:
                     if isinstance(col, list):
                         CreationExecutor.resolve_sub_page_refs(col, sub_page_map)
 
-    # ── Blueprint 전체 실행 (modify에서 사용) ───────────────────
+    # ── Blueprint 전체 실행 (스트리밍) ──────────────────────────
 
-    async def execute_blueprint(self, blueprint: dict, parent_page_id: str) -> dict[str, Any]:
-        """Blueprint 실행 — 올바른 순서로 생성"""
-        main = blueprint["main_page"]
+    async def execute_streaming(
+        self, blueprint: dict, parent_page_id: str,
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Blueprint 스트리밍 실행 — 진행 이벤트를 yield, 최종 "result" 이벤트로 결과 반환.
+
+        yield 되는 이벤트 타입:
+        - {"type": "progress", ...}: 진행 상황
+        - {"type": "error", ...}: 에러 (조기 종료 시)
+        - {"type": "result", "result": dict}: 최종 결과 (항상 마지막에 yield)
+        """
+        yield {"type": "progress", "step": "creating", "message": "🏗️ 노션에 생성을 시작합니다..."}
+
         result: dict[str, Any] = {"pages": [], "databases": [], "blocks": 0}
+        main = blueprint["main_page"]
 
         # 1. 메인 페이지 생성
+        yield {"type": "progress", "step": "page", "message": f"📄 페이지 생성 중: {main.get('icon', '')} {main['title']}"}
         try:
             page = await self.client.create_page(
                 parent_id=parent_page_id,
@@ -360,27 +374,35 @@ class CreationExecutor:
                 icon=main.get("icon"),
                 cover_url=main.get("cover_url"),
             )
+            main_page_id = page["id"]
+            result["pages"].append({"id": main_page_id, "title": main["title"], "url": page.get("url", "")})
+            result["main_url"] = page.get("url", "")
+            yield {"type": "progress", "step": "page_done", "message": f"✅ 페이지 생성됨: {main.get('icon', '')} {main['title']}"}
         except Exception as e:
-            logger.info(f"[MODIFY 페이지 생성 실패] {e}")
-            return result
-
-        main_page_id = page["id"]
-        result["pages"].append({"id": main_page_id, "title": main["title"], "url": page.get("url", "")})
-        result["main_url"] = page.get("url", "")
+            yield {"type": "error", "content": f"메인 페이지 생성 실패: {str(e)[:200]}"}
+            yield {"type": "result", "result": result}
+            return
 
         # 2. 하위 페이지 먼저 생성
         sub_page_map: dict[str, str] = {}
         for sub in blueprint.get("sub_pages", []):
+            yield {"type": "progress", "step": "sub_page", "message": f"📁 하위 페이지: {sub.get('icon', '')} {sub['title']}"}
             try:
                 sub_page = await self.client.create_page(
                     parent_id=main_page_id,
                     title=sub["title"],
                     icon=sub.get("icon"),
+                    position="page_end",
                 )
                 sub_page_map[sub["title"]] = sub_page["id"]
                 result["pages"].append({"id": sub_page["id"], "title": sub["title"]})
             except Exception as e:
-                logger.info(f"[하위 페이지 생성 스킵] {sub.get('title', '?')}: {str(e)[:100]}")
+                yield {"type": "progress", "step": "warning", "message": f"⚠️ {sub['title']} 스킵: {str(e)[:50]}"}
+
+        # 2.5. sub_page_ref 치환
+        CreationExecutor.resolve_sub_page_refs(blueprint.get("blocks", []), sub_page_map)
+        for sub in blueprint.get("sub_pages", []):
+            CreationExecutor.resolve_sub_page_refs(sub.get("blocks", []), sub_page_map)
 
         # 3. 블록 + DB를 순서대로 삽입
         blocks = blueprint.get("blocks", [])
@@ -388,40 +410,60 @@ class CreationExecutor:
         db_index = 0
 
         for block in blocks:
+            if not isinstance(block, dict):
+                continue
+            block_type = block.get("type", "?")
             try:
-                if block.get("type") == "database_ref":
+                if block_type == "database_ref":
                     if db_index < len(databases):
+                        db_spec = databases[db_index]
+                        db_title = db_spec.get("title", db_spec.get("db_name", "DB"))
+                        db_parent_name = db_spec.get("db_parent", "")
+                        db_parent_id = sub_page_map.get(db_parent_name, main_page_id) if db_parent_name else main_page_id
+                        yield {"type": "progress", "step": "database", "message": f"📊 데이터베이스 생성 중: {db_title}"}
                         try:
-                            db_result = await self.create_database_with_data(
-                                parent_id=main_page_id,
-                                db_spec=databases[db_index],
-                            )
+                            db_result = await self.create_database_with_data(parent_id=db_parent_id, db_spec=db_spec)
                             result["databases"].append(db_result)
+                            yield {"type": "progress", "step": "db_created", "message": f"✅ {db_title} DB 생성됨"}
                         except Exception as e:
-                            logger.info(f"[DB 생성 스킵] {str(e)[:100]}")
+                            yield {"type": "progress", "step": "warning", "message": f"⚠️ DB 생성 스킵: {str(e)[:50]}"}
                         db_index += 1
 
-                elif block.get("type") == "column_list":
-                    db_refs_in_col = self.collect_db_refs_in_columns(block)
-                    for _ in db_refs_in_col:
+                elif block_type == "column_list":
+                    yield {"type": "progress", "step": "block", "message": "🔲 칼럼 레이아웃 생성 중..."}
+                    for _ in self.collect_db_refs_in_columns(block):
                         if db_index < len(databases):
+                            db_spec = databases[db_index]
                             try:
-                                db_result = await self.create_database_with_data(
-                                    parent_id=main_page_id,
-                                    db_spec=databases[db_index],
-                                )
+                                db_result = await self.create_database_with_data(parent_id=main_page_id, db_spec=db_spec)
                                 result["databases"].append(db_result)
                             except Exception as e:
-                                logger.info(f"[칼럼 내 DB 스킵] {str(e)[:100]}")
+                                yield {"type": "progress", "step": "warning", "message": f"⚠️ DB 생성 스킵: {str(e)[:80]}"}
                             db_index += 1
-
                     column_block = await self.build_column_with_db(block, main_page_id, sub_page_map, result)
                     if column_block:
                         try:
                             await self.client.add_blocks(main_page_id, [column_block])
                             result["blocks"] += 1
                         except Exception as e:
-                            logger.info(f"[칼럼 블록 스킵] {str(e)[:100]}")
+                            logger.info(f"[칼럼 블록 추가 실패] {str(e)[:100]}")
+                    yield {"type": "progress", "step": "block_done", "message": "✅ 칼럼 레이아웃 생성됨"}
+
+                elif block_type == "linked_view":
+                    linked_db_idx = block.get("db_index", 0)
+                    created_dbs = result.get("databases", [])
+                    if linked_db_idx < len(created_dbs):
+                        db_id = created_dbs[linked_db_idx].get("id", "")
+                        if db_id:
+                            try:
+                                await self.client.create_linked_view(
+                                    source_database_id=db_id, target_page_id=main_page_id,
+                                    view_type=block.get("view_type", "table"),
+                                    title=block.get("title", ""), filters=block.get("filter"),
+                                )
+                                result["blocks"] += 1
+                            except Exception as e:
+                                logger.info(f"[링크드 뷰 스킵] {str(e)[:80]}")
 
                 else:
                     notion_block = spec_to_block(block)
@@ -429,34 +471,51 @@ class CreationExecutor:
                         await self.client.add_blocks(main_page_id, [notion_block])
                         result["blocks"] += 1
                     except Exception as e:
-                        logger.info(f"[블록 스킵] {block.get('type', '?')}: {str(e)[:100]}")
+                        logger.info(f"[블록 스킵] {block_type}: {str(e)[:80]}")
 
             except Exception as e:
-                logger.info(f"[블록 처리 오류] {block.get('type', '?')}: {str(e)[:100]}")
+                logger.info(f"[블록 처리 오류] {block_type}: {str(e)[:80]}")
 
         # 남은 DB 추가
         while db_index < len(databases):
             try:
-                db_result = await self.create_database_with_data(
-                    parent_id=main_page_id,
-                    db_spec=databases[db_index],
-                )
+                db_result = await self.create_database_with_data(parent_id=main_page_id, db_spec=databases[db_index])
                 result["databases"].append(db_result)
-            except Exception as e:
-                logger.info(f"[DB 생성 스킵] {str(e)[:100]}")
+            except Exception:
+                pass
             db_index += 1
 
-        # 4. 하위 페이지에 블록 추가
-        for sub in blueprint.get("sub_pages", []):
-            sub_id = sub_page_map.get(sub["title"])
-            if sub_id and sub.get("blocks"):
-                try:
-                    notion_blocks = [spec_to_block(b) for b in sub["blocks"] if b.get("type") != "database_ref"]
-                    if notion_blocks:
-                        await self.client.add_blocks(sub_id, notion_blocks)
-                except Exception as e:
-                    logger.info(f"[하위 페이지 블록 스킵] {sub['title']}: {str(e)[:80]}")
+        # 4. 하위 페이지 블록
+        await self.fill_sub_pages(blueprint, sub_page_map, result)
 
+        # 5. Relation/Rollup/Formula 후처리
+        await self.post_process_relations(blueprint, result)
+        relation_count = sum(
+            1 for db in databases
+            for _, v in db.get("properties", db.get("db_properties", {})).items()
+            if isinstance(v, dict) and (v.get("type") in ("relation", "rollup", "formula") or "target_db_index" in v)
+        )
+        if relation_count > 0:
+            yield {"type": "progress", "step": "relations", "message": f"🔗 DB 간 연결 완료 ({relation_count}개)"}
+
+        # 6. 검증
+        validation_issues = await self.validate_creation(main_page_id, blueprint, result)
+        if validation_issues:
+            yield {"type": "progress", "step": "validation", "message": f"🔍 검증: {len(validation_issues)}개 항목 확인"}
+        else:
+            yield {"type": "progress", "step": "validation", "message": "✅ 생성 결과 검증 완료 — 모든 항목 정상"}
+
+        # 최종 결과 이벤트
+        yield {"type": "result", "result": result}
+
+    # ── Blueprint 전체 실행 (논스트리밍 편의 래퍼) ──────────────
+
+    async def execute_blueprint(self, blueprint: dict, parent_page_id: str) -> dict[str, Any]:
+        """Blueprint 논스트리밍 실행 — execute_streaming을 소비하여 최종 결과만 반환."""
+        result: dict[str, Any] = {"pages": [], "databases": [], "blocks": 0}
+        async for event in self.execute_streaming(blueprint, parent_page_id):
+            if event.get("type") == "result":
+                result = event["result"]
         return result
 
     # ── 롤백 (실패 시 정리) ─────────────────────────────────────

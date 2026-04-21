@@ -1,11 +1,13 @@
 import { useChatStore } from "../../stores/chatStore";
+import { useSettingsStore } from "../../stores/settingsStore";
+import { useConnectionStore } from "../../stores/connectionStore";
 
 function ProfilePage() {
-  const settings = useChatStore((s) => s.settings);
+  const settings = useSettingsStore((s) => s.settings);
   const templates = useChatStore((s) => s.generatedTemplates);
-  const aiProvider = useChatStore((s) => s.aiProvider);
-  const connectionStatus = useChatStore((s) => s.connectionStatus);
-  const setPage = useChatStore((s) => s.setPage);
+  const aiProvider = useSettingsStore((s) => s.aiProvider);
+  const connectionStatus = useConnectionStore((s) => s.connectionStatus);
+  const setPage = useSettingsStore((s) => s.setPage);
 
   const templateCount = templates.length;
   const starredCount = templates.filter((t) => t.starred).length;

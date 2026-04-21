@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.routers import chat, template, recipes, oauth, skills
+from app.routers import chat, template, ai, workspace, recipes, oauth, skills
 
 from app.core.logging_config import setup_logging
 
@@ -75,6 +75,8 @@ def create_app() -> FastAPI:
 
     app.include_router(chat.router)
     app.include_router(template.router)
+    app.include_router(ai.router)
+    app.include_router(workspace.router)
     app.include_router(recipes.router)
     app.include_router(oauth.router)
     app.include_router(skills.router)

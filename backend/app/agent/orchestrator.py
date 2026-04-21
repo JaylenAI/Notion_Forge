@@ -14,7 +14,7 @@ from typing import Any, AsyncGenerator
 from app.agent.input_guardrail import validate_input
 from app.agent.intent_analyzer import analyze_intent
 from app.agent.blueprint_generator import generate_blueprint
-from app.agent.tools.add_blocks import AddBlocksTool, spec_to_block
+from app.agent.tools.add_blocks import AddBlocksTool
 from app.agent.tools.add_database_items import AddDatabaseItemsTool
 from app.agent.creation_executor import CreationExecutor
 from app.agent.modify_handler import ModifyHandler
@@ -207,145 +207,12 @@ class AgentOrchestrator:
     # ─── Private: Notion 생성 실행 ───
 
     async def _execute_creation(self, blueprint: dict) -> AsyncGenerator[dict[str, Any], None]:
-        """Notion 생성 스트리밍 — CreationExecutor에 위임하면서 진행 상황 yield"""
-        yield {"type": "progress", "step": "creating", "message": "🏗️ 노션에 생성을 시작합니다..."}
-
-        result: dict[str, Any] = {"pages": [], "databases": [], "blocks": 0}
-        main = blueprint["main_page"]
-
-        # 메인 페이지 생성
-        yield {"type": "progress", "step": "page", "message": f"📄 페이지 생성 중: {main.get('icon', '')} {main['title']}"}
-        try:
-            page = await self.client.create_page(
-                parent_id=self.parent_page_id,
-                title=main["title"],
-                icon=main.get("icon"),
-                cover_url=main.get("cover_url"),
-            )
-            main_page_id = page["id"]
-            result["pages"].append({"id": main_page_id, "title": main["title"], "url": page.get("url", "")})
-            result["main_url"] = page.get("url", "")
-            yield {"type": "progress", "step": "page_done", "message": f"✅ 페이지 생성됨: {main.get('icon', '')} {main['title']}"}
-        except Exception as e:
-            yield {"type": "error", "content": f"메인 페이지 생성 실패: {str(e)[:200]}"}
-            self._current_result = result
-            return
-
-        # Pass 1: 서브페이지
-        sub_page_map: dict[str, str] = {}
-        for sub in blueprint.get("sub_pages", []):
-            yield {"type": "progress", "step": "sub_page", "message": f"📁 하위 페이지: {sub.get('icon', '')} {sub['title']}"}
-            try:
-                sub_page = await self.client.create_page(parent_id=main_page_id, title=sub["title"], icon=sub.get("icon"), position="page_end")
-                sub_page_map[sub["title"]] = sub_page["id"]
-                result["pages"].append({"id": sub_page["id"], "title": sub["title"]})
-            except Exception as e:
-                yield {"type": "progress", "step": "warning", "message": f"⚠️ {sub['title']} 스킵: {str(e)[:50]}"}
-
-        # Pass 1.5: sub_page_ref 치환
-        CreationExecutor.resolve_sub_page_refs(blueprint.get("blocks", []), sub_page_map)
-        for sub in blueprint.get("sub_pages", []):
-            CreationExecutor.resolve_sub_page_refs(sub.get("blocks", []), sub_page_map)
-
-        # Pass 2: 블록 + DB
-        blocks = blueprint.get("blocks", [])
-        databases = blueprint.get("databases", [])
-        db_index = 0
-
-        for block in blocks:
-            if not isinstance(block, dict):
-                continue
-            block_type = block.get("type", "?")
-            try:
-                if block_type == "database_ref":
-                    if db_index < len(databases):
-                        db_spec = databases[db_index]
-                        db_title = db_spec.get("title", db_spec.get("db_name", "DB"))
-                        db_parent_name = db_spec.get("db_parent", "")
-                        db_parent_id = sub_page_map.get(db_parent_name, main_page_id) if db_parent_name else main_page_id
-                        yield {"type": "progress", "step": "database", "message": f"📊 데이터베이스 생성 중: {db_title}"}
-                        try:
-                            db_result = await self._executor.create_database_with_data(parent_id=db_parent_id, db_spec=db_spec)
-                            result["databases"].append(db_result)
-                            yield {"type": "progress", "step": "db_created", "message": f"✅ {db_title} DB 생성됨"}
-                        except Exception as e:
-                            yield {"type": "progress", "step": "warning", "message": f"⚠️ DB 생성 스킵: {str(e)[:50]}"}
-                        db_index += 1
-
-                elif block_type == "column_list":
-                    yield {"type": "progress", "step": "block", "message": "🔲 칼럼 레이아웃 생성 중..."}
-                    for _ in self._executor.collect_db_refs_in_columns(block):
-                        if db_index < len(databases):
-                            db_spec = databases[db_index]
-                            try:
-                                db_result = await self._executor.create_database_with_data(parent_id=main_page_id, db_spec=db_spec)
-                                result["databases"].append(db_result)
-                            except Exception as e:
-                                yield {"type": "progress", "step": "warning", "message": f"⚠️ DB 생성 스킵: {str(e)[:80]}"}
-                            db_index += 1
-                    column_block = await self._executor.build_column_with_db(block, main_page_id, sub_page_map, result)
-                    if column_block:
-                        try:
-                            await self.client.add_blocks(main_page_id, [column_block])
-                            result["blocks"] += 1
-                        except Exception as e:
-                            logger.info(f"[칼럼 블록 추가 실패] {str(e)[:100]}")
-                    yield {"type": "progress", "step": "block_done", "message": "✅ 칼럼 레이아웃 생성됨"}
-
-                elif block_type == "linked_view":
-                    linked_db_idx = block.get("db_index", 0)
-                    created_dbs = result.get("databases", [])
-                    if linked_db_idx < len(created_dbs):
-                        db_id = created_dbs[linked_db_idx].get("id", "")
-                        if db_id:
-                            try:
-                                await self.client.create_linked_view(
-                                    source_database_id=db_id, target_page_id=main_page_id,
-                                    view_type=block.get("view_type", "table"),
-                                    title=block.get("title", ""), filters=block.get("filter"),
-                                )
-                                result["blocks"] += 1
-                            except Exception as e:
-                                logger.info(f"[링크드 뷰 스킵] {str(e)[:80]}")
-
-                else:
-                    notion_block = spec_to_block(block)
-                    try:
-                        await self.client.add_blocks(main_page_id, [notion_block])
-                        result["blocks"] += 1
-                    except Exception as e:
-                        logger.info(f"[블록 스킵] {block_type}: {str(e)[:80]}")
-
-            except Exception as e:
-                logger.info(f"[블록 처리 오류] {block_type}: {str(e)[:80]}")
-
-        # 남은 DB
-        while db_index < len(databases):
-            try:
-                db_result = await self._executor.create_database_with_data(parent_id=main_page_id, db_spec=databases[db_index])
-                result["databases"].append(db_result)
-            except Exception:
-                pass
-            db_index += 1
-
-        # Pass 3: 하위 페이지 블록
-        await self._executor.fill_sub_pages(blueprint, sub_page_map, result)
-
-        # Pass 4: Relation/Rollup/Formula 후처리
-        await self._executor.post_process_relations(blueprint, result)
-        relation_count = sum(1 for db in databases for _, v in db.get("properties", db.get("db_properties", {})).items()
-                             if isinstance(v, dict) and (v.get("type") in ("relation", "rollup", "formula") or "target_db_index" in v))
-        if relation_count > 0:
-            yield {"type": "progress", "step": "relations", "message": f"🔗 DB 간 연결 완료 ({relation_count}개)"}
-
-        # Pass 5: 검증
-        validation_issues = await self._executor.validate_creation(main_page_id, blueprint, result)
-        if validation_issues:
-            yield {"type": "progress", "step": "validation", "message": f"🔍 검증: {len(validation_issues)}개 항목 확인"}
-        else:
-            yield {"type": "progress", "step": "validation", "message": "✅ 생성 결과 검증 완료 — 모든 항목 정상"}
-
-        self._current_result = result
+        """Notion 생성 스트리밍 — CreationExecutor.execute_streaming에 위임"""
+        async for event in self._executor.execute_streaming(blueprint, self.parent_page_id):
+            if event.get("type") == "result":
+                self._current_result = event["result"]
+            else:
+                yield event
 
     # ─── Private: 헬퍼 ───
 

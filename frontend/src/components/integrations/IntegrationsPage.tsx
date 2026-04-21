@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, lazy, Suspense, type FormEvent } from "react";
-import { useChatStore } from "../../stores/chatStore";
+import { useSettingsStore } from "../../stores/settingsStore";
+import { useConnectionStore } from "../../stores/connectionStore";
 
 const CustomSkills = lazy(() => import("./CustomSkills"));
 
@@ -22,18 +23,18 @@ const PROVIDER_ICONS: Record<string, string> = {
 };
 
 function IntegrationsPage() {
-  const settings = useChatStore((s) => s.settings);
-  const updateSettings = useChatStore((s) => s.updateSettings);
-  const connectionStatus = useChatStore((s) => s.connectionStatus);
-  const connectionTested = useChatStore((s) => s.connectionTested);
-  const setConnectionTested = useChatStore((s) => s.setConnectionTested);
-  const aiProvider = useChatStore((s) => s.aiProvider);
-  const aiModels = useChatStore((s) => s.aiModels);
-  const aiDetecting = useChatStore((s) => s.aiDetecting);
-  const detectProvider = useChatStore((s) => s.detectProvider);
-  const copilotStatus = useChatStore((s) => s.copilotStatus);
-  const fetchCopilotStatus = useChatStore((s) => s.fetchCopilotStatus);
-  const setCopilotModel = useChatStore((s) => s.setCopilotModel);
+  const settings = useSettingsStore((s) => s.settings);
+  const updateSettings = useSettingsStore((s) => s.updateSettings);
+  const connectionStatus = useConnectionStore((s) => s.connectionStatus);
+  const connectionTested = useSettingsStore((s) => s.connectionTested);
+  const setConnectionTested = useSettingsStore((s) => s.setConnectionTested);
+  const aiProvider = useSettingsStore((s) => s.aiProvider);
+  const aiModels = useSettingsStore((s) => s.aiModels);
+  const aiDetecting = useSettingsStore((s) => s.aiDetecting);
+  const detectProvider = useSettingsStore((s) => s.detectProvider);
+  const copilotStatus = useSettingsStore((s) => s.copilotStatus);
+  const fetchCopilotStatus = useSettingsStore((s) => s.fetchCopilotStatus);
+  const setCopilotModel = useSettingsStore((s) => s.setCopilotModel);
 
   const [notionKey, setNotionKey] = useState(settings.notionKey);
   const [pageId, setPageId] = useState(settings.pageId);

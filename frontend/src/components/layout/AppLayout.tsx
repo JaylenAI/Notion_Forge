@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
-import { useChatStore, type PageName } from "../../stores/chatStore";
+import { useChatStore } from "../../stores/chatStore";
+import { useSettingsStore, type PageName } from "../../stores/settingsStore";
 import { useThemeStore } from "../../stores/themeStore";
 import StatusBar from "../common/StatusBar";
 
@@ -100,7 +101,7 @@ function HeaderActions({ setPage }: { readonly setPage: (page: PageName) => void
 
 /* ─── Command Palette (Cmd+K) ─── */
 function CommandPalette({ open, onClose }: { readonly open: boolean; readonly onClose: () => void }) {
-  const setPage = useChatStore((s) => s.setPage);
+  const setPage = useSettingsStore((s) => s.setPage);
   const newSession = useChatStore((s) => s.newSession);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -185,8 +186,8 @@ interface AppLayoutProps {
 }
 
 function AppLayout({ children }: AppLayoutProps) {
-  const currentPage = useChatStore((s) => s.currentPage);
-  const setPage = useChatStore((s) => s.setPage);
+  const currentPage = useSettingsStore((s) => s.currentPage);
+  const setPage = useSettingsStore((s) => s.setPage);
   const clearMessages = useChatStore((s) => s.clearMessages);
   const newSession = useChatStore((s) => s.newSession);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

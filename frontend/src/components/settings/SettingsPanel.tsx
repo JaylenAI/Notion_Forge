@@ -1,10 +1,11 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { useChatStore } from "../../stores/chatStore";
+import { useSettingsStore } from "../../stores/settingsStore";
+import { useConnectionStore } from "../../stores/connectionStore";
 
 export default function SettingsPanel() {
-  const { settings, updateSettings, toggleSettings, connectionStatus } =
-    useChatStore();
+  const { settings, updateSettings, toggleSettings } = useSettingsStore();
+  const connectionStatus = useConnectionStore((s) => s.connectionStatus);
 
   const [notionKey, setNotionKey] = useState(settings.notionKey);
   const [pageId, setPageId] = useState(settings.pageId);

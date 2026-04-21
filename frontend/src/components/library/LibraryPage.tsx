@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useChatStore } from "../../stores/chatStore";
+import { useSettingsStore } from "../../stores/settingsStore";
 
 const RecipeGallery = lazy(() => import("./RecipeGallery"));
 
@@ -25,7 +26,7 @@ function LibraryPage() {
   const templates = useChatStore((s) => s.generatedTemplates);
   const toggleStar = useChatStore((s) => s.toggleTemplateStar);
   const deleteTemplate = useChatStore((s) => s.deleteTemplate);
-  const setPage = useChatStore((s) => s.setPage);
+  const setPage = useSettingsStore((s) => s.setPage);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSkill, setFilterSkill] = useState<string>("all");
   const [sortMode, setSortMode] = useState<SortMode>("newest");

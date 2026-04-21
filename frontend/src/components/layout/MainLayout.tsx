@@ -1,9 +1,11 @@
 import { useChatStore } from "../../stores/chatStore";
+import { useSettingsStore } from "../../stores/settingsStore";
+import { useConnectionStore } from "../../stores/connectionStore";
 import ChatWindow from "../chat/ChatWindow";
 import SettingsPanel from "../settings/SettingsPanel";
 
 export default function MainLayout() {
-  const { settingsOpen } = useChatStore();
+  const { settingsOpen } = useSettingsStore();
 
   return (
     <div className="flex h-screen bg-zinc-900 text-white">
@@ -73,7 +75,7 @@ export default function MainLayout() {
         <div className="border-t border-zinc-700 p-3">
           <ConnectionBadge />
           <button
-            onClick={() => useChatStore.getState().toggleSettings()}
+            onClick={() => useSettingsStore.getState().toggleSettings()}
             className="mt-2 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
           >
             <svg
@@ -111,7 +113,7 @@ export default function MainLayout() {
 }
 
 function ConnectionBadge() {
-  const status = useChatStore((s) => s.connectionStatus);
+  const status = useConnectionStore((s) => s.connectionStatus);
 
   const config = {
     connected: {

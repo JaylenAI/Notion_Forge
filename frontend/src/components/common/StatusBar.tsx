@@ -1,11 +1,11 @@
-import { useChatStore } from "../../stores/chatStore";
+import { useConnectionStore } from "../../stores/connectionStore";
 
 interface StatusBarProps {
   readonly sidebarWidth: number;
 }
 
 function StatusBar({ sidebarWidth }: StatusBarProps) {
-  const connectionStatus = useChatStore((s) => s.connectionStatus);
+  const connectionStatus = useConnectionStore((s) => s.connectionStatus);
 
   const statusColor =
     connectionStatus === "connected"

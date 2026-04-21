@@ -1,4 +1,4 @@
-import { useChatStore } from "./stores/chatStore";
+import { useSettingsStore } from "./stores/settingsStore";
 import AppLayout from "./components/layout/AppLayout";
 import DashboardPage from "./components/dashboard/DashboardPage";
 import LibraryPage from "./components/library/LibraryPage";
@@ -9,7 +9,7 @@ import ErrorBoundary from "./components/common/ErrorBoundary";
 import ToastProvider from "./components/common/Toast";
 
 function PageRouter() {
-  const currentPage = useChatStore((s) => s.currentPage);
+  const currentPage = useSettingsStore((s) => s.currentPage);
 
   switch (currentPage) {
     case "library":

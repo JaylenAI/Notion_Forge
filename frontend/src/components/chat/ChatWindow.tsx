@@ -1,16 +1,18 @@
 import { useEffect, useRef } from "react";
 import { useChatStore } from "../../stores/chatStore";
+import { useConnectionStore } from "../../stores/connectionStore";
 import MessageBubble from "./MessageBubble";
 import InputBar from "./InputBar";
 import ProgressBar from "../common/ProgressBar";
 
 export default function ChatWindow() {
-  const { messages, isLoading, connect, currentStep } = useChatStore();
+  const { messages, isLoading, currentStep } = useChatStore();
+  const connect = useConnectionStore((s) => s.connect);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     connect();
-    return () => useChatStore.getState().disconnect();
+    return () => useConnectionStore.getState().disconnect();
   }, [connect]);
 
   useEffect(() => {

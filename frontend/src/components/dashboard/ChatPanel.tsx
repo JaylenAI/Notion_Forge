@@ -3,6 +3,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import toast from "react-hot-toast";
 import { useChatStore } from "../../stores/chatStore";
+import { useSettingsStore } from "../../stores/settingsStore";
+import { useConnectionStore } from "../../stores/connectionStore";
 import { timeAgo } from "../../lib/timeago";
 import PromptLibrary from "./PromptLibrary";
 
@@ -28,21 +30,21 @@ function ChatPanel() {
   const messages = useChatStore((s) => s.messages);
   const isLoading = useChatStore((s) => s.isLoading);
   const sendMessage = useChatStore((s) => s.sendMessage);
-  const connectionStatus = useChatStore((s) => s.connectionStatus);
-  const connect = useChatStore((s) => s.connect);
-  const settings = useChatStore((s) => s.settings);
-  const aiProvider = useChatStore((s) => s.aiProvider);
-  const copilotStatus = useChatStore((s) => s.copilotStatus);
-  const fetchCopilotStatus = useChatStore((s) => s.fetchCopilotStatus);
+  const connectionStatus = useConnectionStore((s) => s.connectionStatus);
+  const connect = useConnectionStore((s) => s.connect);
+  const settings = useSettingsStore((s) => s.settings);
+  const aiProvider = useSettingsStore((s) => s.aiProvider);
+  const copilotStatus = useSettingsStore((s) => s.copilotStatus);
+  const fetchCopilotStatus = useSettingsStore((s) => s.fetchCopilotStatus);
   const sessions = useChatStore((s) => s.sessions);
   const loadSession = useChatStore((s) => s.loadSession);
   const deleteSession = useChatStore((s) => s.deleteSession);
   const newSession = useChatStore((s) => s.newSession);
 
-  const complexity = useChatStore((s) => s.complexity);
-  const language = useChatStore((s) => s.language);
-  const setComplexity = useChatStore((s) => s.setComplexity);
-  const setLanguage = useChatStore((s) => s.setLanguage);
+  const complexity = useSettingsStore((s) => s.complexity);
+  const language = useSettingsStore((s) => s.language);
+  const setComplexity = useSettingsStore((s) => s.setComplexity);
+  const setLanguage = useSettingsStore((s) => s.setLanguage);
 
   const [input, setInput] = useState("");
   const [showHistory, setShowHistory] = useState(false);
@@ -573,9 +575,9 @@ function CompletionActions({ notionUrl }: { readonly notionUrl: string }) {
 }
 
 function ModelBadgeInline() {
-  const settings = useChatStore((s) => s.settings);
-  const aiProvider = useChatStore((s) => s.aiProvider);
-  const copilotStatus = useChatStore((s) => s.copilotStatus);
+  const settings = useSettingsStore((s) => s.settings);
+  const aiProvider = useSettingsStore((s) => s.aiProvider);
+  const copilotStatus = useSettingsStore((s) => s.copilotStatus);
 
   const provider = copilotStatus?.available ? "copilot" : aiProvider;
   const model = copilotStatus?.available ? copilotStatus.model : (settings.aiModel || "default");
