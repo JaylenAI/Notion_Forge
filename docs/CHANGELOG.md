@@ -6,6 +6,117 @@
 
 # Part 1: 변경 이력
 
+## [7.5.0] - 2026-04-18
+
+### Added (스킬 확장 + 품질 마무리)
+- 48개 스킬 확장: 11개 Tier2 추가 (onboarding, wiki, sop, team_home, life_os, diary, gratitude, review, blog, youtube, social)
+- 커버 이미지 75개: 25 카테고리 x 3장 (기존 20개에서 대폭 확장)
+- WebSocket 자동 재연결: 연결 끊김 감지 + 자동 복구
+- NotionClient.close(): httpx 세션 리소스 정리
+
+### Changed
+- print→logger 전환: 11개소 구조화 로깅으로 교체
+- OAuth FRONTEND_URL 환경변수: 하드코딩 URL 제거
+- docker-compose.dev 포트 수정
+- 보안 강화: API 에러 응답에서 상세 정보 제거
+- blueprint_generator 분할: 781→563줄 (creation_executor로 분리)
+- creation 로직 통합: orchestrator에서 creation_executor로 이동
+- modify_handler 디스패치: 수정 로직 별도 모듈로 분리
+- 라우터 분할: template.py → template.py + ai.py + workspace.py (3개)
+- chatStore 분할: 610→260줄 (connectionStore + settingsStore 분리)
+
+---
+
+## [7.4.0] - 2026-04-16
+
+### Added (코드 품질 + 테스트 강화)
+- God Object 분해: orchestrator.py에서 4개 모듈 추출 (creation_executor, modify_handler, view_builder, skill_matcher)
+- Provider Strategy 패턴: agent/providers/ 디렉토리 (base, router, copilot/claude/gemini/groq/openai)
+- Pydantic 스키마 정비: schemas/blueprint.py, chat.py, template.py
+- 테스트 151개: 71→151 (view_builder, metrics_history, skill_matching, input_guardrail 등 추가)
+- Path traversal 방어: 스킬 파일 경로 검증
+
+### Fixed
+- DB property key 호환: 속성 키 불일치 수정
+- REST Approval Gate: auto-approve 모드 추가 (REST API 호출 시)
+
+---
+
+## [7.3.0] - 2026-04-14
+
+### Added (안전성 + 관측성)
+- Input Guardrail: 프롬프트 인젝션 방어 + 입력 길이/형식 검증
+- Approval Gate: 생성 전 "DB 3개 생성합니다. 진행할까요?" 사용자 확인/취소
+- Rollback: Notion 생성 실패 시 이미 생성된 페이지/DB 자동 삭제
+- Structured JSON Logging: logging_config.py 구조화 로깅
+- Metrics 저장: 토큰 사용량, 소요시간, 재시도 횟수 기록
+- History 저장: 생성 이력 영속 저장 + 조회 API
+- 스킬 48개 확장: 37→48 (guide/hub/journal/content 하위 스킬)
+- AI 대화 히스토리: 멀티턴 컨텍스트 전달
+- 실패 시 전략 변경: 복잡 템플릿 실패 → 간소화 재시도
+- Approval Gate UI: 채팅에서 확인/취소 버튼
+- 모델 퀵 디스플레이: 채팅 하단에 현재 모델 표시
+- CONTRIBUTING.md: 기여 가이드
+- Docker 볼륨: 이력 데이터 영속화
+
+---
+
+## [7.2.0] - 2026-04-12
+
+### Added (프로 템플릿 + 스킬 확장)
+- 골든 블루프린트 8개: 레이아웃별 검증된 완성 JSON Few-Shot 예시
+- 스킬 세분화 37개: 12개 범용 → 25개 도메인 특화 추가 (fitness, reading, budget 등)
+- 2-Tier 스킬 매칭: 세분화 스킬(Tier 2) 우선 → 범용 카테고리(Tier 1) 폴백
+- Post-Creation Validation: Notion 생성 후 실제 결과 검증 (블록/DB/서브페이지 수 비교)
+- PromptAssembler Few-Shot: 골든 블루프린트를 compact 프롬프트에 자동 삽입
+
+---
+
+## [7.1.0] - 2026-04-12
+
+### Added (하네스 고도화 + 프로 템플릿 품질)
+- Nesting 패턴: callout/toggle/heading children 사용법 + JSON 예시 (base.md)
+- 레이아웃 8종에 완성된 JSON blocks[] 예시 추가
+- 스킬 12개 핵심 패턴 추출 (15줄 잘림 → 핵심 섹션 자동 추출)
+- link_to_page 동적 주입: `sub_page_ref` 플레이스홀더 → ID 치환
+- DB 배치 전략: `db_parent` 필드로 서브페이지에 DB 생성 + 메인에 linked_view
+- 2-Stage 파이프라인: advanced 모드에서 자동 활성화 (Architect→Designer→Content→Validator)
+- Model Escalation: GPT-4.1 실패 → GPT-5.2 → GPT-5 Mini 자동 업그레이드
+
+---
+
+## [7.0.0] - 2026-04-10
+
+### Added (하네스 엔지니어링)
+- Copilot SDK 연동: GPT-4.1 등 7개 모델, API 키 불필요 (GitHub Copilot 구독)
+- 프롬프트 모듈화: prompts/*.md 13개 파일 동적 조립
+- Intent Router: 8개 레이아웃 자동 매핑 (simple_tracker, gallery_hero, kanban_board 등)
+- 레이아웃 프롬프트 8종: 각각 고유한 블록 배치 패턴
+- Gen-Eval 피드백 루프: 구조 검증 실패 → AI에게 에러 피드백 → 재생성 (최대 3회)
+- Post-processor: 7개 규칙 자동 보정 (callout 누락, status 매핑, spacing)
+- Circuit Breaker: 최대 재시도 초과 시 최선 결과 사용
+- Copilot 모델 선택 UI: Integrations 페이지
+- 테스트 71/71: 하네스 32개 포함
+
+---
+
+## [6.0.0] - 2026-04-08
+
+### Added (v6 대규모 업데이트)
+- Relation + Rollup + Formula 자동 생성
+- 멀티턴 대화형 수정 (속성/뷰/DB/Relation/Formula/서브페이지/블록)
+- 복잡도/언어 선택 UI (Simple/Standard/Advanced + KR/EN/JP)
+- Blueprint JSON Export/Import
+- 커뮤니티 레시피 갤러리 (recipes/ + API + UI)
+- 다국어 지원 (한/영/일)
+- 멀티 에이전트 파이프라인 (Architect→Designer→Content→Validator)
+- Document-to-Notion (CSV/MD/TXT/PDF)
+- OAuth 연동 (Notion OAuth 플로우)
+- 디자인 토큰 시스템, 혼합 리치텍스트, 서브페이지 AI 패스스루
+- 커스텀 스킬 CRUD API + UI
+
+---
+
 ## [5.4.0] - 2026-04-06
 
 ### Added (28개 미구현 기능 추가 + 복잡도 스케일링)
@@ -89,7 +200,7 @@
 - 채팅 히스토리 세션 관리 (자동저장/복원, 최대 50개, 삭제)
 - 다크/라이트 모드 토글 (CSS 변수 기반 전체 테마 시스템)
 - 모바일 반응형 레이아웃 (768px 이하: 탭 전환, 오버레이 사이드바)
-- 키보드 단축키 (⌘N 새 템플릿, ⌘K 커맨드 팔레트)
+- 키보드 단축키 (Cmd+N 새 템플릿, Cmd+K 커맨드 팔레트)
 - 커맨드 팔레트 (검색 + 네비게이션 + 단축키 힌트)
 - 생성 중 취소 버튼 (AbortController + WebSocket cancel 메시지)
 - 토스트 알림 시스템 (react-hot-toast — 저장/연결/에러/복사 피드백)

@@ -1,8 +1,8 @@
 # 진행 현황 (Current Status)
 
-> 최종 업데이트: 2026-04-12
+> 최종 업데이트: 2026-04-21
 > 현재 브랜치: copilot-sdk
-> 버전: v7.3.0 (Phase 2~7 고도화 완료)
+> 버전: v7.5.0 (스킬 확장 + 코드 품질 마무리)
 
 ---
 
@@ -12,7 +12,7 @@
 Notion API 74개 기능       [██████████] 100%
 AI 자유 설계 시스템         [██████████] 100%
 AI 프로 디자인 시스템       [██████████] 100%
-스킬 시스템 12개           [██████████] 100%
+스킬 시스템 48개           [██████████] 100%
 프론트엔드 UI 5페이지      [██████████] 100%
 NotionRenderer 14블록     [██████████] 100%
 Library 수동 저장          [██████████] 100%
@@ -70,7 +70,7 @@ Model Escalation (3단계)     [██████████] 100%
 스킬 세분화 37개 (12→37)     [██████████] 100%
 스킬 자동 매칭 (Tier2 우선)   [██████████] 100%
 Post-Creation Validation    [██████████] 100%
-── v7.3.0 Phase 2~7 고도화 ──
+── v7.3.0 안전성 + 관측성 ──
 Input Guardrail (인젝션방어) [██████████] 100%
 Approval Gate (생성 전 확인)  [██████████] 100%
 Rollback (실패시 자동삭제)    [██████████] 100%
@@ -83,7 +83,28 @@ Approval Gate UI (확인/취소)   [██████████] 100%
 모델 퀵 디스플레이 (채팅하단)  [██████████] 100%
 CONTRIBUTING.md               [██████████] 100%
 Docker 볼륨 (이력 영속)       [██████████] 100%
-테스트 71/71                  [██████████] 100%
+── v7.4.0 코드 품질 + 테스트 강화 ──
+God Object 분해 (4모듈)       [██████████] 100%
+Provider Strategy 패턴        [██████████] 100%
+Pydantic 스키마 정비           [██████████] 100%
+테스트 151개 (71→151)         [██████████] 100%
+Path traversal 방어            [██████████] 100%
+DB property key 호환 수정      [██████████] 100%
+REST Approval auto-approve    [██████████] 100%
+── v7.5.0 스킬 확장 + 품질 마무리 ──
+48개 스킬 (11개 Tier2 추가)    [██████████] 100%
+커버 이미지 75개 (25cat×3)    [██████████] 100%
+print→logger 전환 (11개소)    [██████████] 100%
+OAuth FRONTEND_URL 환경변수    [██████████] 100%
+docker-compose.dev 포트수정    [██████████] 100%
+보안 강화 (에러상세 제거)       [██████████] 100%
+NotionClient.close() 추가     [██████████] 100%
+blueprint_generator 분할       [██████████] 100%
+creation 로직 통합             [██████████] 100%
+modify_handler 디스패치        [██████████] 100%
+라우터 분할 (3개 라우터)        [██████████] 100%
+chatStore 분할 (3개 스토어)    [██████████] 100%
+WebSocket 자동 재연결          [██████████] 100%
 ```
 
 ---
@@ -92,11 +113,16 @@ Docker 볼륨 (이력 영속)       [██████████] 100%
 
 ### AI Agent
 - ✅ AI 자유 설계 (blocks[] + databases[] 모두 AI가 결정)
-- ✅ 12개 스킬 (track/collect/manage/plan/organize/guide/hub/finance/journal/content/learn/crm)
-- ✅ 4개 AI 프로바이더 (Gemini/Groq/Claude/OpenAI)
+- ✅ 48개 스킬 (12 Tier1 + 36 Tier2 도메인 특화)
+- ✅ 5개 AI 프로바이더 (Copilot SDK / Claude / Gemini / Groq / OpenAI)
+- ✅ Provider Strategy 패턴 (agent/providers/ 디렉토리)
 - ✅ 동적 모델 선택 (API로 모델 목록 조회)
 - ✅ 스마트 폴백 6개 (AI 실패 시 키워드 기반)
 - ✅ 실시간 스트리밍 (매 단계 WebSocket + 실시간 progress 로그)
+- ✅ Input Guardrail (프롬프트 인젝션 방어)
+- ✅ Approval Gate (생성 전 사용자 확인/취소)
+- ✅ Rollback (생성 실패 시 자동 삭제)
+- ✅ Metrics + History (토큰, 시간, 재시도 기록)
 
 ### AI 프로 디자인 시스템 (v5.1.0+)
 - ✅ 시스템 프롬프트 전면 재작성 (Thomas Frank/Easlo 수준 디자인 규칙 50+개)
@@ -105,8 +131,8 @@ Docker 볼륨 (이력 영속)       [██████████] 100%
 - ✅ 정보 계층 구조 강제 (callout→spacing→columns→DB→toggle)
 - ✅ 아마추어 안티패턴 11가지 방지 규칙
 - ✅ DB 뷰-속성 자동 매칭 규칙 (status→board, date→calendar 등)
-- ✅ 커버 이미지 20개 (색상 10 + 카테고리 10)
-- ✅ 12개 스킬 전체에 Pro Design Guide 섹션
+- ✅ 커버 이미지 75개 (25 카테고리 x 3장)
+- ✅ 48개 스킬 전체에 Pro Design Guide 섹션
 - ✅ 블록 다양성 강제 (quote/to_do/numbered_list 최소 3개)
 - ✅ 서브페이지 내용 자동 생성 (빈 페이지 방지)
 - ✅ **미리보기=실제 노션 일치** (column 안 database_ref 금지 규칙)
@@ -131,6 +157,7 @@ Docker 볼륨 (이력 영속)       [██████████] 100%
 - ✅ **링크드 DB뷰 + 필터** (같은 DB를 다른 필터로 다른 위치에 표시)
 - ✅ **복잡도 스케일링** (simple 10-15 / medium 15-25 / complex 25-40 블록)
 - ✅ **3컬럼 대시보드 레이아웃** (위젯 그리드 + toggle 네비게이션)
+- ✅ **NotionClient.close()** 리소스 정리
 
 ### 프론트엔드 (기본)
 - ✅ 다크 테마 5페이지 (Dashboard/Library/Integrations/Profile/Support)
@@ -148,19 +175,21 @@ Docker 볼륨 (이력 영속)       [██████████] 100%
 - ✅ 채팅 히스토리 세션 관리 (자동저장/복원, 최대 50개)
 - ✅ 다크/라이트 모드 토글 (CSS 변수 기반 테마 시스템)
 - ✅ 모바일 반응형 (768px 이하 탭 전환, 오버레이 사이드바)
-- ✅ 키보드 단축키 (⌘N 새 템플릿, ⌘K 커맨드 팔레트)
+- ✅ 키보드 단축키 (Cmd+N 새 템플릿, Cmd+K 커맨드 팔레트)
 - ✅ 생성 중 취소 버튼 (AbortController + WebSocket cancel)
 - ✅ 토스트 알림 (react-hot-toast — 저장/연결/에러 피드백)
 - ✅ 미리보기 줌 인/아웃 (50%~150%, 5단계)
 - ✅ Notion URL 복사 버튼 (클립보드 + 토스트 확인)
-- ✅ 프롬프트 템플릿 라이브러리 (4개 카테고리 × 18개 프롬프트)
+- ✅ 프롬프트 템플릿 라이브러리 (4개 카테고리 x 18개 프롬프트)
 - ✅ 커스텀 리사이저블 패널 (라이브러리 의존 제거, 순수 구현)
 - ✅ 실시간 progress 로그 스트림 (생성 과정 실시간 표시)
 - ✅ PRO PLAN 제거, Support를 nav 항목으로 이동
 - ✅ 한글 IME 입력 수정 (isComposing 체크)
+- ✅ chatStore 분할 (chatStore + connectionStore + settingsStore)
+- ✅ WebSocket 자동 재연결
 
 ### 테스트
-- ✅ 39/39 통과 (28 unit + 10 integration + 1)
+- ✅ 151개 통과 (unit + integration)
 - ✅ 실제 Notion 생성 QA 8건 전부 성공
 - ✅ E2E 테스트 L1~L3 전부 성공 (샘플 15/15)
 
@@ -235,47 +264,3 @@ Docker 볼륨 (이력 영속)       [██████████] 100%
 
 ### 기존 테스트 버그 수정
 - ✅ `test_build_database_properties_select` — title 속성 누락 문제 수정
-
----
-
-## 개발 예정 (v7.0.0 — 템플릿 품질 혁신)
-
-### 우선순위 최상 — 스마트 폴백 고도화 (F-1~F-6)
-
-| # | 항목 | 상태 | 설명 |
-|---|------|------|------|
-| F-1 | 폴백 12개 (스킬별) | ❌ 미개발 | 현재 6개→12개, 프로 레이아웃 |
-| F-2 | 폴백에 column_list | ❌ 미개발 | 모든 폴백에 3칼럼 stat cards |
-| F-3 | 폴백에 formula 포함 | ❌ 미개발 | D-Day, 진행률 등 |
-| F-4 | 폴백에 뷰 4-5개 | ❌ 미개발 | table+board+calendar+chart |
-| F-5 | 폴백에 sub_pages+blocks | ❌ 미개발 | 3개 서브페이지 + 실제 콘텐츠 |
-| F-6 | 폴백에 quote/to_do/table | ❌ 미개발 | 다양한 블록 믹스 |
-
-### 우선순위 상 — 후처리 자동화 (C-1~C-5)
-
-| # | 항목 | 상태 | 설명 |
-|---|------|------|------|
-| C-1 | 뷰 자동 보강 | ❌ 미개발 | AI가 뷰 빼먹으면 속성 기반 자동 추가 |
-| C-2 | Formula 자동 추가 | ❌ 미개발 | date→D-Day, status→진행률 자동 |
-| C-3 | DB description/icon 자동 | ❌ 미개발 | 비어있으면 자동 생성 |
-| C-4 | group_by 자동 설정 | ❌ 미개발 | board→status/select 자동 |
-| C-5 | Quick filter 자동 | ❌ 미개발 | board/table에 status filter 자동 |
-
-### 우선순위 중 — Copilot SDK 연동 (S-1~S-4)
-
-| # | 항목 | 상태 | 설명 |
-|---|------|------|------|
-| S-1 | OpenAI 호환 엔드포인트 | ❌ 미개발 | Copilot SDK → OpenAI 포맷 요청 |
-| S-2 | config에 copilot_api_key | ❌ 미개발 | .env에 COPILOT_API_KEY 추가 |
-| S-3 | max_tokens 8192 | ❌ 미개발 | GPT-4o용 토큰 증가 |
-| S-4 | 프로바이더 우선순위 | ❌ 미개발 | Copilot > Claude > Gemini > Groq |
-
-### 기타
-
-| 항목 | 상태 | 설명 |
-|------|------|------|
-| 드래그 앤 드롭 블루프린트 재배치 | ❌ 미개발 | LivePreview에서 카드 드래그 순서 변경 |
-| 즐겨찾기 퀵 액세스 | ❌ 미개발 | 사이드바에 starred 템플릿 바로가기 |
-| 실시간 연결 품질 모니터 | ❌ 미개발 | WebSocket ping/pong latency |
-| 배포 (Vercel + Railway) | 대기 | 프로덕션 배포 |
-| 시연 영상 + 발표 | 대기 | 사용자 직접 준비 |

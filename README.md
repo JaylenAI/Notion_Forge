@@ -7,7 +7,7 @@
 **NotionForge**는 사용자가 자연어로 원하는 노션 템플릿을 설명하면, AI Agent가 Notion API를 통해 완성된 템플릿을 자동으로 생성해주는 서비스입니다.
 
 > **소속**: 가짜연구소 - "나만의 자동화 AI Agent 만들기" 프로젝트
-> **브랜치**: `copilot-sdk` (v7.0.0 — 하네스 엔지니어링 + Copilot SDK, 최신) | `dev-2` (v6.x)
+> **브랜치**: `copilot-sdk` (v7.5.0 — 하네스 엔지니어링 + Copilot SDK, 최신) | `dev-2` (v6.x)
 
 ---
 
@@ -27,7 +27,7 @@
 ```bash
 git clone https://github.com/JaylenAI/notion_ai_agent.git
 cd notion_ai_agent
-git checkout copilot-sdk    # v7.0.0 하네스 엔지니어링 (최신)
+git checkout copilot-sdk    # v7.5.0 하네스 엔지니어링 (최신)
 cp .env.example .env
 ```
 
@@ -89,8 +89,11 @@ make test       # 테스트 실행
 - **채팅 기반 생성**: 자연어 → AI가 blocks[] + databases[] 직접 설계 → Notion에 자동 생성
 - **프로 디자인 품질**: Thomas Frank/Easlo 수준 디자인 규칙 (2-3색 팔레트, 3컬럼 대시보드, 정보 계층)
 - **복잡도 스케일링**: 간단(10블록) → 중간(20블록) → 복잡(40블록+, 3-4 DB, 서브페이지 5+) 자동 조절
-- **12개 스킬**: track, collect, manage, plan, organize, guide, hub, finance, journal, content, learn, crm
+- **48개 스킬**: 12 Tier1 (track, collect, manage, plan, organize, guide, hub, finance, journal, content, learn, crm) + 36 Tier2 (도메인 특화)
 - **5개 AI 프로바이더**: Copilot SDK (GPT-4.1 등 7개, 무료) / Claude / Gemini / Groq / OpenAI
+- **Input Guardrail**: 프롬프트 인젝션 방어 + 입력 검증 (생성 전 0단계)
+- **Approval Gate**: 설계 완료 후 사용자 확인/취소 (생성 전 승인)
+- **5-Pass Creation Pipeline**: 페이지 → 서브페이지 → DB → 뷰 → 블록 순차 생성
 - **실시간 스트리밍**: 생성 과정을 단계별로 표시 (의도 분석 → 설계 → 페이지 → DB → 뷰 → 완료)
 - **스마트 폴백**: AI 실패 시 키워드 기반 6개 템플릿 자동 선택
 - **멀티턴 대화형 수정**: 생성 후 "속성 추가해줘", "뷰 바꿔줘", "DB 연결해줘" 등 자연어로 수정
@@ -101,6 +104,7 @@ make test       # 테스트 실행
 - **다국어 지원**: 한국어/영어/일본어 선택 가능
 - **OAuth 연동**: Notion OAuth 플로우 (토큰 복붙 대신 원클릭 연결)
 - **커스텀 스킬**: 유저가 직접 스킬 추가 → 맞춤형 AI Agent 구축 (시스템 프롬프트 커스터마이징)
+- **WebSocket 자동 재연결**: 연결 끊김 시 자동 복구
 
 ### Notion API 전체 지원 (74개 기능 + 확장)
 - **블록 30+종**: heading, callout, toggle, quote, code, table, equation, tab, synced_block 등
@@ -123,18 +127,19 @@ make test       # 테스트 실행
 - **다크/라이트 테마**: CSS 변수 기반 전체 테마 시스템 + 토글
 - **5개 페이지**: Dashboard, Library, Integrations, Profile, Support
 - **프롬프트 스타터**: 6개 추천 템플릿 원클릭 생성
-- **프롬프트 라이브러리**: 4개 카테고리 × 18개 프롬프트 템플릿 (Business/Personal/Content/Learning)
+- **프롬프트 라이브러리**: 4개 카테고리 x 18개 프롬프트 템플릿 (Business/Personal/Content/Learning)
 - **노션 스타일 렌더러**: 14개 블록 + 4개 DB 뷰 (Table/Board/Calendar/Gallery) 미리보기
 - **Library 수동 저장**: Save to Library 버튼으로 원하는 템플릿만 보관 + 검색/필터/정렬
 - **AI 모델 선택**: 프로바이더 자동 감지 + 모델 목록 API
 - **채팅 마크다운 렌더링**: AI 응답에 bold, 리스트, 코드블록, 테이블 등 렌더링
 - **채팅 세션 관리**: 세션 자동저장/복원/삭제, 최대 50개 히스토리
-- **키보드 단축키**: ⌘N 새 템플릿, ⌘K 커맨드 팔레트
+- **키보드 단축키**: Cmd+N 새 템플릿, Cmd+K 커맨드 팔레트
 - **미리보기 줌**: 50%~150% 줌 인/아웃
 - **모바일 반응형**: 768px 이하 탭 전환 UI, 오버레이 사이드바
 - **토스트 알림**: 저장/연결/에러 시 피드백
 - **생성 취소**: 진행 중인 템플릿 생성 취소 가능
 - **실시간 생성 로그**: 생성 과정을 채팅에서 실시간 스트리밍
+- **WebSocket 자동 재연결**: 연결 끊김 감지 + 자동 복구
 
 ---
 
@@ -158,8 +163,21 @@ NotionForge/
 │   │   │   ├── prompt_assembler.py    # 동적 프롬프트 조립 (모듈 .md)
 │   │   │   ├── layout_router.py       # 의도→8개 레이아웃 자동 매핑
 │   │   │   ├── post_processor.py      # AI 출력 검증 + 자동 보정
+│   │   │   ├── skill_matcher.py       # 2-Tier 스킬 매칭 (48개)
+│   │   │   ├── creation_executor.py   # 5-Pass Notion 생성 파이프라인
+│   │   │   ├── modify_handler.py      # 멀티턴 수정 디스패치
+│   │   │   ├── view_builder.py        # 뷰 생성/설정 빌더
+│   │   │   ├── input_guardrail.py     # 프롬프트 인젝션 방어
 │   │   │   ├── pipeline.py        # 멀티 에이전트 파이프라인
 │   │   │   ├── document_parser.py # Document-to-Notion (CSV/MD/PDF)
+│   │   │   ├── providers/         # AI 프로바이더 Strategy 패턴
+│   │   │   │   ├── base.py / router.py
+│   │   │   │   ├── copilot_provider.py / claude_provider.py
+│   │   │   │   ├── gemini_provider.py / groq_provider.py
+│   │   │   │   └── openai_provider.py
+│   │   │   ├── data/              # 정적 데이터
+│   │   │   │   ├── cover_urls.json        # 75개 커버 이미지 (25 카테고리 x 3장)
+│   │   │   │   └── fallback_templates.json # 폴백 템플릿
 │   │   │   ├── prompts/           # 모듈화된 프롬프트 (.md)
 │   │   │   │   ├── base.md / views_catalog.md / relations.md
 │   │   │   │   ├── modes/         # simple / standard / advanced
@@ -168,34 +186,62 @@ NotionForge/
 │   │   ├── routers/
 │   │   │   ├── chat.py            # WebSocket 채팅
 │   │   │   ├── template.py        # REST API + Blueprint Import
+│   │   │   ├── ai.py              # AI 모델/프로바이더 API
+│   │   │   ├── workspace.py       # 워크스페이스 API
 │   │   │   ├── recipes.py         # 커뮤니티 레시피 API
 │   │   │   ├── oauth.py           # Notion OAuth 연동
 │   │   │   └── skills.py          # 커스텀 스킬 CRUD API
+│   │   ├── core/
+│   │   │   ├── metrics.py         # 생성 메트릭 (토큰, 시간, 재시도)
+│   │   │   ├── history.py         # 생성 이력 저장/조회
+│   │   │   ├── logging_config.py  # 구조화 JSON 로깅
+│   │   │   ├── copilot_client.py  # Copilot SDK 클라이언트
+│   │   │   ├── dependencies.py    # FastAPI 의존성
+│   │   │   └── exceptions.py      # 예외 처리
 │   │   ├── notion/                # Notion API 클라이언트 (74개 기능)
-│   │   ├── skills/                # 12개 스킬 (.md)
-│   │   │   ├── track/   collect/   manage/   plan/
-│   │   │   ├── organize/ guide/    hub/
-│   │   │   ├── finance/  journal/  content/
-│   │   │   └── learn/    crm/
-│   │   ├── routers/               # REST + WebSocket
-│   │   └── schemas/
-│   └── tests/                     # 71개 테스트 (100% 통과)
+│   │   ├── skills/                # 48개 스킬 (12 Tier1 + 36 Tier2)
+│   │   │   ├── track/   collect/   manage/   plan/      # Tier1
+│   │   │   ├── organize/ guide/    hub/      finance/   # Tier1
+│   │   │   ├── journal/  content/  learn/    crm/       # Tier1
+│   │   │   ├── fitness/ habit/ health/ diet/            # Tier2 (track)
+│   │   │   ├── reading/ recipe/ movie/ music/ cafe/     # Tier2 (collect)
+│   │   │   ├── project/ sprint/ bug/ meeting/           # Tier2 (manage)
+│   │   │   ├── travel/ wedding/ goals/                  # Tier2 (plan)
+│   │   │   ├── bookmark/ inventory/ contact/            # Tier2 (organize)
+│   │   │   ├── onboarding/ wiki/ sop/ team_home/        # Tier2 (guide/hub)
+│   │   │   ├── budget/ investment/ subscription/        # Tier2 (finance)
+│   │   │   ├── diary/ gratitude/ review/                # Tier2 (journal)
+│   │   │   ├── blog/ youtube/ social/                   # Tier2 (content)
+│   │   │   ├── study/ language/                         # Tier2 (learn)
+│   │   │   ├── sales/ life_os/                          # Tier2 (crm/기타)
+│   │   │   └── (각 스킬: SKILL.md 패턴 파일)
+│   │   └── schemas/               # Pydantic 스키마
+│   └── tests/                     # 151개 테스트 (100% 통과)
 │
 └── frontend/
     ├── src/
     │   ├── components/
     │   │   ├── dashboard/         # ChatPanel, LivePreview, NotionRenderer
+    │   │   ├── chat/              # ChatWindow, InputBar, MessageBubble
     │   │   ├── library/           # 템플릿 자동 저장 + 검색/필터
     │   │   ├── integrations/      # Notion + AI 모델 설정
     │   │   ├── profile/           # 연결 상태 + 통계
     │   │   ├── support/           # FAQ + 문서
+    │   │   ├── settings/          # SettingsPanel
+    │   │   ├── common/            # ErrorBoundary, StatusBar, Toast 등
     │   │   └── layout/            # AppLayout (사이드바 + 상단 네비)
     │   ├── stores/
-    │   │   ├── chatStore.ts       # Zustand + WebSocket + 세션 관리
+    │   │   ├── chatStore.ts       # Zustand 채팅 상태 (세션 관리)
+    │   │   ├── connectionStore.ts # WebSocket 연결 상태
+    │   │   ├── settingsStore.ts   # AI 모델/언어/복잡도 설정
     │   │   └── themeStore.ts      # 다크/라이트 테마 상태
+    │   ├── hooks/
+    │   │   ├── useChat.ts         # 채팅 커스텀 훅
+    │   │   └── useWebSocket.ts    # WebSocket 자동 재연결 훅
     │   ├── lib/
     │   │   ├── api.ts             # API 유틸
     │   │   ├── utils.ts           # 공통 유틸
+    │   │   ├── i18n.ts            # 다국어 (한/영/일)
     │   │   └── timeago.ts         # 상대시간 ("3분 전")
     │   └── types/index.ts
     └── ...
@@ -216,10 +262,12 @@ NotionForge/
 
 ---
 
-## 스킬 시스템 (37개: 12 카테고리 + 25 세분화)
+## 스킬 시스템 (48개: 12 Tier1 + 36 Tier2)
 
-| 스킬 | 용도 | 뷰 |
-|------|------|-----|
+### Tier1 카테고리 (12개)
+
+| 스킬 | 용도 | 기본 뷰 |
+|------|------|---------|
 | track | 습관/운동/공부 추적 | calendar, table |
 | collect | 수집/기록 (책, 영화, 맛집) | gallery, table |
 | manage | 프로젝트/태스크 관리 | board, timeline |
@@ -233,16 +281,20 @@ NotionForge/
 | learn | 학습/시험/어학 | table, board |
 | crm | 고객 관리/영업 | board, timeline |
 
-**세분화 스킬 (25개):**
+### Tier2 도메인 특화 (36개)
 
-| 카테고리 | 세분화 | 용도 |
-|---------|--------|------|
+| 카테고리 | Tier2 스킬 | 용도 |
+|---------|-----------|------|
 | track | fitness, habit, health, diet | 운동/습관/건강/식단 |
 | collect | reading, recipe, movie, music, cafe | 독서/레시피/영화/음악/카페 |
 | manage | project, sprint, bug, meeting | 프로젝트/스프린트/버그/회의록 |
 | plan | travel, wedding, goals | 여행/결혼/목표(OKR) |
 | organize | bookmark, inventory, contact | 북마크/재고/연락처 |
+| guide | onboarding, wiki, sop | 온보딩/위키/SOP |
+| hub | team_home, life_os | 팀 홈/라이프 OS |
 | finance | budget, investment, subscription | 가계부/투자/구독관리 |
+| journal | diary, gratitude, review | 일기/감사일지/회고 |
+| content | blog, youtube, social | 블로그/유튜브/SNS |
 | learn | study, language | 공부/어학 |
 | crm | sales | 영업 파이프라인 |
 
@@ -274,12 +326,14 @@ NotionForge/
 
 ---
 
-## 하네스 엔지니어링 아키텍처 (v7.0.0)
+## 하네스 엔지니어링 아키텍처 (v7.5.0)
 
 AI 모델은 범용 도구일 뿐, **하네스(harness)가 결과 품질을 결정합니다.**
 
 ```
 유저 입력: "CRM 대시보드 만들어줘"
+    |
+[0. Input Guardrail] — 프롬프트 인젝션 방어 + 입력 검증
     |
 [1. Intent Analyzer] — 의도 분석 (CREATE / MODIFY / QUESTION)
     |
@@ -290,7 +344,7 @@ AI 모델은 범용 도구일 뿐, **하네스(harness)가 결과 품질을 결�
 [4. Prompt Assembler] — 모듈 .md 동적 조립
     |   base.md + modes/advanced.md + layouts/dashboard_widgets.md + views_catalog.md + ...
     |
-[5. AI Generation] — Copilot(GPT-4.1) / Claude / Gemini / Groq
+[5. AI Generation] — Copilot(GPT-4.1) / Claude / Gemini / Groq (Provider Strategy)
     |
 [6. Gen-Eval Loop] — 구조적 검증 → 실패 시 에러를 AI에게 피드백 → 재생성 (최대 3회)
     |   Level 0: 필수 필드 존재
@@ -300,7 +354,12 @@ AI 모델은 범용 도구일 뿐, **하네스(harness)가 결과 품질을 결�
     |
 [7. Post-Processor] — 자동 보정 (callout 누락 추가, status 한국어 매핑, spacing)
     |
-[8. Notion Creation] — 실제 Notion API 호출 (페이지 → 서브페이지 → DB → 뷰 → 블록)
+[8. Approval Gate] — "DB 3개 생성합니다. 진행할까요?" 사용자 확인/취소
+    |
+[9. 5-Pass Creation] — Notion API 호출 (페이지 → 서브페이지 → DB → 뷰 → 블록)
+    |   실패 시 Rollback (자동 삭제)
+    |
+[10. Metrics + History] — 토큰/시간/재시도 기록 + 이력 저장
 ```
 
 ### 8개 레이아웃 패턴
@@ -361,12 +420,43 @@ AI 모델은 범용 도구일 뿐, **하네스(harness)가 결과 품질을 결�
 - [x] Post-Creation Validation: Notion 생성 후 실제 결과 검증 (블록/DB/서브페이지 수 비교)
 - [x] PromptAssembler Few-Shot: 골든 블루프린트를 compact 프롬프트에 자동 삽입
 
-### 다음 개발 예정 (v8.0.0)
+### v7.3.0 완료 (2026-04-14) — 안전성 + 관측성
+- [x] Input Guardrail (프롬프트 인젝션 방어)
+- [x] Approval Gate (생성 전 사용자 확인/취소)
+- [x] Rollback (생성 실패 시 자동 삭제)
+- [x] Structured JSON Logging
+- [x] Metrics + History 저장 (토큰, 시간, 재시도)
+- [x] AI 대화 히스토리 전달
+- [x] 실패 시 전략 변경 (간소화)
+- [x] Approval Gate UI (확인/취소 버튼)
+- [x] 모델 퀵 디스플레이 (채팅 하단)
 
-- [ ] Human-in-the-Loop: "DB 3개 생성합니다. 진행할까요?" 승인 게이트
-- [ ] Observability 대시보드: 토큰 비용, 재시도 횟수, 소요시간 시각화
+### v7.4.0 완료 (2026-04-16) — 코드 품질 + 테스트 강화
+- [x] God Object 분해 (orchestrator.py → creation_executor, modify_handler, view_builder, skill_matcher)
+- [x] Provider Strategy 패턴 (agent/providers/ 디렉토리)
+- [x] Pydantic 스키마 정비 (schemas/blueprint.py, chat.py, template.py)
+- [x] 테스트 151개 (71→151, view_builder/metrics_history/skill_matching/input_guardrail 등)
+- [x] Path traversal 방어
+- [x] DB property key 호환 수정
+- [x] REST Approval Gate auto-approve
 
-**기타:**
+### v7.5.0 완료 (2026-04-18) — 스킬 확장 + 품질 마무리
+- [x] 48개 스킬 확장 (37→48, onboarding/wiki/sop/team_home/life_os/diary/gratitude/review/blog/youtube/social)
+- [x] 커버 이미지 75개 (20→75, 25 카테고리 x 3장)
+- [x] print→logger 전환 (11개소)
+- [x] OAuth FRONTEND_URL 환경변수
+- [x] docker-compose.dev 포트 수정
+- [x] 보안 강화 (에러 상세 제거)
+- [x] NotionClient.close() 리소스 정리
+- [x] blueprint_generator 분할 (781→563줄)
+- [x] creation 로직 통합
+- [x] modify_handler 디스패치 분리
+- [x] 라우터 분할 (template→template/ai/workspace)
+- [x] chatStore 분할 (610→260줄, connectionStore + settingsStore)
+- [x] WebSocket 자동 재연결
+
+### 다음 개발 예정
+
 - [ ] Vercel (FE) + Railway (BE) 프로덕션 배포
 - [ ] 시연 영상 + 발표 자료
 
