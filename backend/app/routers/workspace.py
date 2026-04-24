@@ -72,3 +72,27 @@ async def get_generation_history(days: int = 7, limit: int = 50):
 
     records = get_recent_history(days=days, limit=limit)
     return {"records": records, "count": len(records)}
+
+
+@router.get("/memory/preferences")
+async def get_preferences():
+    """에이전트 메모리 — 유저 선호도 조회"""
+    from app.agent.memory import memory
+    return {"preferences": memory.get_all_preferences()}
+
+
+@router.post("/memory/preferences")
+async def set_preference(key: str = "", value: str = ""):
+    """에이전트 메모리 — 유저 선호도 설정"""
+    from app.agent.memory import memory
+    if not key or len(key) > 50:
+        raise HTTPException(status_code=400, detail="key는 1~50자여야 합니다.")
+    memory.save_preference(key, value)
+    return {"success": True}
+
+
+@router.get("/memory/stats")
+async def get_memory_stats():
+    """에이전트 메모리 — 스킬 사용 통계"""
+    from app.agent.memory import memory
+    return {"stats": memory.get_skill_stats()}

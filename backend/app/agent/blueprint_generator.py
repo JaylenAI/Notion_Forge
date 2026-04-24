@@ -11,6 +11,7 @@ import logging
 logger = logging.getLogger("notionforge.blueprint_generator")
 
 import json
+from datetime import datetime, timezone
 from typing import Any
 
 from app.config import settings
@@ -134,9 +135,14 @@ async def generate_blueprint(
     """Gen-Eval 피드백 루프: AI 생성 → 검증 → 실패 시 에러 피드백 → 재생성 (최대 3회)"""
     import time
     from app.agent.providers.router import ProviderRouter
+    from app.agent.memory import memory, Episode
 
     provider = ProviderRouter.resolve(api_key=ai_key, ai_model=ai_model)
     skill_guide, skill_match = await _build_skill_guide_async(user_message, provider=provider)
+
+    memory_context = memory.build_memory_context(skill=skill_match.skill_id or "")
+    if memory_context:
+        skill_guide += f"\n\n{memory_context}"
 
     max_retries = 3
     feedback_context = ""
@@ -179,6 +185,14 @@ async def generate_blueprint(
                 blueprint["metadata"]["gen_eval_attempts"] = attempt + 1
                 blueprint["metadata"]["gen_eval_time"] = round(elapsed, 1)
                 logger.info(f"[Gen-Eval 통과] 시도 {attempt+1}/{max_retries}, {elapsed:.1f}s")
+                memory.save_episode(Episode(
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    user_message=user_message[:200],
+                    skill_used=skill_match.skill_id or "custom",
+                    layout=layout_router.route(user_message).layout,
+                    success=True,
+                    gen_eval_attempts=attempt + 1,
+                ))
                 return blueprint
 
             # 검증 실패 → 에러를 피드백으로 구성
@@ -219,6 +233,15 @@ async def generate_blueprint(
         return blueprint
 
     logger.info("[Gen-Eval 전체 실패 → 스마트 폴백 사용]")
+    memory.save_episode(Episode(
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        user_message=user_message[:200],
+        skill_used=skill_match.skill_id or "custom",
+        layout=layout_router.route(user_message).layout,
+        success=False,
+        gen_eval_attempts=max_retries,
+        error_types=["gen_eval_exhausted"],
+    ))
     content = _smart_fallback(user_message)
     blueprint = _assemble_blueprint(content)
     blueprint["metadata"]["generation_method"] = "smart_fallback"
