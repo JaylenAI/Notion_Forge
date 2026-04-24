@@ -428,6 +428,30 @@ def embed(url: str, caption: str = "") -> dict[str, Any]:
 
 
 # ============================================================
+# Phase F: 버튼 블록
+# ============================================================
+
+def button(label: str, actions: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """버튼 블록 — Notion 자동화 트리거
+
+    actions 예시:
+    - {"type": "open_url", "url": "https://..."}
+    - {"type": "set_property", "property": "상태", "value": "완료"}
+    - {"type": "create_page", "parent_id": "...", "title": "New"}
+    """
+    block: dict[str, Any] = {
+        "object": "block",
+        "type": "button",
+        "button": {
+            "rich_text": rich_text(label),
+        },
+    }
+    if actions:
+        block["button"]["actions"] = actions
+    return block
+
+
+# ============================================================
 # 멘션 헬퍼 (하위 호환)
 # ============================================================
 

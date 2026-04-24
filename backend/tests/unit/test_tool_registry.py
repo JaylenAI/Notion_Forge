@@ -26,13 +26,13 @@ def registry(mock_client):
 class TestToolRegistryInit:
     def test_registers_all_tools(self, registry):
         names = registry.list_names()
-        assert len(names) == 8
+        assert len(names) == 9
 
     def test_expected_tools_present(self, registry):
         expected = [
             "create_page", "create_database", "add_blocks",
             "add_database_items", "create_columns", "link_databases",
-            "apply_color_theme", "generate_cover",
+            "create_view", "apply_color_theme", "generate_cover",
         ]
         for name in expected:
             assert registry.get(name) is not None, f"{name} not registered"
@@ -44,7 +44,7 @@ class TestToolRegistryInit:
 class TestToolSpecs:
     def test_specs_count(self, registry):
         specs = registry.get_tool_specs()
-        assert len(specs) == 8
+        assert len(specs) == 9
 
     def test_spec_structure(self, registry):
         specs = registry.get_tool_specs()

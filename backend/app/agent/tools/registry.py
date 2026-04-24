@@ -21,6 +21,7 @@ class ToolRegistry:
         from app.agent.tools.add_database_items import AddDatabaseItemsTool
         from app.agent.tools.create_columns import CreateColumnsTool
         from app.agent.tools.link_databases import LinkDatabasesTool
+        from app.agent.tools.create_view import CreateViewTool
         from app.agent.tools.apply_color_theme import ApplyColorThemeTool
         from app.agent.tools.generate_cover import GenerateCoverTool
 
@@ -31,6 +32,7 @@ class ToolRegistry:
             AddDatabaseItemsTool(client),
             CreateColumnsTool(client),
             LinkDatabasesTool(client),
+            CreateViewTool(client),
             ApplyColorThemeTool(),
             GenerateCoverTool(),
         ]:

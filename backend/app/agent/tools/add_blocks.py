@@ -143,6 +143,8 @@ def spec_to_block(spec: dict) -> dict:
         return bb.link_to_page(spec.get("page_id", ""))
     elif t == "link_to_database":
         return bb.link_to_database(spec.get("database_id", ""))
+    elif t == "button":
+        return bb.button(spec.get("label", spec.get("text", "Button")), actions=spec.get("actions"))
 
     # ---- 폴백 ----
     else:
