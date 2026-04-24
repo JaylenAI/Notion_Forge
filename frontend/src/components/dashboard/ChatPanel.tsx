@@ -256,7 +256,7 @@ function ChatPanel() {
                   {msg.content ? (
                     <div className="markdown-body">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {msg.content}
+                        {typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}
                       </ReactMarkdown>
                     </div>
                   ) : null}

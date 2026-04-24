@@ -38,7 +38,7 @@ export default function MessageBubble({ message }: Props) {
           {/* Message body */}
           <div className={getBodyClass(metaType)}>
             <div className="whitespace-pre-wrap text-sm leading-relaxed">
-              {message.content}
+              {typeof message.content === "string" ? message.content : JSON.stringify(message.content)}
             </div>
 
             {/* Notion URL */}
