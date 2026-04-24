@@ -100,11 +100,39 @@ class TestFixStatusValues:
 
 
 class TestEnsureSampleItems:
-    def test_warns_on_few_items(self, validator, capsys):
-        content = {"databases": [{"title": "TestDB", "sample_items": [{"name": "A"}]}]}
+    def test_auto_generates_when_few_items(self, validator):
+        content = {
+            "databases": [{
+                "title": "TestDB",
+                "db_properties": {"이름": "title", "상태": "status"},
+                "sample_items": [{"이름": "A"}],
+            }]
+        }
         result = validator._ensure_sample_items(content)
-        # 경고만 하고 데이터는 변경하지 않음
-        assert len(result["databases"][0]["sample_items"]) == 1
+        assert len(result["databases"][0]["sample_items"]) >= 4
+
+    def test_skips_when_enough_items(self, validator):
+        content = {
+            "databases": [{
+                "title": "TestDB",
+                "sample_items": [{"이름": "A"}, {"이름": "B"}, {"이름": "C"}],
+            }]
+        }
+        result = validator._ensure_sample_items(content)
+        assert len(result["databases"][0]["sample_items"]) == 3
+
+    def test_generates_from_empty(self, validator):
+        content = {
+            "databases": [{
+                "title": "학습 자료",
+                "db_properties": {"자료명": "title", "유형": "select", "날짜": "date"},
+                "sample_items": [],
+            }]
+        }
+        result = validator._ensure_sample_items(content)
+        items = result["databases"][0]["sample_items"]
+        assert len(items) == 4
+        assert "자료명" in items[0]
 
 
 class TestEnsureCoverCategory:

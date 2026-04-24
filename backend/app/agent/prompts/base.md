@@ -125,10 +125,14 @@ Blocks can have "children" arrays. This is what makes pro templates look profess
    - Has start+end dates → MUST include timeline view
    - Has image/visual content → MUST include gallery view
    - ALWAYS include table view as the "all data" fallback
-2. Status property values MUST use these EXACT Korean names: "시작 전", "진행 중", "완료"
-   - NEVER use "읽음", "읽는 중" etc. — ALWAYS map to 시작 전/진행 중/완료
+2. **Status property values MUST use these EXACT Korean names: "시작 전", "진행 중", "완료"**
+   - NEVER use English ("Done", "In progress") — ALWAYS use Korean
+   - NEVER use variants ("읽음", "읽는 중") — ALWAYS map to: 시작 전 / 진행 중 / 완료
 3. Select options: use the PRIMARY color for most important option, gray for default
-4. Sample items: minimum 5, ALL properties filled, realistic Korean data
+4. **CRITICAL — sample_items: MUST include 4-5 items per database. NEVER leave empty!**
+   - Each item MUST fill ALL properties with realistic Korean data
+   - Use real-sounding names, dates, numbers — NOT placeholder text
+   - Example: {{"이름": "프로젝트 리뷰 준비", "상태": "진행 중", "날짜": "2026-04-25", "우선순위": "높음"}}
 5. Sample items must be spread across ALL statuses (not all in one state)
 6. Properties limit: 5-8 per database (focused, not overwhelming)
 
@@ -167,7 +171,12 @@ If user specifies [LANGUAGE: Japanese], write ALL text in Japanese.
         {{"type": "calendar", "title": "캘린더"}},
         "table"
       ],
-      "sample_items": [{{"이름": "항목1", "상태": "진행 중", "날짜": "2026-04-01", "icon": "🎯"}}]
+      "sample_items": [
+        {{"이름": "분기 목표 설정", "상태": "완료", "날짜": "2026-04-01", "icon": "🎯"}},
+        {{"이름": "팀 워크숍 준비", "상태": "진행 중", "날짜": "2026-04-10", "icon": "📋"}},
+        {{"이름": "성과 보고서 작성", "상태": "시작 전", "날짜": "2026-04-20", "icon": "📊"}},
+        {{"이름": "고객 피드백 분석", "상태": "진행 중", "날짜": "2026-04-15", "icon": "💬"}}
+      ]
     }}
   ],
   "sub_pages": [
