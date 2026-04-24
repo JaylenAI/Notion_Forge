@@ -12,13 +12,13 @@ def detect_provider_from_key(api_key: str) -> str:
         return ""
     if api_key.startswith("sk-ant-"):
         return "claude"
-    if api_key.startswith("sk-") or api_key.startswith("sk-proj-"):
+    if api_key.startswith("sk-"):
         return "openai"
     if api_key.startswith("AI") and len(api_key) > 30:
         return "gemini"
     if api_key.startswith("gsk_"):
         return "groq"
-    return "openai"  # 기본 폴백
+    return "openai"
 
 
 def create_provider(provider_name: str, api_key: str = "", model: str = "") -> BaseProvider:
@@ -39,6 +39,9 @@ def create_provider(provider_name: str, api_key: str = "", model: str = "") -> B
     elif provider_name == "copilot":
         from app.agent.providers.copilot_provider import CopilotProvider
         return CopilotProvider(model=model)
+    elif provider_name == "mock":
+        from app.agent.providers.mock_provider import MockProvider
+        return MockProvider()
     else:
         raise ValueError(f"Unknown provider: {provider_name}")
 

@@ -10,10 +10,14 @@ logger = logging.getLogger("notionforge.providers.groq")
 
 class GroqProvider(BaseProvider):
     name = "groq"
+    MAX_PROMPT_CHARS = 12000
 
     def __init__(self, api_key: str = "", model: str = ""):
         self.api_key = api_key
         self.default_model = model or "openai/gpt-oss-120b"
+
+    def get_max_prompt_chars(self) -> int:
+        return self.MAX_PROMPT_CHARS
 
     async def call(self, system_prompt: str, user_message: str, model: str = "") -> dict[str, Any] | None:
         try:
@@ -21,9 +25,8 @@ class GroqProvider(BaseProvider):
 
             from app.config import settings
 
-            # Truncate for Groq's token limits
-            if len(system_prompt) > 12000:
-                system_prompt = system_prompt[:12000]
+            if len(system_prompt) > self.MAX_PROMPT_CHARS:
+                system_prompt = system_prompt[:self.MAX_PROMPT_CHARS]
 
             client = AsyncGroq(api_key=self.api_key or settings.groq_api_key)
             response = await client.chat.completions.create(

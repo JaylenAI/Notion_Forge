@@ -8,19 +8,14 @@ router = APIRouter(prefix="/api/templates", tags=["ai"])
 @router.post("/ai/detect-provider")
 async def detect_provider(api_key: str = Body("", embed=True)):
     """API 키로 프로바이더 감지 + 모델 목록 조회"""
+    from app.agent.providers.router import detect_provider_from_key
+
     if not api_key:
         return {"provider": "unknown", "models": [], "error": "API 키가 필요합니다."}
 
-    # 키 접두사로 프로바이더 감지
-    provider = "unknown"
-    if api_key.startswith("sk-ant-"):
-        provider = "anthropic"
-    elif api_key.startswith("sk-proj-") or api_key.startswith("sk-"):
-        provider = "openai"
-    elif api_key.startswith("gsk_"):
-        provider = "groq"
-    elif api_key.startswith("AIza"):
-        provider = "google"
+    raw = detect_provider_from_key(api_key)
+    PROVIDER_ALIASES = {"claude": "anthropic", "gemini": "google"}
+    provider = PROVIDER_ALIASES.get(raw, raw) if raw else "unknown"
 
     if provider == "unknown":
         return {"provider": "unknown", "models": [], "error": "알 수 없는 API 키 형식입니다."}

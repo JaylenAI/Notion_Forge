@@ -19,13 +19,16 @@ class BaseProvider(ABC):
         """AI에게 시스템 프롬프트 + 유저 메시지를 보내고 JSON dict를 반환"""
         ...
 
+    def get_max_prompt_chars(self) -> int:
+        """프로바이더별 프롬프트 최대 길이. 기본값은 무제한."""
+        return 0
+
     @staticmethod
     def extract_json(text: str) -> dict[str, Any] | None:
         """AI 응답에서 JSON 추출 (공통 유틸)"""
         if not text:
             return None
 
-        # 1. ```json ... ``` 블록
         json_match = re.search(r"```(?:json)?\s*\n?(.*?)```", text, re.DOTALL)
         if json_match:
             try:
@@ -33,13 +36,11 @@ class BaseProvider(ABC):
             except json.JSONDecodeError:
                 pass
 
-        # 2. 전체가 JSON
         try:
             return json.loads(text.strip())
         except json.JSONDecodeError:
             pass
 
-        # 3. 첫 번째 { ... 마지막 } 추출
         start = text.find("{")
         end = text.rfind("}")
         if start != -1 and end > start:
@@ -48,4 +49,12 @@ class BaseProvider(ABC):
             except json.JSONDecodeError:
                 pass
 
+        return None
+
+    @staticmethod
+    def extract_blueprint_json(text: str) -> dict[str, Any] | None:
+        """Blueprint 전용 JSON 추출 — databases 또는 db_properties 필드 필수"""
+        data = BaseProvider.extract_json(text)
+        if data and ("databases" in data or "db_properties" in data):
+            return data
         return None

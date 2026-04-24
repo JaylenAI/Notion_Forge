@@ -11,7 +11,6 @@ import logging
 logger = logging.getLogger("notionforge.blueprint_generator")
 
 import json
-import re
 from typing import Any
 
 from app.config import settings
@@ -59,20 +58,6 @@ def _load_fallback_templates() -> tuple[dict[str, dict[str, Any]], dict[str, lis
 FALLBACK_TEMPLATES, FALLBACK_KEYWORDS = _load_fallback_templates()
 
 
-# ============================================================
-# Provider 감지
-# ============================================================
-
-def _detect_provider_from_key(api_key: str) -> str:
-    if api_key.startswith("sk-ant-"):
-        return "claude"
-    if api_key.startswith("sk-"):
-        return "openai"
-    if api_key.startswith("gsk_"):
-        return "groq"
-    if api_key.startswith("AIza"):
-        return "gemini"
-    return ""
 
 
 # ============================================================
@@ -271,179 +256,41 @@ async def _call_ai_for_content(
     extra_context: str = "",
     conversation_history: list[dict[str, str]] | None = None,
 ) -> dict[str, Any] | None:
+    from app.agent.providers.router import ProviderRouter
+
     mode = _detect_mode(user_message)
     layout_result = layout_router.route(user_message)
     skills_desc = get_tool_enum_description()
     prompt = prompt_assembler.assemble(mode=mode, layout=layout_result.layout, skills=skills_desc)
-    # Copilot/Groq용 compact 프롬프트 (토큰 제한 대응)
-    compact_prompt = prompt_assembler.assemble_compact(mode=mode, layout=layout_result.layout, skills=skills_desc, max_chars=12000)
     logger.info(f"[Harness] mode={mode}, layout={layout_result.layout} (conf={layout_result.confidence:.2f}, {layout_result.reason})")
+
     if extra_context:
         prompt += f"\n\n## Skill Guidelines:\n{extra_context[:1200]}"
-        compact_prompt += f"\n\n## Skill Guidelines:\n{extra_context[:600]}"
 
-    # 대화 히스토리 컨텍스트 추가 (최근 3턴)
     if conversation_history and len(conversation_history) > 1:
-        recent = conversation_history[-6:]  # 최근 3턴 (user+assistant 쌍)
+        recent = conversation_history[-6:]
         history_text = "\n".join(f"[{m['role']}]: {m['content'][:150]}" for m in recent[:-1])
         prompt += f"\n\n## Conversation History:\n{history_text}"
-        compact_prompt += f"\n\n## History:\n{history_text[:400]}"
 
-    if ai_key:
-        provider = _detect_provider_from_key(ai_key)
-        if provider == "groq":
-            return await _groq_call(compact_prompt, user_message, api_key=ai_key, model=ai_model)
-        elif provider == "gemini":
-            return await _gemini_call(prompt, user_message, api_key=ai_key, model=ai_model)
-        elif provider == "claude":
-            return await _claude_call(prompt, user_message, api_key=ai_key, model=ai_model)
-        elif provider == "openai":
-            return await _openai_call(prompt, user_message, api_key=ai_key, model=ai_model)
+    provider = ProviderRouter.resolve(api_key=ai_key, ai_model=ai_model)
+    max_chars = provider.get_max_prompt_chars()
+    if max_chars > 0 and len(prompt) > max_chars:
+        prompt = prompt_assembler.assemble_compact(
+            mode=mode, layout=layout_result.layout, skills=skills_desc, max_chars=max_chars,
+        )
+        if extra_context:
+            prompt += f"\n\n## Skill Guidelines:\n{extra_context[:600]}"
+        if conversation_history and len(conversation_history) > 1:
+            recent = conversation_history[-6:]
+            history_text = "\n".join(f"[{m['role']}]: {m['content'][:150]}" for m in recent[:-1])
+            prompt += f"\n\n## History:\n{history_text[:400]}"
 
-    provider = settings.ai_provider
-    if provider == "copilot":
-        return await _copilot_call(compact_prompt, user_message)
-    elif provider == "gemini":
-        return await _gemini_call(prompt, user_message)
-    elif provider == "groq":
-        return await _groq_call(compact_prompt, user_message)
-    elif provider == "claude":
-        return await _claude_call(prompt, user_message)
-    else:
+    result = await provider.call(prompt, user_message, model=ai_model)
+    if not result:
         return None
-
-
-# Model Escalation 순서: 기본 → 더 강력한 모델
-COPILOT_ESCALATION = ["gpt-4.1", "gpt-5.2", "gpt-5-mini"]
-
-
-async def _copilot_call(system: str, user_message: str, model: str = "") -> dict[str, Any] | None:
-    """GitHub Copilot SDK를 통한 AI 호출 — Model Escalation 포함"""
-    from app.core.copilot_client import copilot_manager
-
-    primary_model = model or settings.copilot_model
-    models_to_try = [primary_model]
-    # Escalation: 기본 모델이 실패하면 다음 모델 시도
-    for m in COPILOT_ESCALATION:
-        if m != primary_model and m not in models_to_try:
-            models_to_try.append(m)
-    models_to_try = models_to_try[:3]  # 최대 3개 모델
-
-    for i, try_model in enumerate(models_to_try):
-        try:
-            text = await copilot_manager.send(
-                system_prompt=system,
-                user_message=user_message,
-                model=try_model,
-            )
-            if text:
-                result = _parse_json_response(text)
-                if result:
-                    if i > 0:
-                        logger.info(f"[Model Escalation] {primary_model} → {try_model} 성공")
-                    return result
-                logger.info(f"[Copilot {try_model}] JSON 파싱 실패, 다음 모델 시도")
-            else:
-                logger.info(f"[Copilot {try_model}] 빈 응답, 다음 모델 시도")
-        except Exception as e:
-            logger.info(f"[Copilot {try_model} 에러] {str(e)[:80]}")
-
+    if "databases" in result or "db_properties" in result:
+        return result
     return None
-
-
-def _truncate_prompt_for_groq(system: str, max_chars: int = 16000) -> str:
-    """Groq 8K TPM 제한 대응 — 이미 길면 잘라냄"""
-    if len(system) <= max_chars:
-        return system
-    # VIEW CATALOG 섹션 축약
-    vc_start = system.find("## VIEW CATALOG")
-    vc_end = system.find("## RELATION")
-    if vc_start > 0 and vc_end > vc_start:
-        compact = """## VIEW CATALOG (compact)
-DB views: table, board, gallery, calendar, timeline, chart, list, form.
-Config: group_by, cover, cover_size, chart_type, x_axis, color_theme, date_property, zoom_level.
-"""
-        system = system[:vc_start] + compact + system[vc_end:]
-    # DESIGN TOKEN 섹션 제거 (토큰 절약)
-    dt_start = system.find("## BLOCK DIVERSITY")
-    if dt_start > 0:
-        system = system[:dt_start]
-    return system[:max_chars]
-
-
-async def _groq_call(system: str, user_message: str, api_key: str = "", model: str = "") -> dict[str, Any] | None:
-    try:
-        from groq import AsyncGroq
-        system = _truncate_prompt_for_groq(system)
-        client = AsyncGroq(api_key=api_key or settings.groq_api_key)
-        response = await client.chat.completions.create(
-            model=model or "openai/gpt-oss-120b",
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": user_message}],
-            temperature=0.3, max_tokens=4096,
-        )
-        return _parse_json_response(response.choices[0].message.content or "")
-    except Exception as e:
-        logger.info(f"[Groq 에러] {e}")
-        return None
-
-
-async def _gemini_call(system: str, user_message: str, api_key: str = "", model: str = "") -> dict[str, Any] | None:
-    try:
-        from google import genai
-        client = genai.Client(api_key=api_key or settings.gemini_api_key)
-        response = await client.aio.models.generate_content(
-            model=model or "gemini-2.5-flash",
-            contents=f"{system}\n\nUser request: {user_message}",
-        )
-        return _parse_json_response(response.text or "")
-    except Exception as e:
-        logger.info(f"[Gemini 에러] {e}")
-        return None
-
-
-async def _claude_call(system: str, user_message: str, api_key: str = "", model: str = "") -> dict[str, Any] | None:
-    try:
-        import anthropic
-        client = anthropic.AsyncAnthropic(api_key=api_key or settings.anthropic_api_key)
-        response = await client.messages.create(
-            model=model or settings.claude_model, max_tokens=4096,
-            system=system, messages=[{"role": "user", "content": user_message}],
-        )
-        return _parse_json_response(response.content[0].text)
-    except Exception as e:
-        logger.info(f"[Claude 에러] {e}")
-        return None
-
-
-async def _openai_call(system: str, user_message: str, api_key: str = "", model: str = "") -> dict[str, Any] | None:
-    try:
-        import httpx
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={"model": model or "gpt-4o-mini", "messages": [
-                    {"role": "system", "content": system}, {"role": "user", "content": user_message}
-                ], "temperature": 0.3, "max_tokens": 4096},
-                timeout=30.0,
-            )
-            return _parse_json_response(resp.json()["choices"][0]["message"]["content"] or "")
-    except Exception as e:
-        logger.info(f"[OpenAI 에러] {e}")
-        return None
-
-
-def _parse_json_response(text: str) -> dict[str, Any] | None:
-    json_match = re.search(r"\{[\s\S]*\}", text)
-    if not json_match:
-        return None
-    try:
-        data = json.loads(json_match.group())
-        if "databases" in data or "db_properties" in data:
-            return data
-        return None
-    except (json.JSONDecodeError, Exception):
-        return None
 
 
 # ============================================================
