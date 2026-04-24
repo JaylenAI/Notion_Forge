@@ -1,10 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TemplateGenerateRequest(BaseModel):
-    prompt: str
-    notion_token: str
-    parent_page_id: str
+    prompt: str = Field(min_length=2, max_length=2000)
+    notion_token: str = Field(min_length=1, max_length=200)
+    parent_page_id: str = Field(min_length=1, max_length=50, pattern=r"^[a-f0-9-]+$")
     options: dict | None = None
 
 
@@ -16,7 +16,7 @@ class TemplateGenerateResponse(BaseModel):
 
 
 class TemplatePreviewRequest(BaseModel):
-    prompt: str
+    prompt: str = Field(min_length=2, max_length=2000)
 
 
 class TemplatePreviewResponse(BaseModel):
@@ -24,7 +24,7 @@ class TemplatePreviewResponse(BaseModel):
 
 
 class DetectProviderRequest(BaseModel):
-    api_key: str = ""
+    api_key: str = Field(default="", max_length=500)
 
 
 class DetectProviderResponse(BaseModel):

@@ -6,7 +6,7 @@ router = APIRouter(prefix="/api/templates", tags=["ai"])
 
 
 @router.post("/ai/detect-provider")
-async def detect_provider(api_key: str = Body("", embed=True)):
+async def detect_provider(api_key: str = Body("", embed=True, max_length=500)):
     """API 키로 프로바이더 감지 + 모델 목록 조회"""
     from app.agent.providers.router import detect_provider_from_key
 

@@ -2,13 +2,16 @@
 
 import json
 import logging
+import re
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 logger = logging.getLogger("notionforge.recipes")
 
 router = APIRouter(prefix="/api/recipes", tags=["recipes"])
+
+_SAFE_RECIPE_ID = re.compile(r"^[a-zA-Z0-9_-]{1,100}$")
 
 RECIPES_DIR = Path(__file__).resolve().parents[3] / "recipes"
 
@@ -61,14 +64,18 @@ async def list_recipes(category: str = "", search: str = ""):
 @router.get("/{recipe_id}")
 async def get_recipe(recipe_id: str):
     """레시피 상세 조회 (blueprint 포함)"""
+    if not _SAFE_RECIPE_ID.match(recipe_id):
+        raise HTTPException(status_code=400, detail="잘못된 레시피 ID 형식입니다.")
     fp = RECIPES_DIR / f"{recipe_id}.json"
+    if fp.resolve().parent != RECIPES_DIR.resolve():
+        raise HTTPException(status_code=400, detail="잘못된 경로입니다.")
     if not fp.exists():
-        return {"error": "Recipe not found"}
+        raise HTTPException(status_code=404, detail="레시피를 찾을 수 없습니다.")
     try:
         data = json.loads(fp.read_text(encoding="utf-8"))
         return data
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception:
+        raise HTTPException(status_code=500, detail="레시피 로드 실패")
 
 
 @router.get("/categories/list")

@@ -52,21 +52,31 @@ async def test_preview_onboarding(client):
 
 
 @pytest.mark.asyncio
-async def test_preview_empty(client):
+async def test_preview_empty_rejected(client):
     r = await client.post("/api/templates/preview", json={"prompt": ""})
-    assert r.status_code == 200
+    assert r.status_code == 422
 
 
 @pytest.mark.asyncio
 async def test_generate_mock(client):
     r = await client.post("/api/templates/generate", json={
         "prompt": "트래커 만들어줘",
-        "notion_token": "",
-        "parent_page_id": ""
+        "notion_token": "ntn_test_token_for_mock",
+        "parent_page_id": "00000000000000000000000000000000",
     })
     assert r.status_code == 200
     data = r.json()
     assert data["success"] in (True, False)
+
+
+@pytest.mark.asyncio
+async def test_generate_invalid_id_rejected(client):
+    r = await client.post("/api/templates/generate", json={
+        "prompt": "트래커 만들어줘",
+        "notion_token": "test",
+        "parent_page_id": "invalid!@#",
+    })
+    assert r.status_code == 422
 
 
 @pytest.mark.asyncio

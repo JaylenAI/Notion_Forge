@@ -84,14 +84,13 @@ async def callback(code: str = "", error: str = ""):
     workspace_name = token_data.get("workspace_name", "")
     workspace_id = token_data.get("workspace_id", "")
 
-    return RedirectResponse(
-        url=(
-            f"{frontend_url}"
-            f"?oauth_token={access_token}"
-            f"&workspace_name={workspace_name}"
-            f"&workspace_id={workspace_id}"
-        )
-    )
+    from urllib.parse import urlencode
+    params = urlencode({
+        "oauth_token": access_token,
+        "workspace_name": workspace_name,
+        "workspace_id": workspace_id,
+    })
+    return RedirectResponse(url=f"{frontend_url}#{ params}")
 
 
 @router.get("/status")
