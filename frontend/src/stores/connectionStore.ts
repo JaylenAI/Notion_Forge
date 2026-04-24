@@ -6,6 +6,12 @@ import { useSettingsStore } from "./settingsStore";
 export const WS_URL = import.meta.env.VITE_WS_URL ?? "ws://localhost:9500";
 export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:9500";
 
+function ensureString(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value == null) return "";
+  return JSON.stringify(value);
+}
+
 const MAX_RETRIES = 5;
 const MAX_BACKOFF_MS = 30_000;
 
@@ -76,7 +82,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
             const msg: Message = {
               id: crypto.randomUUID(),
               role: "assistant",
-              content: data.content ?? data.message ?? "",
+              content: ensureString(data.content ?? data.message),
               timestamp: new Date(),
               metadata: { type: "system" },
             };
@@ -92,7 +98,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
             const msg: Message = {
               id: crypto.randomUUID(),
               role: "assistant",
-              content: data.content ?? "템플릿 설계를 확인해주세요. 생성을 진행할까요?",
+              content: ensureString(data.content) || "템플릿 설계를 확인해주세요. 생성을 진행할까요?",
               timestamp: new Date(),
               metadata: { type: "approval_request", blueprint: data.blueprint },
             };
@@ -109,7 +115,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
           const msg: Message = {
             id: crypto.randomUUID(),
             role: "assistant",
-            content: data.content ?? data.message ?? "",
+            content: ensureString(data.content ?? data.message),
             timestamp: new Date(),
             metadata: {
               type: eventType,
