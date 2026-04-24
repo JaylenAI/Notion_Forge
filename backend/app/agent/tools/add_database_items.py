@@ -262,36 +262,39 @@ def _format_value(prop_type: str, value: Any) -> dict[str, Any]:
         names = value if isinstance(value, list) else [str(value)]
         return {"multi_select": [{"name": n} for n in names]}
     elif prop_type == "status":
-        # Notion status 속성은 기본 옵션이 영어: Not started, In progress, Done
-        # AI가 한국어로 생성하면 매핑 필요
+        # DB 생성 후 _localize_status_options()로 한국어 옵션을 생성하므로
+        # 한국어 값은 그대로 전달, 영어/변형은 한국어로 통일
         status_map = {
-            # 기본
-            "시작 전": "Not started", "시작전": "Not started", "대기": "Not started",
-            "미시작": "Not started", "예정": "Not started", "계획": "Not started",
-            "준비": "Not started", "대기 중": "Not started", "대기중": "Not started",
-            "진행 중": "In progress", "진행중": "In progress", "진행": "In progress",
-            "작업 중": "In progress", "작업중": "In progress", "활성": "In progress",
-            "처리 중": "In progress", "처리중": "In progress",
-            "완료": "Done", "완료됨": "Done", "끝": "Done", "마감": "Done",
-            "종료": "Done", "해결": "Done", "해결됨": "Done",
+            # 영어 → 한국어
+            "not started": "시작 전", "todo": "시작 전", "to do": "시작 전",
+            "Not started": "시작 전", "TODO": "시작 전",
+            "in progress": "진행 중", "doing": "진행 중", "active": "진행 중",
+            "In progress": "진행 중",
+            "done": "완료", "completed": "완료", "finished": "완료",
+            "Done": "완료", "Completed": "완료",
+            # 한국어 변형 → 표준 한국어
+            "시작전": "시작 전", "대기": "시작 전", "미시작": "시작 전",
+            "예정": "시작 전", "계획": "시작 전", "준비": "시작 전",
+            "대기 중": "시작 전", "대기중": "시작 전",
+            "진행중": "진행 중", "진행": "진행 중",
+            "작업 중": "진행 중", "작업중": "진행 중",
+            "처리 중": "진행 중", "처리중": "진행 중", "활성": "진행 중",
+            "완료됨": "완료", "끝": "완료", "마감": "완료",
+            "종료": "완료", "해결": "완료", "해결됨": "완료",
             # 독서/학습
-            "읽기 전": "Not started", "읽기전": "Not started", "미독": "Not started",
-            "읽는 중": "In progress", "읽는중": "In progress", "독서 중": "In progress",
-            "읽음": "Done", "독서완료": "Done", "다 읽음": "Done",
-            "수강 전": "Not started", "수강전": "Not started",
-            "수강 중": "In progress", "수강중": "In progress", "학습 중": "In progress",
-            "수강 완료": "Done", "수강완료": "Done",
-            # 콘텐츠/프로젝트
-            "기획": "Not started", "기획 중": "Not started",
-            "작성 중": "In progress", "작성중": "In progress", "리뷰": "In progress",
-            "리뷰 중": "In progress", "검토 중": "In progress",
-            "발행": "Done", "발행됨": "Done", "배포": "Done", "출시": "Done",
-            # 영어 (소문자)
-            "not started": "Not started", "todo": "Not started", "to do": "Not started",
-            "in progress": "In progress", "doing": "In progress", "active": "In progress",
-            "done": "Done", "completed": "Done", "finished": "Done",
+            "읽기 전": "시작 전", "읽기전": "시작 전", "미독": "시작 전",
+            "읽는 중": "진행 중", "읽는중": "진행 중", "독서 중": "진행 중",
+            "읽음": "완료", "독서완료": "완료", "다 읽음": "완료",
+            "수강 전": "시작 전", "수강전": "시작 전",
+            "수강 중": "진행 중", "수강중": "진행 중", "학습 중": "진행 중",
+            "수강 완료": "완료", "수강완료": "완료",
+            # 콘텐츠
+            "기획": "시작 전", "기획 중": "시작 전",
+            "작성 중": "진행 중", "작성중": "진행 중",
+            "리뷰": "진행 중", "리뷰 중": "진행 중", "검토 중": "진행 중",
+            "발행": "완료", "발행됨": "완료", "배포": "완료", "출시": "완료",
         }
-        mapped = status_map.get(str(value).strip(), str(value))
+        mapped = status_map.get(str(value).strip(), str(value).strip())
         return {"status": {"name": mapped}}
     elif prop_type == "checkbox":
         if isinstance(value, bool):

@@ -61,6 +61,9 @@ class CreationExecutor:
 
         db_id = db["id"]
 
+        # status 속성 한국어 옵션으로 업데이트
+        await self._localize_status_options(db_id, filtered_props)
+
         # 샘플 데이터 추가 (relation/rollup/formula 속성은 제거 — DB에 아직 없으므로)
         if "sample_items" in db_spec and db_spec["sample_items"]:
             try:
@@ -120,6 +123,57 @@ class CreationExecutor:
                 logger.info(f"[뷰 생성 스킵] {view.get('type', '?') if isinstance(view, dict) else view}: {str(e)[:80]}")
 
         return {"id": db_id, "title": db_spec["title"], "views": len(views)}
+
+    # ── Status 속성 한국어화 ────────────────────────────────────
+
+    async def _localize_status_options(self, db_id: str, properties: dict) -> None:
+        """status 속성의 기본 영어 옵션을 한국어로 변경"""
+        status_keys = [
+            k for k, v in properties.items()
+            if v == "status" or (isinstance(v, dict) and v.get("type") == "status")
+        ]
+        if not status_keys:
+            return
+
+        try:
+            db_info = await self.client.get_database(db_id)
+            for key in status_keys:
+                prop_data = db_info.get("properties", {}).get(key)
+                if not prop_data or prop_data.get("type") != "status":
+                    continue
+
+                groups = prop_data.get("status", {}).get("groups", [])
+                new_options = []
+                rename_map = {
+                    "Not started": "시작 전",
+                    "In progress": "진행 중",
+                    "Done": "완료",
+                }
+                for group in groups:
+                    for opt in group.get("option_ids", []):
+                        pass
+                    for opt in group.get("options", []):
+                        old_name = opt.get("name", "")
+                        if old_name in rename_map:
+                            new_options.append({
+                                "id": opt["id"],
+                                "name": rename_map[old_name],
+                                "color": opt.get("color", "default"),
+                            })
+
+                if new_options:
+                    await self.client.update_database(db_id, {
+                        "properties": {
+                            key: {
+                                "status": {
+                                    "options": new_options,
+                                }
+                            }
+                        }
+                    })
+                    logger.info(f"[Status 한국어화] {key}: {[o['name'] for o in new_options]}")
+        except Exception as e:
+            logger.info(f"[Status 한국어화 스킵] {str(e)[:100]}")
 
     # ── 칼럼 블록 빌드 ──────────────────────────────────────────
 
@@ -392,6 +446,7 @@ class CreationExecutor:
                     parent_id=main_page_id,
                     title=sub["title"],
                     icon=sub.get("icon"),
+                    cover_url=sub.get("cover_url") or main.get("cover_url"),
                     position="page_end",
                 )
                 sub_page_map[sub["title"]] = sub_page["id"]
