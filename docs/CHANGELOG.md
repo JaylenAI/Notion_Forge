@@ -6,6 +6,29 @@
 
 # Part 1: 변경 이력
 
+## [8.0.0] - 2026-04-24
+
+### Added (엔터프라이즈급 AI Agent)
+- Plan-Execute-Reflect Agent Loop: AI가 도구 직접 선택·실행·검증 (최대 3회 Re-plan)
+- Tool Registry 9개 도구: create_view 추가 (Agent Loop에서 뷰 프로그래밍 생성)
+- 하이브리드 SkillRouter: 키워드 빠른경로 (score≥2) + LLM 정밀 분류
+- Episodic Memory: 성공/실패 패턴 학습 + 유저 선호도 기억 + AI 컨텍스트 주입
+- 버튼 블록 지원: Notion 자동화 트리거 (block_builder.button)
+- Memory REST API: GET/POST /memory/preferences, GET /memory/stats
+- MIT LICENSE 추가 (오픈소스 배포 준비)
+- 테스트 95개 추가 (151→246): provider_router, tool_registry, agent_loop, skill_router, memory
+
+### Changed
+- Provider Strategy 통합: 6개 프로바이더를 ProviderRouter로 자동 라우팅
+- blueprint_generator: skill_router 모듈로 스킬 매칭 분리
+- 보안 강화 5건: Path Traversal (recipes), OAuth 토큰 fragment 전달, ID UUID 검증, Pydantic Field 제약, API 키 max_length
+
+### Fixed
+- OAuth 토큰 노출: 쿼리 파라미터 → URL fragment 전달로 변경
+- 통합 테스트: Pydantic 검증 강화에 맞춰 테스트 기대값 수정
+
+---
+
 ## [7.5.0] - 2026-04-18
 
 ### Added (스킬 확장 + 품질 마무리)

@@ -80,31 +80,41 @@
 ## 3. AI Agent 흐름
 
 ```
-1. 사용자 입력 수신
-   "프로젝트 관리 대시보드 만들어줘, 갤러리 뷰, 주황색 톤, 하위 페이지 3개"
+1. Input Guardrail — 프롬프트 인젝션 방어 + 입력 검증
 
-2. 의도 분석 (Claude API)
+2. 의도 분석 (Provider Strategy: Copilot/Claude/Gemini/Groq/OpenAI)
    → 템플릿 타입, 구성요소, 색상, 하위 페이지 파악
 
-3. 구조 설계 (JSON Blueprint)
-   → 페이지 계층, DB 스키마, 블록 구성 생성
+3. Skill Router (하이브리드)
+   → 키워드 빠른경로 (score≥2) 또는 LLM 정밀 분류로 48개 스킬 중 선택
 
-4. Tool 선택 & 실행
-   → 필요한 Tool을 순서대로 호출하여 Notion API 실행
+4. Episodic Memory
+   → 과거 성공/실패 패턴 + 유저 선호도 → AI 컨텍스트 주입
 
-5. 결과 반환
-   → 생성된 Notion 페이지 URL + 요약 정보
+5. 구조 설계 (JSON Blueprint) + Gen-Eval Loop (최대 3회)
+   → 페이지 계층, DB 스키마, 블록 구성 생성 → 검증 → 피드백 → 재생성
+
+6. Approval Gate — "DB 3개 생성합니다. 진행할까요?" 사용자 확인
+
+7. Plan-Execute-Reflect Agent Loop
+   → Plan: AI가 실행 계획 생성 (도구 순서)
+   → Execute: Tool Registry (9개 도구) → Notion API 호출
+   → Reflect: 결과 검증 → 불만족 시 Re-plan (최대 3회)
+
+8. 결과 반환 + Memory 저장
+   → Notion 페이지 URL + 에피소드 기록 + 스킬 통계 갱신
 ```
 
-### Tool 정의 (8개)
+### Tool 정의 (9개)
 
 | Tool | 설명 |
 |------|------|
 | `create_page` | 페이지 생성 (커버, 아이콘, 제목) |
 | `create_database` | DB 생성 + 속성 설정 |
-| `add_blocks` | 블록 추가 (heading, callout, toggle 등) |
+| `add_blocks` | 블록 추가 (heading, callout, toggle, button 등) |
 | `create_columns` | 칼럼 레이아웃 (2단/3단) |
 | `add_database_items` | 샘플 데이터 입력 |
+| `create_view` | DB 뷰 생성 (gallery, board, calendar 등 10종) |
 | `apply_color_theme` | 색상 테마 일괄 적용 |
 | `link_databases` | DB 간 Relation/Rollup 설정 |
 | `generate_cover` | 커버 이미지 URL 생성 |
@@ -225,7 +235,7 @@ AI가 생성하는 중간 구조 (JSON):
 
 | 블록 | 대안 |
 |------|------|
-| `button` | 콜아웃 + 링크 블록 |
+| `button` | ✅ 지원 (v8.0.0) — 자동화 트리거 |
 | `link_preview` | bookmark으로 대체 |
 
 ### Views API (2026-03-19 신규) — 10개 뷰 전부 동작 확인
@@ -338,15 +348,21 @@ NotionForge/
 │   ├── config.py                  # 환경변수, 설정
 │   ├── agent/
 │   │   ├── orchestrator.py        # Agent 오케스트레이터
-│   │   ├── intent_analyzer.py     # 의도 분석 (Claude API)
-│   │   ├── blueprint_generator.py # 구조 설계
-│   │   └── tools/                 # 8개 Tool
-│   │       ├── base.py
-│   │       ├── create_page.py
-│   │       ├── create_database.py
-│   │       ├── add_blocks.py
-│   │       ├── add_database_items.py
-│   │       ├── create_columns.py
+│   │   ├── intent_analyzer.py     # 의도 분석 (AI Provider)
+│   │   ├── blueprint_generator.py # 구조 설계 + Gen-Eval 루프
+│   │   ├── agent_loop.py          # Plan-Execute-Reflect 루프
+│   │   ├── skill_router.py        # 하이브리드 스킬 라우터 (키워드+LLM)
+│   │   ├── memory.py              # Episodic Memory (학습)
+│   │   ├── providers/             # 6개 AI 프로바이더 Strategy 패턴
+│   │   │   ├── base.py / router.py
+│   │   │   ├── copilot_provider.py / claude_provider.py
+│   │   │   ├── gemini_provider.py / groq_provider.py
+│   │   │   └── openai_provider.py / mock_provider.py
+│   │   └── tools/                 # 9개 Tool (+ create_view)
+│   │       ├── base.py / registry.py
+│   │       ├── create_page.py / create_database.py
+│   │       ├── add_blocks.py / add_database_items.py
+│   │       ├── create_columns.py / create_view.py
 │   │       ├── apply_color_theme.py
 │   │       ├── link_databases.py
 │   │       └── generate_cover.py
@@ -357,7 +373,12 @@ NotionForge/
 │   ├── patterns/                  # 템플릿 패턴 라이브러리
 │   ├── routers/
 │   │   ├── chat.py                # WebSocket 채팅
-│   │   └── template.py            # REST API
+│   │   ├── template.py            # REST API
+│   │   ├── ai.py                  # AI 모델/프로바이더 API
+│   │   ├── workspace.py           # 워크스페이스 + Memory API
+│   │   ├── recipes.py             # 커뮤니티 레시피 API
+│   │   ├── oauth.py               # Notion OAuth 연동
+│   │   └── skills.py              # 커스텀 스킬 CRUD
 │   └── tests/
 ├── frontend/
 │   ├── package.json

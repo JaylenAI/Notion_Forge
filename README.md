@@ -7,7 +7,7 @@
 **NotionForge**는 사용자가 자연어로 원하는 노션 템플릿을 설명하면, AI Agent가 Notion API를 통해 완성된 템플릿을 자동으로 생성해주는 서비스입니다.
 
 > **소속**: 가짜연구소 - "나만의 자동화 AI Agent 만들기" 프로젝트
-> **브랜치**: `copilot-sdk` (v7.5.0 — 하네스 엔지니어링 + Copilot SDK, 최신) | `dev-2` (v6.x)
+> **버전**: v8.0.0 — 엔터프라이즈급 AI Agent (Plan-Execute-Reflect + Episodic Memory)
 
 ---
 
@@ -27,7 +27,7 @@
 ```bash
 git clone https://github.com/JaylenAI/notion_ai_agent.git
 cd notion_ai_agent
-git checkout copilot-sdk    # v7.5.0 하네스 엔지니어링 (최신)
+git checkout dev            # v8.0.0 엔터프라이즈급 AI Agent (최신)
 cp .env.example .env
 ```
 
@@ -164,6 +164,9 @@ NotionForge/
 │   │   │   ├── layout_router.py       # 의도→8개 레이아웃 자동 매핑
 │   │   │   ├── post_processor.py      # AI 출력 검증 + 자동 보정
 │   │   │   ├── skill_matcher.py       # 2-Tier 스킬 매칭 (48개)
+│   │   │   ├── skill_router.py        # 하이브리드 스킬 라우터 (키워드+LLM)
+│   │   │   ├── memory.py             # Episodic Memory (성공/실패 학습)
+│   │   │   ├── agent_loop.py         # Plan-Execute-Reflect 루프
 │   │   │   ├── creation_executor.py   # 5-Pass Notion 생성 파이프라인
 │   │   │   ├── modify_handler.py      # 멀티턴 수정 디스패치
 │   │   │   ├── view_builder.py        # 뷰 생성/설정 빌더
@@ -182,7 +185,7 @@ NotionForge/
 │   │   │   │   ├── base.md / views_catalog.md / relations.md
 │   │   │   │   ├── modes/         # simple / standard / advanced
 │   │   │   │   └── layouts/       # 8개 레이아웃 패턴
-│   │   │   └── tools/             # 8개 Tool
+│   │   │   └── tools/             # 9개 Tool (+ create_view)
 │   │   ├── routers/
 │   │   │   ├── chat.py            # WebSocket 채팅
 │   │   │   ├── template.py        # REST API + Blueprint Import
@@ -216,7 +219,7 @@ NotionForge/
 │   │   │   ├── sales/ life_os/                          # Tier2 (crm/기타)
 │   │   │   └── (각 스킬: SKILL.md 패턴 파일)
 │   │   └── schemas/               # Pydantic 스키마
-│   └── tests/                     # 151개 테스트 (100% 통과)
+│   └── tests/                     # 246개 테스트 (100% 통과)
 │
 └── frontend/
     ├── src/
@@ -326,9 +329,9 @@ NotionForge/
 
 ---
 
-## 하네스 엔지니어링 아키텍처 (v7.5.0)
+## AI Agent 아키텍처 (v8.0.0)
 
-AI 모델은 범용 도구일 뿐, **하네스(harness)가 결과 품질을 결정합니다.**
+**Plan-Execute-Reflect 패턴** + **Episodic Memory**로 엔터프라이즈급 AI Agent 구현.
 
 ```
 유저 입력: "CRM 대시보드 만들어줘"
@@ -337,29 +340,41 @@ AI 모델은 범용 도구일 뿐, **하네스(harness)가 결과 품질을 결�
     |
 [1. Intent Analyzer] — 의도 분석 (CREATE / MODIFY / QUESTION)
     |
-[2. Mode Detector] — 복잡도 자동 감지 (simple / standard / advanced)
+[2. Skill Router] — 하이브리드 스킬 매칭 (키워드 빠른경로 + LLM 분류)
+    |   48개 스킬 (12 Tier1 + 36 Tier2) 자동 선택
     |
-[3. Layout Router] — 8개 레이아웃 중 최적 선택 (→ dashboard_widgets)
+[3. Episodic Memory] — 과거 성공/실패 패턴 + 유저 선호도 → AI 컨텍스트 주입
     |
-[4. Prompt Assembler] — 모듈 .md 동적 조립
+[4. Layout Router] — 8개 레이아웃 중 최적 선택 (→ dashboard_widgets)
+    |
+[5. Prompt Assembler] — 모듈 .md 동적 조립
     |   base.md + modes/advanced.md + layouts/dashboard_widgets.md + views_catalog.md + ...
     |
-[5. AI Generation] — Copilot(GPT-4.1) / Claude / Gemini / Groq (Provider Strategy)
+[6. AI Generation] — Provider Strategy (Copilot/Claude/Gemini/Groq/OpenAI)
+    |   ProviderRouter: API 키 패턴 자동 감지 → 최적 프로바이더 라우팅
     |
-[6. Gen-Eval Loop] — 구조적 검증 → 실패 시 에러를 AI에게 피드백 → 재생성 (최대 3회)
+[7. Gen-Eval Loop] — 구조적 검증 → 실패 시 에러를 AI에게 피드백 → 재생성 (최대 3회)
     |   Level 0: 필수 필드 존재
     |   Level 1: 블록 구조 (db_ref 위치, 타입)
     |   Level 2: DB 구조 (title 속성, sample_items)
     |   Level 3: 참조 범위 (db_index 유효성)
     |
-[7. Post-Processor] — 자동 보정 (callout 누락 추가, status 한국어 매핑, spacing)
+[8. Post-Processor] — 자동 보정 (callout 누락 추가, status 한국어 매핑, spacing)
     |
-[8. Approval Gate] — "DB 3개 생성합니다. 진행할까요?" 사용자 확인/취소
+[9. Approval Gate] — "DB 3개 생성합니다. 진행할까요?" 사용자 확인/취소
     |
-[9. 5-Pass Creation] — Notion API 호출 (페이지 → 서브페이지 → DB → 뷰 → 블록)
+[10. Agent Loop (Plan-Execute-Reflect)]
+    |   Plan: AI가 실행 계획 생성 (도구 선택 + 순서)
+    |   Execute: Tool Registry (9개 도구) → Notion API 호출
+    |   Reflect: 결과 검증 → 만족? Done / 불만족? Re-plan (최대 3회)
+    |   $stepN.id 참조 해결: 이전 단계 결과를 다음 단계에 자동 전달
+    |
+[11. 5-Pass Creation] — 페이지 → 서브페이지 → DB → 뷰 → 블록
     |   실패 시 Rollback (자동 삭제)
     |
-[10. Metrics + History] — 토큰/시간/재시도 기록 + 이력 저장
+[12. Episodic Memory 저장] — 성공/실패 에피소드 기록 + 스킬 통계 갱신
+    |
+[13. Metrics + History] — 토큰/시간/재시도 기록 + 이력 저장
 ```
 
 ### 8개 레이아웃 패턴
@@ -454,6 +469,19 @@ AI 모델은 범용 도구일 뿐, **하네스(harness)가 결과 품질을 결�
 - [x] 라우터 분할 (template→template/ai/workspace)
 - [x] chatStore 분할 (610→260줄, connectionStore + settingsStore)
 - [x] WebSocket 자동 재연결
+
+### v8.0.0 완료 (2026-04-24) — 엔터프라이즈급 AI Agent
+- [x] Plan-Execute-Reflect Agent Loop (AI가 도구 직접 선택·실행·검증, 최대 3회 Re-plan)
+- [x] Tool Registry 9개 도구 (create_page, create_database, add_blocks, create_columns, add_database_items, link_databases, create_view, apply_color_theme, generate_cover)
+- [x] 하이브리드 SkillRouter (키워드 빠른경로 score≥2 + LLM 정밀 분류)
+- [x] Episodic Memory (episodes.jsonl + preferences.json + skill_stats.json)
+- [x] Provider Strategy 통합 (6개 프로바이더 + ProviderRouter 자동 감지)
+- [x] 보안 강화 5건 (Path Traversal, OAuth 토큰 fragment, ID UUID 검증, Pydantic 제약, 페이로드 크기)
+- [x] CreateView 도구 (Agent Loop에서 뷰 프로그래밍 생성)
+- [x] 버튼 블록 지원 (Notion 자동화 트리거)
+- [x] 246개 테스트 전체 통과 (+95 신규)
+- [x] MIT LICENSE 추가
+- [x] 문서 전체 최신화
 
 ### 다음 개발 예정
 
