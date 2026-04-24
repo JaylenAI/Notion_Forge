@@ -1,8 +1,8 @@
 # 진행 현황 (Current Status)
 
-> 최종 업데이트: 2026-04-21
-> 현재 브랜치: copilot-sdk
-> 버전: v7.5.0 (스킬 확장 + 코드 품질 마무리)
+> 최종 업데이트: 2026-04-24
+> 현재 브랜치: dev
+> 버전: v8.0.0 (엔터프라이즈급 AI Agent 아키텍처)
 
 ---
 
@@ -87,7 +87,7 @@ Docker 볼륨 (이력 영속)       [██████████] 100%
 God Object 분해 (4모듈)       [██████████] 100%
 Provider Strategy 패턴        [██████████] 100%
 Pydantic 스키마 정비           [██████████] 100%
-테스트 151개 (71→151)         [██████████] 100%
+테스트 246개 (71→246)         [██████████] 100%
 Path traversal 방어            [██████████] 100%
 DB property key 호환 수정      [██████████] 100%
 REST Approval auto-approve    [██████████] 100%
@@ -189,7 +189,7 @@ WebSocket 자동 재연결          [██████████] 100%
 - ✅ WebSocket 자동 재연결
 
 ### 테스트
-- ✅ 151개 통과 (unit + integration)
+- ✅ 246개 통과 (unit + integration)
 - ✅ 실제 Notion 생성 QA 8건 전부 성공
 - ✅ E2E 테스트 L1~L3 전부 성공 (샘플 15/15)
 
@@ -264,3 +264,27 @@ WebSocket 자동 재연결          [██████████] 100%
 
 ### 기존 테스트 버그 수정
 - ✅ `test_build_database_properties_select` — title 속성 누락 문제 수정
+
+---
+
+## v8.0.0 변경사항 (2026-04-24 — 엔터프라이즈급 AI Agent)
+
+### Phase 1: Foundation
+- ✅ Provider Strategy 패턴 통합 (6개 프로바이더 + MockProvider)
+- ✅ God Object 분할 — client.py(896줄→5파일), NotionRenderer.tsx(845줄→5파일)
+- ✅ 보안 취약점 5건 수정 (Path Traversal, OAuth 토큰 노출, 입력 검증, ID UUID 검증)
+
+### Phase 2: Agent Core Architecture
+- ✅ Tool Registry — 9개 도구 자동 등록 + LLM function calling 스펙 생성
+- ✅ Plan-Execute-Reflect Agent Loop — AI가 도구 직접 선택·실행·검증
+- ✅ 하이브리드 SkillRouter — 키워드 매칭(빠른 경로) + LLM 분류(정밀 경로)
+- ✅ Episodic Memory — 성공/실패 패턴 학습, 유저 선호도 기억, AI 컨텍스트 주입
+
+### Phase 4: Template Quality
+- ✅ 버튼 블록 지원 (Notion 자동화 트리거)
+- ✅ CreateView 도구 — Agent Loop에서 뷰 프로그래밍 생성
+
+### Phase 5: Testing + Open Source
+- ✅ 246개 테스트 전체 통과 (151→246, +95 신규)
+- ✅ MIT LICENSE 추가
+- ✅ 문서 업데이트
