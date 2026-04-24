@@ -59,15 +59,18 @@ async def analyze_intent(message: str) -> IntentResult:
     provider = settings.ai_provider
 
     if provider == "copilot":
-        return await _copilot_analyze(message)
+        result = await _copilot_analyze(message)
     elif provider == "groq":
-        return await _groq_analyze(message)
+        result = await _groq_analyze(message)
     elif provider == "gemini":
-        return await _gemini_analyze(message)
+        result = await _gemini_analyze(message)
     elif provider == "claude":
-        return await _claude_analyze(message)
+        result = await _claude_analyze(message)
     else:
-        return _mock_analyze(message)
+        result = _mock_analyze(message)
+
+    result.intent = _override_intent(message, result.intent)
+    return result
 
 
 async def _copilot_analyze(message: str) -> IntentResult:
@@ -177,6 +180,16 @@ def _parse_ai_response(text: str) -> IntentResult:
         return _mock_analyze(json_match.group() if json_match else "")
 
 
+def _override_intent(message: str, intent: str) -> str:
+    """CREATE 키워드가 있으면 QUESTION을 CREATE로 강제 보정"""
+    if intent == "QUESTION":
+        msg = message.lower()
+        create_keywords = ["만들어", "생성", "제작", "만들자", "ㄱㄱ", "구축", "설계"]
+        if any(kw in msg for kw in create_keywords):
+            return "CREATE"
+    return intent
+
+
 def _mock_analyze(message: str) -> IntentResult:
     """Mock 패턴 매칭으로 의도 분석"""
     msg = message.lower()
@@ -189,6 +202,8 @@ def _mock_analyze(message: str) -> IntentResult:
         intent = "MODIFY"
     else:
         intent = "CREATE"
+
+    intent = _override_intent(message, intent)
 
     template_type = "custom"
     for t_type, keywords in TYPE_KEYWORDS.items():
