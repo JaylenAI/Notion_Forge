@@ -1,6 +1,6 @@
 """Intent Analyzer 단위 테스트"""
 import pytest
-from app.agent.intent_analyzer import _mock_analyze
+from app.agent.intent_analyzer import _mock_analyze, _override_intent
 
 
 def test_create_dashboard():
@@ -61,3 +61,23 @@ def test_sub_pages_extraction():
     result = _mock_analyze("대시보드 만들어줘 하위 페이지 3개 (ETC, Project, Study)")
     assert result.sub_pages is not None
     assert len(result.sub_pages) == 3
+
+
+class TestOverrideIntent:
+    def test_create_keyword_overrides_question(self):
+        assert _override_intent("갤러리 뷰로 만들어줘", "QUESTION") == "CREATE"
+
+    def test_no_create_keyword_keeps_question(self):
+        assert _override_intent("버튼 추가 가능해?", "QUESTION") == "QUESTION"
+
+    def test_create_stays_create(self):
+        assert _override_intent("대시보드 만들어줘", "CREATE") == "CREATE"
+
+    def test_complex_prompt_with_create(self):
+        msg = "콘텐츠 크리에이터용 채널 운영 시스템 만들어줘. 갤러리 뷰로 보여줘."
+        assert _override_intent(msg, "QUESTION") == "CREATE"
+
+    def test_mock_complex_create_prompt(self):
+        msg = "영상 기획 DB 갤러리 뷰로 만들어줘. 수익 관리 DB도 필요해."
+        result = _mock_analyze(msg)
+        assert result.intent == "CREATE"
