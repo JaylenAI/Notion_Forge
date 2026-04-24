@@ -6,6 +6,11 @@ from app.notion.client import NotionClient
 class LinkDatabasesTool(BaseTool):
     name = "link_databases"
     description = "데이터베이스 간 Relation을 설정합니다"
+    parameters = {
+        "source_db_id": {"type": "string", "description": "소스 DB ID"},
+        "target_db_id": {"type": "string", "description": "타겟 DB ID"},
+        "relation_name": {"type": "string", "description": "관계 속성 이름", "optional": True},
+    }
 
     def __init__(self, client: NotionClient):
         self.client = client

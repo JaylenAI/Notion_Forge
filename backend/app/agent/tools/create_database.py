@@ -8,6 +8,12 @@ from app.notion.client import NotionClient
 class CreateDatabaseTool(BaseTool):
     name = "create_database"
     description = "데이터베이스를 생성하고 속성을 설정합니다"
+    parameters = {
+        "parent_id": {"type": "string", "description": "부모 페이지 ID"},
+        "title": {"type": "string", "description": "DB 제목"},
+        "properties": {"type": "object", "description": "DB 속성 정의 (이름: 타입)"},
+        "is_inline": {"type": "boolean", "description": "인라인 DB 여부", "optional": True},
+    }
 
     def __init__(self, client: NotionClient):
         self.client = client

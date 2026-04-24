@@ -9,6 +9,10 @@ from app.notion.client import NotionClient
 class CreateColumnsTool(BaseTool):
     name = "create_columns"
     description = "칼럼 레이아웃을 생성합니다"
+    parameters = {
+        "page_id": {"type": "string", "description": "대상 페이지 ID"},
+        "columns": {"type": "array", "description": "컬럼 배열 [{blocks: [...]}]"},
+    }
 
     def __init__(self, client: NotionClient):
         self.client = client

@@ -7,6 +7,13 @@ from app.notion.client import NotionClient
 class CreatePageTool(BaseTool):
     name = "create_page"
     description = "새 노션 페이지를 생성합니다"
+    parameters = {
+        "parent_id": {"type": "string", "description": "부모 페이지 ID"},
+        "title": {"type": "string", "description": "페이지 제목"},
+        "icon": {"type": "string", "description": "이모지 아이콘", "optional": True},
+        "cover_url": {"type": "string", "description": "커버 이미지 URL", "optional": True},
+        "children": {"type": "array", "description": "자식 블록 배열", "optional": True},
+    }
 
     def __init__(self, client: NotionClient):
         self.client = client

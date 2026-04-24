@@ -16,6 +16,9 @@ COVER_URLS = {
 class GenerateCoverTool(BaseTool):
     name = "generate_cover"
     description = "색상 테마에 맞는 커버 이미지 URL을 생성합니다"
+    parameters = {
+        "color": {"type": "string", "description": "색상 키 (blue, green, red 등)", "optional": True},
+    }
 
     async def execute(self, **kwargs: Any) -> dict[str, Any]:
         color = kwargs.get("color", "default")

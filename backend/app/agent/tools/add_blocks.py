@@ -10,6 +10,10 @@ from app.notion.client import NotionClient
 class AddBlocksTool(BaseTool):
     name = "add_blocks"
     description = "페이지에 블록을 추가합니다"
+    parameters = {
+        "page_id": {"type": "string", "description": "대상 페이지 ID"},
+        "blocks": {"type": "array", "description": "블록 스펙 배열 [{type, text, ...}]"},
+    }
 
     def __init__(self, client: NotionClient):
         self.client = client

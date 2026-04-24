@@ -15,6 +15,11 @@ from app.notion.client import NotionClient
 class AddDatabaseItemsTool(BaseTool):
     name = "add_database_items"
     description = "데이터베이스에 샘플 항목을 추가합니다"
+    parameters = {
+        "database_id": {"type": "string", "description": "대상 DB ID"},
+        "items": {"type": "array", "description": "항목 배열 [{속성명: 값, ...}]"},
+        "db_properties": {"type": "object", "description": "DB 속성 정의 (매핑용)", "optional": True},
+    }
 
     def __init__(self, client: NotionClient):
         self.client = client
