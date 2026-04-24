@@ -1,7 +1,7 @@
 """스킬 매칭 + 레이아웃 라우터 테스트"""
 
 import pytest
-from app.agent.blueprint_generator import _match_specific_skill, TIER2_SKILLS
+from app.agent.skill_router import _keyword_score, route_skill, TIER2_SKILLS
 from app.agent.layout_router import layout_router
 from app.skills import SKILL_REGISTRY
 
@@ -43,13 +43,13 @@ class TestSkillMatching:
         ("여행 계획 만들어줘", "travel"),
     ])
     def test_skill_match(self, message, expected):
-        result = _match_specific_skill(message)
+        best_t2, t2_score, best_t1, t1_score = _keyword_score(message)
+        result = best_t2 if t2_score > 0 else best_t1 if t1_score > 0 else None
         assert result == expected, f'"{message}" → {result} (expected: {expected})'
 
     def test_returns_none_for_generic(self):
-        """매우 일반적인 메시지는 None 반환 가능"""
-        result = _match_specific_skill("something")
-        # None 또는 어떤 스킬이든 OK (panic 안 하면 됨)
+        best_t2, t2_score, best_t1, t1_score = _keyword_score("something")
+        result = best_t2 if t2_score > 0 else best_t1 if t1_score > 0 else None
         assert result is None or result in SKILL_REGISTRY
 
 
@@ -71,4 +71,4 @@ class TestLayoutRouter:
 
     def test_has_reason(self):
         result = layout_router.route("운동 기록 만들어줘")
-        assert result.reason  # non-empty string
+        assert result.reason

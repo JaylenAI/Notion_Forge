@@ -18,7 +18,7 @@ from app.skills import get_tool_enum_description
 from app.agent.prompt_assembler import prompt_assembler
 from app.agent.layout_router import layout_router
 from app.agent.post_processor import blueprint_validator
-from app.agent.skill_matcher import build_skill_guide, _match_specific_skill, TIER2_SKILLS, _extract_skill_essentials
+from app.agent.skill_router import build_skill_guide as _build_skill_guide_async
 
 from pathlib import Path as _Path
 
@@ -133,9 +133,10 @@ async def generate_blueprint(
 ) -> dict[str, Any]:
     """Gen-Eval 피드백 루프: AI 생성 → 검증 → 실패 시 에러 피드백 → 재생성 (최대 3회)"""
     import time
+    from app.agent.providers.router import ProviderRouter
 
-    # 스킬 가이드를 프롬프트에 주입 — 유저 메시지에 맞는 스킬 우선 로딩
-    skill_guide = build_skill_guide(user_message)
+    provider = ProviderRouter.resolve(api_key=ai_key, ai_model=ai_model)
+    skill_guide, skill_match = await _build_skill_guide_async(user_message, provider=provider)
 
     max_retries = 3
     feedback_context = ""
@@ -173,7 +174,8 @@ async def generate_blueprint(
                 ai_content = blueprint_validator.validate_and_fix(ai_content)
                 blueprint = _assemble_blueprint(ai_content)
                 blueprint["metadata"]["generation_method"] = "ai_dynamic"
-                blueprint["metadata"]["skill_used"] = ai_content.get("skill", "custom")
+                blueprint["metadata"]["skill_used"] = skill_match.skill_id or ai_content.get("skill", "custom")
+                blueprint["metadata"]["skill_match_method"] = skill_match.method
                 blueprint["metadata"]["gen_eval_attempts"] = attempt + 1
                 blueprint["metadata"]["gen_eval_time"] = round(elapsed, 1)
                 logger.info(f"[Gen-Eval 통과] 시도 {attempt+1}/{max_retries}, {elapsed:.1f}s")
