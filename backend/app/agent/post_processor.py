@@ -1,4 +1,4 @@
-"""Post-processor: AI 생성 블루프린트 검증 + 자동 보정
+"""Post-processor: AI 생성 블루프린트 검증 + 자동 보정 + 디자인 보강
 
 검증 항목:
 1. 필수 블록 존재 여부 (welcome callout, guide toggle)
@@ -6,11 +6,14 @@
 3. 빈 spacing paragraph 존재 여부
 4. DB 참조 인덱스 유효성
 5. 색상 일관성
-6. sample_items 최소 개수
+6. sample_items 최소 개수 (부족 시 자동 생성)
 7. status 속성값 한국어 매핑
+8. 디자인 다양성 보강 (블록 nesting, quote, divider)
 """
 
 import logging
+from datetime import datetime, timedelta
+import random
 
 logger = logging.getLogger("notionforge.post_processor")
 
@@ -29,7 +32,11 @@ class BlueprintValidator:
         content = self._validate_db_refs(content)
         content = self._fix_status_values(content)
         content = self._ensure_sample_items(content)
+        content = self._ensure_sample_icons(content)
         content = self._ensure_cover_category(content)
+        content = self._ensure_sub_page_icons(content)
+        content = self._label_table_of_contents(content)
+        content = self._enhance_design_diversity(content)
         return content
 
     def _ensure_welcome_callout(self, content: dict[str, Any]) -> dict[str, Any]:
@@ -162,35 +169,79 @@ class BlueprintValidator:
         return content
 
     def _fix_status_values(self, content: dict[str, Any]) -> dict[str, Any]:
-        """status 속성의 sample_items 값을 한국어로 매핑"""
+        """status 속성의 sample_items 값을 표준 한국어로 통일"""
         status_map = {
-            "not started": "시작 전",
-            "in progress": "진행 중",
-            "done": "완료",
-            "completed": "완료",
-            "todo": "시작 전",
-            "to do": "시작 전",
+            "not started": "시작 전", "todo": "시작 전", "to do": "시작 전",
+            "in progress": "진행 중", "doing": "진행 중",
+            "done": "완료", "completed": "완료", "finished": "완료",
+            "시작전": "시작 전", "대기": "시작 전", "미시작": "시작 전",
+            "진행중": "진행 중", "작업중": "진행 중",
+            "완료됨": "완료", "끝": "완료",
         }
 
         for db in content.get("databases", []):
-            props = db.get("db_properties", {})
+            props = db.get("db_properties", db.get("properties", {}))
             status_keys = [k for k, v in props.items() if v == "status" or (isinstance(v, dict) and v.get("type") == "status")]
 
             for item in db.get("sample_items", []):
                 for key in status_keys:
                     val = item.get(key, "")
-                    if isinstance(val, str) and val.lower() in status_map:
-                        item[key] = status_map[val.lower()]
+                    if isinstance(val, str):
+                        mapped = status_map.get(val.lower().strip()) or status_map.get(val.strip())
+                        if mapped:
+                            item[key] = mapped
 
         return content
 
     def _ensure_sample_items(self, content: dict[str, Any]) -> dict[str, Any]:
-        """각 DB에 최소 3개 sample_items 확인"""
+        """각 DB에 최소 3개 sample_items 보장 — 부족하면 속성 기반 자동 생성"""
         for db in content.get("databases", []):
             items = db.get("sample_items", [])
-            if len(items) < 3:
-                # 최소 개수 미달이면 경고만 (자동 생성은 위험)
-                logger.info(f"[PostProcessor] 경고: DB '{db.get('title', '?')}' sample_items {len(items)}개 (최소 3개 권장)")
+            if len(items) >= 3:
+                continue
+
+            props = db.get("db_properties", db.get("properties", {}))
+            db_title = db.get("title", "항목")
+            needed = 4 - len(items)
+            logger.info(f"[PostProcessor] DB '{db_title}' sample_items {len(items)}개 → {needed}개 자동 생성")
+
+            generated = _generate_sample_items(props, db_title, needed, existing=items)
+            items.extend(generated)
+            db["sample_items"] = items
+        return content
+
+    def _ensure_sample_icons(self, content: dict[str, Any]) -> dict[str, Any]:
+        """샘플 데이터에 icon이 없으면 자동 부여"""
+        icon_pool = ["📌", "📋", "🎯", "📊", "💡", "🔖", "📝", "⭐", "🏷️", "📎"]
+        for db in content.get("databases", []):
+            for i, item in enumerate(db.get("sample_items", [])):
+                if not item.get("icon"):
+                    item["icon"] = icon_pool[i % len(icon_pool)]
+        return content
+
+    def _label_table_of_contents(self, content: dict[str, Any]) -> dict[str, Any]:
+        """table_of_contents 블록 앞에 '📑 목차' heading이 없으면 추가"""
+        blocks = content.get("blocks", [])
+        i = 0
+        while i < len(blocks):
+            block = blocks[i]
+            if not isinstance(block, dict) or block.get("type") != "table_of_contents":
+                i += 1
+                continue
+            has_label = False
+            if i > 0:
+                prev = blocks[i - 1]
+                if isinstance(prev, dict) and prev.get("type") in ("heading_1", "heading_2", "heading_3"):
+                    prev_text = prev.get("text", "")
+                    if "목차" in prev_text or "contents" in prev_text.lower():
+                        has_label = True
+            if not has_label:
+                color = content.get("color", "blue")
+                label = {"type": "heading_2", "text": "📑 목차", "color": color}
+                blocks.insert(i, label)
+                i += 1
+            i += 1
+        content["blocks"] = blocks
         return content
 
     def _ensure_cover_category(self, content: dict[str, Any]) -> dict[str, Any]:
@@ -209,6 +260,189 @@ class BlueprintValidator:
             }
             content["cover_category"] = color_to_category.get(color, "minimal")
         return content
+
+
+    def _ensure_sub_page_icons(self, content: dict[str, Any]) -> dict[str, Any]:
+        """서브페이지에 아이콘이 없으면 제목 기반으로 추론"""
+        icon_hints: dict[str, str] = {
+            "공지": "📢", "가이드": "📖", "FAQ": "❓", "설정": "⚙️",
+            "자료": "📚", "일정": "📅", "회의": "🤝", "보고": "📊",
+            "규칙": "📜", "도서": "📚", "과제": "📝", "게시": "💬",
+            "소개": "👋", "체크": "✅", "목표": "🎯", "리소스": "🔗",
+            "정책": "📋", "프로세스": "🔄", "팀": "👥", "멤버": "👤",
+        }
+        for sub in content.get("sub_pages", []):
+            if sub.get("icon"):
+                continue
+            title = sub.get("name", sub.get("title", ""))
+            matched_icon = "📄"
+            for keyword, icon in icon_hints.items():
+                if keyword in title:
+                    matched_icon = icon
+                    break
+            sub["icon"] = matched_icon
+        return content
+
+    def _enhance_design_diversity(self, content: dict[str, Any]) -> dict[str, Any]:
+        """디자인 다양성 보강 — 단조로운 블록 구조에 시각적 요소 추가"""
+        blocks = content.get("blocks", [])
+        if len(blocks) < 3:
+            return content
+
+        color = content.get("color", "blue")
+        bg = f"{color}_background" if color != "default" else "blue_background"
+        block_types = {b.get("type") for b in blocks if isinstance(b, dict)}
+
+        has_quote = "quote" in block_types
+        has_divider = "divider" in block_types
+        has_column = "column_list" in block_types
+
+        children_count = sum(
+            1 for b in blocks
+            if isinstance(b, dict) and (b.get("children") or b.get("children_text"))
+        )
+
+        if not has_quote and len(blocks) >= 5:
+            title = content.get("title", "")
+            quote_texts = [
+                f"'{title}'로 더 체계적인 관리를 시작하세요.",
+                "작은 기록이 큰 변화를 만듭니다.",
+                "체계적인 관리가 성공의 첫걸음입니다.",
+            ]
+            quote_block = {
+                "type": "quote",
+                "text": random.choice(quote_texts),
+                "color": bg,
+            }
+            insert_pos = min(2, len(blocks))
+            blocks.insert(insert_pos, quote_block)
+
+        if not has_divider and len(blocks) >= 6:
+            db_ref_positions = [
+                i for i, b in enumerate(blocks)
+                if isinstance(b, dict) and b.get("type") == "database_ref"
+            ]
+            for offset, pos in enumerate(db_ref_positions):
+                actual_pos = pos + offset
+                if actual_pos > 0 and blocks[actual_pos - 1].get("type") != "divider":
+                    blocks.insert(actual_pos, {"type": "divider"})
+
+        if children_count < 2:
+            for b in blocks:
+                if not isinstance(b, dict):
+                    continue
+                if b.get("type") == "callout" and not b.get("children"):
+                    text = b.get("text", "")
+                    if len(text) > 10:
+                        b["children"] = [
+                            {"type": "paragraph", "text": "아래 내용을 참고하여 활용해보세요."},
+                        ]
+                        children_count += 1
+                        if children_count >= 2:
+                            break
+
+        content["blocks"] = blocks
+        return content
+
+
+def _generate_sample_items(
+    props: dict[str, Any],
+    db_title: str,
+    count: int,
+    existing: list[dict] | None = None,
+) -> list[dict[str, Any]]:
+    """속성 타입 기반으로 현실적인 샘플 데이터 자동 생성"""
+    existing = existing or []
+    existing_titles = {item.get(next(iter(item), ""), "") for item in existing}
+
+    title_key = ""
+    for k, v in props.items():
+        ptype = v if isinstance(v, str) else v.get("type", "") if isinstance(v, dict) else ""
+        if ptype == "title":
+            title_key = k
+            break
+    if not title_key:
+        title_key = "이름"
+
+    title_pools: dict[str, list[str]] = {
+        "default": ["프로젝트 A", "프로젝트 B", "프로젝트 C", "프로젝트 D", "프로젝트 E"],
+    }
+    title_hints = db_title.lower()
+    if any(w in title_hints for w in ["자료", "학습", "교재", "수업", "강의"]):
+        title_pools["matched"] = ["파이썬 기초", "데이터 분석 입문", "프로젝트 관리론", "UX 디자인 원리", "마케팅 전략"]
+    elif any(w in title_hints for w in ["일정", "캘린더", "스케줄"]):
+        title_pools["matched"] = ["팀 미팅", "프로젝트 리뷰", "1:1 면담", "워크숍", "마감일"]
+    elif any(w in title_hints for w in ["과제", "태스크", "할일"]):
+        title_pools["matched"] = ["보고서 작성", "자료 조사", "발표 준비", "코드 리뷰", "문서 정리"]
+    elif any(w in title_hints for w in ["멤버", "팀원", "학생", "인원"]):
+        title_pools["matched"] = ["김민수", "이서연", "박준혁", "정하윤", "최도윤"]
+    elif any(w in title_hints for w in ["예산", "비용", "지출", "가계"]):
+        title_pools["matched"] = ["사무용품 구매", "팀 회식", "출장 교통비", "소프트웨어 구독", "교육 수강료"]
+    elif any(w in title_hints for w in ["회의", "미팅"]):
+        title_pools["matched"] = ["주간 스탠드업", "분기 리뷰", "브레인스토밍", "클라이언트 미팅", "팀 회고"]
+    elif any(w in title_hints for w in ["운동", "피트니스", "헬스"]):
+        title_pools["matched"] = ["아침 러닝 5km", "스쿼트 4세트", "플랭크 3분", "수영 30분", "요가 스트레칭"]
+    elif any(w in title_hints for w in ["독서", "책", "도서"]):
+        title_pools["matched"] = ["원씽", "아주 작은 습관의 힘", "사피엔스", "부의 추월차선", "심리학의 즐거움"]
+    elif any(w in title_hints for w in ["영화", "시청", "드라마"]):
+        title_pools["matched"] = ["인터스텔라", "기생충", "쇼생크 탈출", "인셉션", "라라랜드"]
+    else:
+        title_pools["matched"] = [f"{db_title} 항목 {i+1}" for i in range(5)]
+
+    pool = title_pools.get("matched", title_pools["default"])
+    available = [t for t in pool if t not in existing_titles]
+    if len(available) < count:
+        available.extend([f"{db_title} {i+1}" for i in range(count)])
+
+    statuses = ["시작 전", "진행 중", "완료"]
+    select_colors = ["blue", "green", "orange", "purple", "red", "pink"]
+
+    items: list[dict[str, Any]] = []
+    base_date = datetime.now()
+
+    for idx in range(count):
+        item: dict[str, Any] = {}
+        title_val = available[idx] if idx < len(available) else f"항목 {len(existing) + idx + 1}"
+
+        for key, spec in props.items():
+            ptype = spec if isinstance(spec, str) else spec.get("type", "") if isinstance(spec, dict) else ""
+
+            if ptype == "title":
+                item[key] = title_val
+            elif ptype == "status":
+                item[key] = statuses[idx % len(statuses)]
+            elif ptype == "select":
+                options = []
+                if isinstance(spec, dict):
+                    options = [o.get("name", o) if isinstance(o, dict) else o for o in spec.get("options", [])]
+                if options:
+                    item[key] = options[idx % len(options)]
+                else:
+                    item[key] = f"카테고리 {idx + 1}"
+            elif ptype == "multi_select":
+                item[key] = f"태그{idx + 1}"
+            elif ptype == "date":
+                d = base_date + timedelta(days=idx * 3 - 3)
+                item[key] = d.strftime("%Y-%m-%d")
+            elif ptype == "number":
+                item[key] = (idx + 1) * 10 + random.randint(0, 9)
+            elif ptype == "checkbox":
+                item[key] = idx % 2 == 0
+            elif ptype == "url":
+                item[key] = f"https://example.com/{title_val.replace(' ', '-').lower()}"
+            elif ptype == "email":
+                item[key] = f"user{idx + 1}@example.com"
+            elif ptype == "rich_text":
+                item[key] = f"{title_val} 관련 메모"
+            elif ptype in ("relation", "rollup", "formula"):
+                pass
+
+        if title_key not in item:
+            item[title_key] = title_val
+
+        items.append(item)
+
+    return items
 
 
 # 싱글턴

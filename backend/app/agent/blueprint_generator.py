@@ -118,6 +118,20 @@ def _evaluate_ai_output(content: dict[str, Any]) -> tuple[bool, list[str]]:
             if idx >= db_count:
                 errors.append(f"blocks[{i}]: db_index={idx}이지만 databases는 {db_count}개뿐입니다.")
 
+    # Level 4: 디자인 품질 검증
+    block_types = {b.get("type") for b in blocks if isinstance(b, dict)}
+    has_callout = "callout" in block_types
+    has_heading = any(t in block_types for t in ("heading_1", "heading_2"))
+    if not has_callout:
+        errors.append("디자인: callout 블록이 없습니다. 환영 메시지나 안내 카드를 추가하세요.")
+    if not has_heading and len(blocks) >= 5:
+        errors.append("디자인: heading 블록이 없습니다. 섹션 구분을 위해 heading을 추가하세요.")
+
+    # 서브페이지 아이콘 검증
+    for si, sub in enumerate(content.get("sub_pages", [])):
+        if not sub.get("icon"):
+            errors.append(f"sub_pages[{si}]: icon이 없습니다. 이모지 아이콘을 추가하세요.")
+
     is_pass = len(errors) == 0
     return is_pass, errors
 
