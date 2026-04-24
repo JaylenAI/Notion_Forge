@@ -3,11 +3,20 @@ import type { BlueprintBlock, BlueprintDatabase } from "./notion-renderer.types"
 import { getCalloutBg, getHeadingColor } from "./notion-color-utils";
 import DatabaseRenderer from "./NotionDatabaseRenderer";
 
+function safeText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value == null) return "";
+  if (Array.isArray(value))
+    return value.map((v) => (typeof v === "object" && v ? (v as Record<string, unknown>).text ?? "" : String(v))).join("");
+  if (typeof value === "object") return (value as Record<string, unknown>).text as string ?? "";
+  return String(value);
+}
+
 function CalloutBlock({ block }: { readonly block: BlueprintBlock }) {
   return (
     <div className={`flex items-start gap-3 rounded-lg p-4 my-1 ${getCalloutBg(block.color)}`}>
       <span className="text-xl flex-shrink-0 mt-0.5">{block.icon ?? "💡"}</span>
-      <p className="text-sm text-[#d4d4d4] leading-relaxed">{block.text}</p>
+      <p className="text-sm text-[#d4d4d4] leading-relaxed">{safeText(block.text)}</p>
     </div>
   );
 }
@@ -15,7 +24,7 @@ function CalloutBlock({ block }: { readonly block: BlueprintBlock }) {
 function Heading1Block({ block }: { readonly block: BlueprintBlock }) {
   return (
     <h1 className={`text-2xl font-bold text-white mt-6 mb-2 ${getHeadingColor(block.color)}`}>
-      {block.text}
+      {safeText(block.text)}
     </h1>
   );
 }
@@ -23,7 +32,7 @@ function Heading1Block({ block }: { readonly block: BlueprintBlock }) {
 function Heading2Block({ block }: { readonly block: BlueprintBlock }) {
   return (
     <h2 className={`text-lg font-semibold text-white mt-4 mb-1.5 ${getHeadingColor(block.color)}`}>
-      {block.text}
+      {safeText(block.text)}
     </h2>
   );
 }
@@ -54,7 +63,7 @@ function TodoBlock({ block }: { readonly block: BlueprintBlock }) {
         )}
       </button>
       <span className={`text-sm ${checked ? "line-through text-[#666]" : "text-[#d4d4d4]"}`}>
-        {block.text}
+        {safeText(block.text)}
       </span>
     </div>
   );
@@ -74,11 +83,11 @@ function ToggleBlock({ block }: { readonly block: BlueprintBlock }) {
         <span className={`text-[#888] text-xs transition-transform duration-150 ${open ? "rotate-90" : ""}`}>
           &#9654;
         </span>
-        <span className="text-sm text-[#d4d4d4]">{block.text}</span>
+        <span className="text-sm text-[#d4d4d4]">{safeText(block.text)}</span>
       </button>
       {open && block.children_text && (
         <div className="ml-6 pl-3 border-l border-[#333] py-1">
-          <p className="text-sm text-[#999]">{block.children_text}</p>
+          <p className="text-sm text-[#999]">{safeText(block.children_text)}</p>
         </div>
       )}
     </div>
@@ -88,7 +97,7 @@ function ToggleBlock({ block }: { readonly block: BlueprintBlock }) {
 function ParagraphBlock({ block }: { readonly block: BlueprintBlock }) {
   return (
     <p className={`text-sm text-[#d4d4d4] py-0.5 px-1 ${getHeadingColor(block.color)}`}>
-      {block.text}
+      {safeText(block.text)}
     </p>
   );
 }
@@ -97,7 +106,7 @@ function BulletedListBlock({ block }: { readonly block: BlueprintBlock }) {
   return (
     <div className="flex items-start gap-2.5 py-0.5 px-1">
       <span className="text-[#888] mt-1.5 text-[6px]">&#9679;</span>
-      <span className="text-sm text-[#d4d4d4]">{block.text}</span>
+      <span className="text-sm text-[#d4d4d4]">{safeText(block.text)}</span>
     </div>
   );
 }
@@ -106,7 +115,7 @@ function NumberedListBlock({ block, index }: { readonly block: BlueprintBlock; r
   return (
     <div className="flex items-start gap-2.5 py-0.5 px-1">
       <span className="text-[#888] text-sm min-w-[1.2em] text-right tabular-nums">{index}.</span>
-      <span className="text-sm text-[#d4d4d4]">{block.text}</span>
+      <span className="text-sm text-[#d4d4d4]">{safeText(block.text)}</span>
     </div>
   );
 }
@@ -114,7 +123,7 @@ function NumberedListBlock({ block, index }: { readonly block: BlueprintBlock; r
 function QuoteBlock({ block }: { readonly block: BlueprintBlock }) {
   return (
     <blockquote className="border-l-[3px] border-[#adc6ff] pl-4 py-2 my-2">
-      <p className="text-sm text-[#d4d4d4] italic leading-relaxed">{block.text}</p>
+      <p className="text-sm text-[#d4d4d4] italic leading-relaxed">{safeText(block.text)}</p>
     </blockquote>
   );
 }
@@ -128,14 +137,14 @@ function CodeBlock({ block }: { readonly block: BlueprintBlock }) {
         </div>
       )}
       <pre className="bg-[#1a1a1a] p-4 overflow-x-auto">
-        <code className="text-xs text-[#d4d4d4] font-mono leading-relaxed">{block.text}</code>
+        <code className="text-xs text-[#d4d4d4] font-mono leading-relaxed">{safeText(block.text)}</code>
       </pre>
     </div>
   );
 }
 
 function BookmarkBlock({ block }: { readonly block: BlueprintBlock }) {
-  const url = block.url ?? block.text ?? "";
+  const url = block.url ?? safeText(block.text);
   return (
     <a
       href={url}
@@ -144,7 +153,7 @@ function BookmarkBlock({ block }: { readonly block: BlueprintBlock }) {
       className="flex items-center gap-3 p-3 my-1 rounded-lg border border-[#333] bg-[#1e1e1e] hover:bg-[#252525] transition-colors"
     >
       <span className="material-symbols-outlined text-[#888] text-sm">link</span>
-      <span className="text-sm text-[#adc6ff] truncate">{block.text ?? url}</span>
+      <span className="text-sm text-[#adc6ff] truncate">{safeText(block.text) || url}</span>
       <span className="material-symbols-outlined text-[#555] text-xs ml-auto">open_in_new</span>
     </a>
   );
