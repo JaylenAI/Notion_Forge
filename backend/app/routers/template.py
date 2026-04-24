@@ -136,6 +136,38 @@ async def import_blueprint(blueprint: dict = Body(...)):
     }
 
 
+@router.post("/agent-loop")
+async def agent_loop_generate(
+    prompt: str = Body(...),
+    notion_token: str = Body(""),
+    parent_page_id: str = Body(""),
+    ai_key: str = Body(""),
+    ai_model: str = Body(""),
+):
+    """Agent Loop 기반 생성 — Plan-Execute-Reflect"""
+    from app.config import settings as cfg
+    from app.agent.agent_loop import AgentLoop
+    from app.notion.client import NotionClient
+
+    client = NotionClient(
+        token=notion_token or cfg.notion_api_key,
+        parent_page_id=parent_page_id or cfg.notion_parent_page_id,
+    )
+    pid = parent_page_id or cfg.notion_parent_page_id
+
+    loop = AgentLoop(client=client, api_key=ai_key, ai_model=ai_model)
+    result = await loop.run(prompt, parent_page_id=pid)
+
+    return {
+        "success": result.get("success", False),
+        "notion_url": f"https://notion.so/{result.get('page_id', '')}" if result.get("page_id") else None,
+        "page_id": result.get("page_id"),
+        "steps_completed": result.get("steps_completed", 0),
+        "steps_total": result.get("steps_total", 0),
+        "error": result.get("error"),
+    }
+
+
 @router.get("/patterns")
 async def list_patterns():
     """사용 가능한 템플릿 패턴 목록"""
