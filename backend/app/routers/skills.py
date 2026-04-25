@@ -4,15 +4,15 @@
 커스텀 스킬은 custom_skills/ 디렉토리에 저장되며, 내장 스킬과 동일한 형식.
 """
 
-from fastapi import APIRouter, Body
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 from app.skills import (
+    delete_custom_skill,
+    get_custom_skill,
     list_skills,
     load_skill,
-    get_custom_skill,
     save_custom_skill,
-    delete_custom_skill,
 )
 
 router = APIRouter(prefix="/api/skills", tags=["skills"])

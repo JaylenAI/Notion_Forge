@@ -14,8 +14,8 @@ async def detect_provider(api_key: str = Body("", embed=True, max_length=500)):
         return {"provider": "unknown", "models": [], "error": "API 키가 필요합니다."}
 
     raw = detect_provider_from_key(api_key)
-    PROVIDER_ALIASES = {"claude": "anthropic", "gemini": "google"}
-    provider = PROVIDER_ALIASES.get(raw, raw) if raw else "unknown"
+    provider_aliases = {"claude": "anthropic", "gemini": "google"}
+    provider = provider_aliases.get(raw, raw) if raw else "unknown"
 
     if provider == "unknown":
         return {"provider": "unknown", "models": [], "error": "알 수 없는 API 키 형식입니다."}
@@ -25,6 +25,7 @@ async def detect_provider(api_key: str = Body("", embed=True, max_length=500)):
     try:
         if provider == "openai":
             import httpx
+
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
                     "https://api.openai.com/v1/models",
@@ -32,14 +33,11 @@ async def detect_provider(api_key: str = Body("", embed=True, max_length=500)):
                     timeout=10.0,
                 )
                 data = resp.json()
-                models = [
-                    {"id": m["id"], "name": m["id"]}
-                    for m in data.get("data", [])
-                    if "gpt" in m["id"]
-                ]
+                models = [{"id": m["id"], "name": m["id"]} for m in data.get("data", []) if "gpt" in m["id"]]
 
         elif provider == "groq":
             import httpx
+
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
                     "https://api.groq.com/openai/v1/models",
@@ -47,13 +45,11 @@ async def detect_provider(api_key: str = Body("", embed=True, max_length=500)):
                     timeout=10.0,
                 )
                 data = resp.json()
-                models = [
-                    {"id": m["id"], "name": m["id"]}
-                    for m in data.get("data", [])
-                ]
+                models = [{"id": m["id"], "name": m["id"]} for m in data.get("data", [])]
 
         elif provider == "anthropic":
             import httpx
+
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
                     "https://api.anthropic.com/v1/models",
@@ -64,21 +60,21 @@ async def detect_provider(api_key: str = Body("", embed=True, max_length=500)):
                     timeout=10.0,
                 )
                 data = resp.json()
-                models = [
-                    {"id": m["id"], "name": m["id"]}
-                    for m in data.get("data", [])
-                ]
+                models = [{"id": m["id"], "name": m["id"]} for m in data.get("data", [])]
 
         elif provider == "google":
             from google import genai
+
             client = genai.Client(api_key=api_key)
             model_list = []
             for model in client.models.list():
                 if "gemini" in model.name.lower():
-                    model_list.append({
-                        "id": model.name,
-                        "name": model.display_name or model.name,
-                    })
+                    model_list.append(
+                        {
+                            "id": model.name,
+                            "name": model.display_name or model.name,
+                        }
+                    )
             models = model_list
 
     except Exception as e:
@@ -92,6 +88,7 @@ async def copilot_status():
     """Copilot SDK 상태 및 사용 가능 모델 조회"""
     try:
         from app.core.copilot_client import copilot_manager
+
         return copilot_manager.get_status()
     except ImportError:
         return {"available": False, "started": False, "models": []}
@@ -101,5 +98,6 @@ async def copilot_status():
 async def set_copilot_model(model: str = Body("gpt-4.1", embed=True)):
     """Copilot 모델 변경"""
     from app.config import settings
+
     settings.copilot_model = model
     return {"model": model, "status": "updated"}

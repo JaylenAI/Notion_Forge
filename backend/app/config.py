@@ -47,6 +47,7 @@ class Settings(BaseSettings):
         if self.copilot_enabled:
             try:
                 from app.core.copilot_client import copilot_manager
+
                 if copilot_manager.is_available():
                     return "copilot"
             except ImportError:

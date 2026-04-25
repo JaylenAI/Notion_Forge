@@ -1,6 +1,5 @@
 """View Builder 테스트"""
 
-import pytest
 from app.agent.view_builder import build_view_configuration
 
 

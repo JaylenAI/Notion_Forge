@@ -101,10 +101,7 @@ async def websocket_chat(websocket: WebSocket):
                     tb = traceback.format_exc()
                     logger.error(f"[Agent 에러]\n{tb}")
                     try:
-                        await websocket.send_json({
-                            "type": "error",
-                            "content": f"처리 중 오류: {str(e)[:200]}"
-                        })
+                        await websocket.send_json({"type": "error", "content": f"처리 중 오류: {str(e)[:200]}"})
                     except Exception:
                         pass
 

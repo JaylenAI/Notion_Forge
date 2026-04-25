@@ -1,6 +1,7 @@
 """ProviderRouter: API 키 기반 프로바이더 자동 선택"""
 
 import logging
+
 from app.agent.providers.base import BaseProvider
 
 logger = logging.getLogger("notionforge.provider_router")
@@ -26,21 +27,27 @@ def create_provider(provider_name: str, api_key: str = "", model: str = "") -> B
     # 순환 임포트 방지를 위해 여기서 임포트
     if provider_name == "claude":
         from app.agent.providers.claude_provider import ClaudeProvider
+
         return ClaudeProvider(api_key=api_key, model=model)
     elif provider_name == "gemini":
         from app.agent.providers.gemini_provider import GeminiProvider
+
         return GeminiProvider(api_key=api_key, model=model)
     elif provider_name == "groq":
         from app.agent.providers.groq_provider import GroqProvider
+
         return GroqProvider(api_key=api_key, model=model)
     elif provider_name == "openai":
         from app.agent.providers.openai_provider import OpenAIProvider
+
         return OpenAIProvider(api_key=api_key, model=model)
     elif provider_name == "copilot":
         from app.agent.providers.copilot_provider import CopilotProvider
+
         return CopilotProvider(model=model)
     elif provider_name == "mock":
         from app.agent.providers.mock_provider import MockProvider
+
         return MockProvider()
     else:
         raise ValueError(f"Unknown provider: {provider_name}")
@@ -57,5 +64,6 @@ class ProviderRouter:
             return create_provider(provider_name, api_key=api_key, model=ai_model)
 
         from app.config import settings
+
         provider_name = settings.ai_provider
         return create_provider(provider_name, model=ai_model)

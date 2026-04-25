@@ -32,13 +32,7 @@ async def authorize():
     if not client_id:
         return {"error": "NOTION_OAUTH_CLIENT_ID가 설정되지 않았습니다. .env 파일을 확인하세요."}
 
-    auth_url = (
-        f"{NOTION_AUTH_URL}"
-        f"?client_id={client_id}"
-        f"&response_type=code"
-        f"&owner=user"
-        f"&redirect_uri={redirect_uri}"
-    )
+    auth_url = f"{NOTION_AUTH_URL}?client_id={client_id}&response_type=code&owner=user&redirect_uri={redirect_uri}"
     return RedirectResponse(url=auth_url)
 
 
@@ -85,12 +79,15 @@ async def callback(code: str = "", error: str = ""):
     workspace_id = token_data.get("workspace_id", "")
 
     from urllib.parse import urlencode
-    params = urlencode({
-        "oauth_token": access_token,
-        "workspace_name": workspace_name,
-        "workspace_id": workspace_id,
-    })
-    return RedirectResponse(url=f"{frontend_url}#{ params}")
+
+    params = urlencode(
+        {
+            "oauth_token": access_token,
+            "workspace_name": workspace_name,
+            "workspace_id": workspace_id,
+        }
+    )
+    return RedirectResponse(url=f"{frontend_url}#{params}")
 
 
 @router.get("/status")

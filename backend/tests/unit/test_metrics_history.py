@@ -1,9 +1,9 @@
 """Metrics + History 테스트"""
 
 import time
-import pytest
+
+from app.core.history import get_recent_history, save_generation_record
 from app.core.metrics import GenerationMetrics, StageMetric
-from app.core.history import save_generation_record, get_recent_history
 
 
 class TestStageMetric:
@@ -62,7 +62,9 @@ class TestGenerationMetrics:
 class TestHistory:
     def test_save_and_retrieve(self):
         metrics_dict = {"session_id": "hist_test", "success": True, "skill": "test"}
-        result = save_generation_record(metrics_dict, {"metadata": {"title": "Test Template", "template_type": "track"}})
+        result = save_generation_record(
+            metrics_dict, {"metadata": {"title": "Test Template", "template_type": "track"}}
+        )
         assert result is not None
 
         records = get_recent_history(days=1, limit=100)
@@ -70,8 +72,13 @@ class TestHistory:
 
     def test_blueprint_meta_stored(self):
         bp = {
-            "metadata": {"title": "My Template", "template_type": "fitness", "color_theme": "orange",
-                         "skill_used": "fitness", "generation_method": "ai_dynamic"},
+            "metadata": {
+                "title": "My Template",
+                "template_type": "fitness",
+                "color_theme": "orange",
+                "skill_used": "fitness",
+                "generation_method": "ai_dynamic",
+            },
             "blocks": [{"type": "callout"}] * 5,
             "databases": [{"title": "DB1"}],
             "sub_pages": [],

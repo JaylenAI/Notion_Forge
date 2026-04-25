@@ -25,18 +25,20 @@ def _load_recipes() -> list[dict]:
         try:
             data = json.loads(fp.read_text(encoding="utf-8"))
             # 목록용: blueprint는 제외 (크기 절약)
-            recipes.append({
-                "id": data.get("id", fp.stem),
-                "name": data.get("name", fp.stem),
-                "name_en": data.get("name_en", ""),
-                "description": data.get("description", ""),
-                "description_en": data.get("description_en", ""),
-                "category": data.get("category", "general"),
-                "icon": data.get("icon", "📋"),
-                "author": data.get("author", "Community"),
-                "tags": data.get("tags", []),
-                "complexity": data.get("complexity", "standard"),
-            })
+            recipes.append(
+                {
+                    "id": data.get("id", fp.stem),
+                    "name": data.get("name", fp.stem),
+                    "name_en": data.get("name_en", ""),
+                    "description": data.get("description", ""),
+                    "description_en": data.get("description_en", ""),
+                    "category": data.get("category", "general"),
+                    "icon": data.get("icon", "📋"),
+                    "author": data.get("author", "Community"),
+                    "tags": data.get("tags", []),
+                    "complexity": data.get("complexity", "standard"),
+                }
+            )
         except Exception as e:
             logger.warning(f"[Recipe 로드 실패] {fp.name}: {e}")
     return recipes
@@ -53,8 +55,10 @@ async def list_recipes(category: str = "", search: str = ""):
     if search:
         q = search.lower()
         recipes = [
-            r for r in recipes
-            if q in r["name"].lower() or q in r.get("description", "").lower()
+            r
+            for r in recipes
+            if q in r["name"].lower()
+            or q in r.get("description", "").lower()
             or any(q in tag for tag in r.get("tags", []))
         ]
 

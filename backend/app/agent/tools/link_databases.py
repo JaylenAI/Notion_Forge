@@ -1,4 +1,5 @@
 from typing import Any
+
 from app.agent.tools.base import BaseTool
 from app.notion.client import NotionClient
 

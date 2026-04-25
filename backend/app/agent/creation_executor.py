@@ -120,7 +120,9 @@ class CreationExecutor:
                     configuration=configuration,
                 )
             except Exception as e:
-                logger.info(f"[뷰 생성 스킵] {view.get('type', '?') if isinstance(view, dict) else view}: {str(e)[:80]}")
+                logger.info(
+                    f"[뷰 생성 스킵] {view.get('type', '?') if isinstance(view, dict) else view}: {str(e)[:80]}"
+                )
 
         return {"id": db_id, "title": db_spec["title"], "views": len(views)}
 
@@ -129,8 +131,7 @@ class CreationExecutor:
     async def _localize_status_options(self, db_id: str, properties: dict) -> None:
         """status 속성의 기본 영어 옵션을 한국어로 변경"""
         status_keys = [
-            k for k, v in properties.items()
-            if v == "status" or (isinstance(v, dict) and v.get("type") == "status")
+            k for k, v in properties.items() if v == "status" or (isinstance(v, dict) and v.get("type") == "status")
         ]
         if not status_keys:
             return
@@ -155,22 +156,27 @@ class CreationExecutor:
                     for opt in group.get("options", []):
                         old_name = opt.get("name", "")
                         if old_name in rename_map:
-                            new_options.append({
-                                "id": opt["id"],
-                                "name": rename_map[old_name],
-                                "color": opt.get("color", "default"),
-                            })
+                            new_options.append(
+                                {
+                                    "id": opt["id"],
+                                    "name": rename_map[old_name],
+                                    "color": opt.get("color", "default"),
+                                }
+                            )
 
                 if new_options:
-                    await self.client.update_database(db_id, {
-                        "properties": {
-                            key: {
-                                "status": {
-                                    "options": new_options,
+                    await self.client.update_database(
+                        db_id,
+                        {
+                            "properties": {
+                                key: {
+                                    "status": {
+                                        "options": new_options,
+                                    }
                                 }
                             }
-                        }
-                    })
+                        },
+                    )
                     logger.info(f"[Status 한국어화] {key}: {[o['name'] for o in new_options]}")
         except Exception as e:
             logger.info(f"[Status 한국어화 스킵] {str(e)[:100]}")
@@ -251,7 +257,9 @@ class CreationExecutor:
             sub_blocks = sub.get("blocks", [])
             if sub_blocks:
                 try:
-                    notion_blocks = [spec_to_block(b) for b in sub_blocks if isinstance(b, dict) and b.get("type") != "database_ref"]
+                    notion_blocks = [
+                        spec_to_block(b) for b in sub_blocks if isinstance(b, dict) and b.get("type") != "database_ref"
+                    ]
                     if notion_blocks:
                         await self.client.add_blocks(sub_id, notion_blocks)
                 except Exception as e:
@@ -266,10 +274,13 @@ class CreationExecutor:
                     bb.heading(f"📋 {sub['title']} 개요", level=2, color=color),
                     bb.paragraph("이 페이지의 내용을 자유롭게 작성해보세요."),
                     bb.paragraph(""),
-                    bb.toggle("📖 활용 팁", children=[
-                        bb.paragraph(f"• {sub['title']}에 관련된 정보를 정리해보세요"),
-                        bb.paragraph("• 필요한 내용을 자유롭게 추가하고 수정하세요"),
-                    ]),
+                    bb.toggle(
+                        "📖 활용 팁",
+                        children=[
+                            bb.paragraph(f"• {sub['title']}에 관련된 정보를 정리해보세요"),
+                            bb.paragraph("• 필요한 내용을 자유롭게 추가하고 수정하세요"),
+                        ],
+                    ),
                 ]
                 try:
                     await self.client.add_blocks(sub_id, default_blocks)
@@ -312,9 +323,7 @@ class CreationExecutor:
 
                 # formula: expression 그대로
                 elif prop_type == "formula" and "expression" in prop_spec:
-                    relation_props[prop_name] = {
-                        "formula": {"expression": prop_spec["expression"]}
-                    }
+                    relation_props[prop_name] = {"formula": {"expression": prop_spec["expression"]}}
 
                 # rollup: relation_property + target_property + function
                 elif prop_type == "rollup" and "relation_property" in prop_spec:
@@ -405,7 +414,9 @@ class CreationExecutor:
     # ── Blueprint 전체 실행 (스트리밍) ──────────────────────────
 
     async def execute_streaming(
-        self, blueprint: dict, parent_page_id: str,
+        self,
+        blueprint: dict,
+        parent_page_id: str,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Blueprint 스트리밍 실행 — 진행 이벤트를 yield, 최종 "result" 이벤트로 결과 반환.
 
@@ -420,7 +431,11 @@ class CreationExecutor:
         main = blueprint["main_page"]
 
         # 1. 메인 페이지 생성
-        yield {"type": "progress", "step": "page", "message": f"📄 페이지 생성 중: {main.get('icon', '')} {main['title']}"}
+        yield {
+            "type": "progress",
+            "step": "page",
+            "message": f"📄 페이지 생성 중: {main.get('icon', '')} {main['title']}",
+        }
         try:
             page = await self.client.create_page(
                 parent_id=parent_page_id,
@@ -431,7 +446,11 @@ class CreationExecutor:
             main_page_id = page["id"]
             result["pages"].append({"id": main_page_id, "title": main["title"], "url": page.get("url", "")})
             result["main_url"] = page.get("url", "")
-            yield {"type": "progress", "step": "page_done", "message": f"✅ 페이지 생성됨: {main.get('icon', '')} {main['title']}"}
+            yield {
+                "type": "progress",
+                "step": "page_done",
+                "message": f"✅ 페이지 생성됨: {main.get('icon', '')} {main['title']}",
+            }
         except Exception as e:
             yield {"type": "error", "content": f"메인 페이지 생성 실패: {str(e)[:200]}"}
             yield {"type": "result", "result": result}
@@ -440,7 +459,11 @@ class CreationExecutor:
         # 2. 하위 페이지 먼저 생성
         sub_page_map: dict[str, str] = {}
         for sub in blueprint.get("sub_pages", []):
-            yield {"type": "progress", "step": "sub_page", "message": f"📁 하위 페이지: {sub.get('icon', '')} {sub['title']}"}
+            yield {
+                "type": "progress",
+                "step": "sub_page",
+                "message": f"📁 하위 페이지: {sub.get('icon', '')} {sub['title']}",
+            }
             try:
                 sub_page = await self.client.create_page(
                     parent_id=main_page_id,
@@ -489,8 +512,14 @@ class CreationExecutor:
                         db_spec = databases[db_index]
                         db_title = db_spec.get("title", db_spec.get("db_name", "DB"))
                         db_parent_name = db_spec.get("db_parent", "")
-                        db_parent_id = sub_page_map.get(db_parent_name, main_page_id) if db_parent_name else main_page_id
-                        yield {"type": "progress", "step": "database", "message": f"📊 데이터베이스 생성 중: {db_title}"}
+                        db_parent_id = (
+                            sub_page_map.get(db_parent_name, main_page_id) if db_parent_name else main_page_id
+                        )
+                        yield {
+                            "type": "progress",
+                            "step": "database",
+                            "message": f"📊 데이터베이스 생성 중: {db_title}",
+                        }
                         try:
                             db_result = await self.create_database_with_data(parent_id=db_parent_id, db_spec=db_spec)
                             result["databases"].append(db_result)
@@ -506,10 +535,16 @@ class CreationExecutor:
                         if db_index < len(databases):
                             db_spec = databases[db_index]
                             try:
-                                db_result = await self.create_database_with_data(parent_id=main_page_id, db_spec=db_spec)
+                                db_result = await self.create_database_with_data(
+                                    parent_id=main_page_id, db_spec=db_spec
+                                )
                                 result["databases"].append(db_result)
                             except Exception as e:
-                                yield {"type": "progress", "step": "warning", "message": f"⚠️ DB 생성 스킵: {str(e)[:80]}"}
+                                yield {
+                                    "type": "progress",
+                                    "step": "warning",
+                                    "message": f"⚠️ DB 생성 스킵: {str(e)[:80]}",
+                                }
                             db_index += 1
                     column_block = await self.build_column_with_db(block, main_page_id, sub_page_map, result)
                     if column_block:
@@ -529,9 +564,11 @@ class CreationExecutor:
                         if db_id:
                             try:
                                 await self.client.create_linked_view(
-                                    source_database_id=db_id, target_page_id=main_page_id,
+                                    source_database_id=db_id,
+                                    target_page_id=main_page_id,
                                     view_type=block.get("view_type", "table"),
-                                    title=block.get("title", ""), filters=block.get("filter"),
+                                    title=block.get("title", ""),
+                                    filters=block.get("filter"),
                                 )
                                 result["blocks"] += 1
                             except Exception as e:
@@ -560,7 +597,8 @@ class CreationExecutor:
         # 5. Relation/Rollup/Formula 후처리
         await self.post_process_relations(blueprint, result)
         relation_count = sum(
-            1 for db in databases
+            1
+            for db in databases
             for _, v in db.get("properties", db.get("db_properties", {})).items()
             if isinstance(v, dict) and (v.get("type") in ("relation", "rollup", "formula") or "target_db_index" in v)
         )
@@ -570,7 +608,11 @@ class CreationExecutor:
         # 6. 검증
         validation_issues = await self.validate_creation(main_page_id, blueprint, result)
         if validation_issues:
-            yield {"type": "progress", "step": "validation", "message": f"🔍 검증: {len(validation_issues)}개 항목 확인"}
+            yield {
+                "type": "progress",
+                "step": "validation",
+                "message": f"🔍 검증: {len(validation_issues)}개 항목 확인",
+            }
         else:
             yield {"type": "progress", "step": "validation", "message": "✅ 생성 결과 검증 완료 — 모든 항목 정상"}
 

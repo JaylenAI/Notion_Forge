@@ -22,9 +22,20 @@ class JsonFormatter(logging.Formatter):
         }
 
         # 추가 필드 (extra에 넣은 key-value)
-        for key in ("skill", "layout", "model", "duration_ms", "tokens",
-                     "blocks", "databases", "attempt", "error", "stage",
-                     "user_input_length", "risk_level"):
+        for key in (
+            "skill",
+            "layout",
+            "model",
+            "duration_ms",
+            "tokens",
+            "blocks",
+            "databases",
+            "attempt",
+            "error",
+            "stage",
+            "user_input_length",
+            "risk_level",
+        ):
             val = getattr(record, key, None)
             if val is not None:
                 log_entry[key] = val

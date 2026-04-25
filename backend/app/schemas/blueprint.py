@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field
 from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class IntentResult(BaseModel):
@@ -19,6 +20,7 @@ class IntentResult(BaseModel):
 
 class BlockSpec(BaseModel):
     """블록 스펙 — AI가 생성하는 블록 구조"""
+
     type: str  # callout, heading_1, heading_2, paragraph, toggle, database_ref, ...
     text: str = ""
     icon: str = ""
@@ -42,6 +44,7 @@ class BlockSpec(BaseModel):
 
 class ViewSpec(BaseModel):
     """DB 뷰 스펙"""
+
     type: str = "table"  # table, board, gallery, calendar, timeline, chart, list, map, form
     title: str = ""
     filters: dict[str, Any] | None = None
@@ -54,6 +57,7 @@ class ViewSpec(BaseModel):
 
 class DatabaseSpec(BaseModel):
     """데이터베이스 스펙"""
+
     title: str
     properties: dict[str, Any] = Field(default_factory=dict)
     db_properties: dict[str, Any] = Field(default_factory=dict)
@@ -70,6 +74,7 @@ class DatabaseSpec(BaseModel):
 
 class MainPageSpec(BaseModel):
     """메인 페이지 스펙"""
+
     title: str
     icon: str = ""
     cover_url: str = ""
@@ -79,6 +84,7 @@ class MainPageSpec(BaseModel):
 
 class SubPageSpec(BaseModel):
     """하위 페이지 스펙"""
+
     title: str
     icon: str = ""
     description: str = ""
@@ -89,6 +95,7 @@ class SubPageSpec(BaseModel):
 
 class BlueprintMetadata(BaseModel):
     """블루프린트 메타데이터"""
+
     title: str = ""
     template_type: str = ""
     color_theme: str = "blue"
@@ -105,6 +112,7 @@ class BlueprintMetadata(BaseModel):
 
 class BlueprintSchema(BaseModel):
     """전체 블루프린트 구조 — AI 생성 결과의 최종 형태"""
+
     main_page: MainPageSpec
     metadata: BlueprintMetadata = Field(default_factory=BlueprintMetadata)
     blocks: list[dict[str, Any]] = Field(default_factory=list)

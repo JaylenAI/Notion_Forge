@@ -57,7 +57,7 @@ class ViewOpsMixin:
                 error_body = resp.text[:200]
                 logger.warning(f"[Views API {resp.status_code}] {view_type}: {error_body}")
                 if configuration:
-                    logger.warning(f"[Views API 폴백] configuration 제거 후 재시도")
+                    logger.warning("[Views API 폴백] configuration 제거 후 재시도")
                     body.pop("configuration", None)
                     await self.rate_limiter.acquire()
                     resp2 = await self._http_client.post("/views", json=body)

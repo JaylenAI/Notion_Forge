@@ -78,7 +78,7 @@ function RecipeGallery() {
       } else {
         toast.error("Import failed");
       }
-    } catch (e) {
+    } catch {
       toast.error("Failed to use recipe");
     } finally {
       setImporting(null);

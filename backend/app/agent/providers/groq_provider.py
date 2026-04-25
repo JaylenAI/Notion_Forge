@@ -27,7 +27,7 @@ class GroqProvider(BaseProvider):
             from app.config import settings
 
             if len(system_prompt) > self.MAX_PROMPT_CHARS:
-                system_prompt = system_prompt[:self.MAX_PROMPT_CHARS]
+                system_prompt = system_prompt[: self.MAX_PROMPT_CHARS]
 
             client = AsyncGroq(api_key=self.api_key or settings.groq_api_key)
             response = await client.chat.completions.create(

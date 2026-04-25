@@ -1,7 +1,15 @@
 """Block Builder 단위 테스트"""
+
 from app.notion.block_builder import (
-    heading, paragraph, callout, toggle, to_do, divider,
-    bulleted_list, column_list, build_database_properties,
+    build_database_properties,
+    bulleted_list,
+    callout,
+    column_list,
+    divider,
+    heading,
+    paragraph,
+    to_do,
+    toggle,
 )
 
 
@@ -58,9 +66,8 @@ def test_build_database_properties_simple():
 
 
 def test_build_database_properties_select():
-    props = build_database_properties({
-        "이름": "title",
-        "카테고리": {"type": "select", "options": [{"name": "A", "color": "blue"}]}
-    })
+    props = build_database_properties(
+        {"이름": "title", "카테고리": {"type": "select", "options": [{"name": "A", "color": "blue"}]}}
+    )
     assert props["카테고리"]["select"]["options"][0]["name"] == "A"
     assert props["카테고리"]["select"]["options"][0]["color"] == "blue"

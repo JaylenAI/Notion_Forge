@@ -44,17 +44,25 @@ def spec_to_block(spec: dict) -> dict:
             level=level,
             color=spec.get("color", "default"),
             is_toggleable=spec.get("is_toggleable", False),
-            children=[spec_to_block(c) for c in spec["children"]] if spec.get("is_toggleable") and spec.get("children") else None,
+            children=[spec_to_block(c) for c in spec["children"]]
+            if spec.get("is_toggleable") and spec.get("children")
+            else None,
         )
     elif t == "toggle_heading":
         level = spec.get("level", 1)
         children = [spec_to_block(c) for c in spec.get("children", [])] if spec.get("children") else [bb.paragraph("")]
-        return bb.heading(spec.get("text", ""), level=level, color=spec.get("color", "default"), is_toggleable=True, children=children)
+        return bb.heading(
+            spec.get("text", ""), level=level, color=spec.get("color", "default"), is_toggleable=True, children=children
+        )
     elif t == "paragraph":
         # 혼합 서식 지원: rich_text 배열이 있으면 사용
         if spec.get("rich_text") and isinstance(spec["rich_text"], list):
             rt = bb.rich_text_array(spec["rich_text"])
-            block = {"object": "block", "type": "paragraph", "paragraph": {"rich_text": rt, "color": bb._safe_color(spec.get("color", "default"))}}
+            block = {
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {"rich_text": rt, "color": bb._safe_color(spec.get("color", "default"))},
+            }
             return block
         return bb.paragraph(spec.get("text", ""), color=spec.get("color", "default"))
     elif t == "callout":
@@ -62,11 +70,17 @@ def spec_to_block(spec: dict) -> dict:
         if spec.get("rich_text") and isinstance(spec["rich_text"], list):
             rt = bb.rich_text_array(spec["rich_text"])
             icon_obj = {"type": "emoji", "emoji": spec.get("icon", "📌")}
-            block: dict[str, Any] = {"object": "block", "type": "callout", "callout": {"rich_text": rt, "icon": icon_obj, "color": bb._safe_color(spec.get("color", "default"))}}
+            block: dict[str, Any] = {
+                "object": "block",
+                "type": "callout",
+                "callout": {"rich_text": rt, "icon": icon_obj, "color": bb._safe_color(spec.get("color", "default"))},
+            }
             if children:
                 block["callout"]["children"] = children
             return block
-        return bb.callout(spec.get("text", ""), icon=spec.get("icon", "📌"), color=spec.get("color", "default"), children=children)
+        return bb.callout(
+            spec.get("text", ""), icon=spec.get("icon", "📌"), color=spec.get("color", "default"), children=children
+        )
     elif t == "toggle":
         children = None
         if "children_text" in spec and spec["children_text"]:
@@ -107,7 +121,11 @@ def spec_to_block(spec: dict) -> dict:
     elif t == "pdf":
         return bb.pdf(spec.get("url", ""), caption=spec.get("caption", ""))
     elif t == "code":
-        return bb.code_block(spec.get("code", spec.get("text", "")), language=spec.get("language", "python"), caption=spec.get("caption", ""))
+        return bb.code_block(
+            spec.get("code", spec.get("text", "")),
+            language=spec.get("language", "python"),
+            caption=spec.get("caption", ""),
+        )
     elif t == "embed":
         return bb.embed(spec.get("url", ""), caption=spec.get("caption", ""))
 

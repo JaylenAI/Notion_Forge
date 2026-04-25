@@ -1,6 +1,7 @@
 """Post-processor 테스트 — 7개 검증 규칙"""
 
 import pytest
+
 from app.agent.post_processor import BlueprintValidator
 
 
@@ -11,8 +12,12 @@ def validator():
 
 class TestEnsureWelcomeCallout:
     def test_adds_callout_when_missing(self, validator):
-        content = {"title": "My Template", "icon": "📋", "color": "blue",
-                   "blocks": [{"type": "heading_1", "text": "Hello"}]}
+        content = {
+            "title": "My Template",
+            "icon": "📋",
+            "color": "blue",
+            "blocks": [{"type": "heading_1", "text": "Hello"}],
+        }
         result = validator._ensure_welcome_callout(content)
         assert result["blocks"][0]["type"] == "callout"
         assert "환영" in result["blocks"][0]["text"]
@@ -43,12 +48,17 @@ class TestEnsureGuideToggle:
 
 class TestFixDbRefInColumns:
     def test_extracts_db_ref_from_column(self, validator):
-        content = {"blocks": [
-            {"type": "column_list", "columns": [
-                [{"type": "paragraph", "text": "Hello"}, {"type": "database_ref", "db_index": 0}],
-                [{"type": "paragraph", "text": "World"}],
-            ]}
-        ]}
+        content = {
+            "blocks": [
+                {
+                    "type": "column_list",
+                    "columns": [
+                        [{"type": "paragraph", "text": "Hello"}, {"type": "database_ref", "db_index": 0}],
+                        [{"type": "paragraph", "text": "World"}],
+                    ],
+                }
+            ]
+        }
         result = validator._fix_db_ref_in_columns(content)
         # DB ref should be extracted after column_list
         has_db_ref_after = any(b.get("type") == "database_ref" for b in result["blocks"])
@@ -76,10 +86,12 @@ class TestValidateDbRefs:
 class TestFixStatusValues:
     def test_maps_korean_to_english(self, validator):
         content = {
-            "databases": [{
-                "db_properties": {"상태": "status"},
-                "sample_items": [{"상태": "시작 전"}, {"상태": "완료"}],
-            }]
+            "databases": [
+                {
+                    "db_properties": {"상태": "status"},
+                    "sample_items": [{"상태": "시작 전"}, {"상태": "완료"}],
+                }
+            ]
         }
         result = validator._fix_status_values(content)
         # post_processor는 한→영 매핑이 아니라 영→한 매핑
@@ -89,10 +101,12 @@ class TestFixStatusValues:
 
     def test_english_status(self, validator):
         content = {
-            "databases": [{
-                "db_properties": {"status": "status"},
-                "sample_items": [{"status": "not started"}, {"status": "done"}],
-            }]
+            "databases": [
+                {
+                    "db_properties": {"status": "status"},
+                    "sample_items": [{"status": "not started"}, {"status": "done"}],
+                }
+            ]
         }
         result = validator._fix_status_values(content)
         assert result["databases"][0]["sample_items"][0]["status"] == "시작 전"
@@ -102,32 +116,38 @@ class TestFixStatusValues:
 class TestEnsureSampleItems:
     def test_auto_generates_when_few_items(self, validator):
         content = {
-            "databases": [{
-                "title": "TestDB",
-                "db_properties": {"이름": "title", "상태": "status"},
-                "sample_items": [{"이름": "A"}],
-            }]
+            "databases": [
+                {
+                    "title": "TestDB",
+                    "db_properties": {"이름": "title", "상태": "status"},
+                    "sample_items": [{"이름": "A"}],
+                }
+            ]
         }
         result = validator._ensure_sample_items(content)
         assert len(result["databases"][0]["sample_items"]) >= 4
 
     def test_skips_when_enough_items(self, validator):
         content = {
-            "databases": [{
-                "title": "TestDB",
-                "sample_items": [{"이름": "A"}, {"이름": "B"}, {"이름": "C"}],
-            }]
+            "databases": [
+                {
+                    "title": "TestDB",
+                    "sample_items": [{"이름": "A"}, {"이름": "B"}, {"이름": "C"}],
+                }
+            ]
         }
         result = validator._ensure_sample_items(content)
         assert len(result["databases"][0]["sample_items"]) == 3
 
     def test_generates_from_empty(self, validator):
         content = {
-            "databases": [{
-                "title": "학습 자료",
-                "db_properties": {"자료명": "title", "유형": "select", "날짜": "date"},
-                "sample_items": [],
-            }]
+            "databases": [
+                {
+                    "title": "학습 자료",
+                    "db_properties": {"자료명": "title", "유형": "select", "날짜": "date"},
+                    "sample_items": [],
+                }
+            ]
         }
         result = validator._ensure_sample_items(content)
         items = result["databases"][0]["sample_items"]

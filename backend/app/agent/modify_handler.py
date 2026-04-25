@@ -93,7 +93,11 @@ class ModifyHandler:
         add_words = ("추가", "넣어", "만들어")
 
         # 뷰 삭제 (뷰 키워드 + 삭제 — 속성 삭제보다 먼저 체크)
-        if has_dbs and any(w in msg for w in ["뷰", "보드", "캘린더", "갤러리", "타임라인"]) and any(w in msg for w in delete_words):
+        if (
+            has_dbs
+            and any(w in msg for w in ["뷰", "보드", "캘린더", "갤러리", "타임라인"])
+            and any(w in msg for w in delete_words)
+        ):
             return "delete_item"
 
         # 속성 삭제
@@ -129,7 +133,9 @@ class ModifyHandler:
             return "add_sub_page"
 
         # 블록 추가
-        if any(w in msg for w in ["블록", "섹션", "내용", "텍스트", "faq", "가이드"]) and any(w in msg for w in ["추가", "넣어"]):
+        if any(w in msg for w in ["블록", "섹션", "내용", "텍스트", "faq", "가이드"]) and any(
+            w in msg for w in ["추가", "넣어"]
+        ):
             return "add_block"
 
         return "modify_default"
@@ -137,7 +143,9 @@ class ModifyHandler:
     # ── 개별 핸들러 ────────────────────────────────────────────────
 
     async def _handle_delete_property(
-        self, message: str, result: dict[str, Any],
+        self,
+        message: str,
+        result: dict[str, Any],
     ) -> AsyncGenerator[dict[str, Any], None]:
         """속성 삭제"""
         msg = message.lower()
@@ -147,14 +155,16 @@ class ModifyHandler:
         if prop_name:
             try:
                 await self.client.update_database(db_id, {"properties": {prop_name: None}})
-                yield {"type": "complete", "content": f"✅ \"{prop_name}\" 속성 삭제 완료!"}
+                yield {"type": "complete", "content": f'✅ "{prop_name}" 속성 삭제 완료!'}
             except Exception as e:
                 yield {"type": "error", "content": f"속성 삭제 실패: {str(e)[:100]}"}
         else:
             yield {"type": "question", "content": "어떤 속성을 삭제할까요? 속성 이름을 정확히 알려주세요."}
 
     async def _handle_add_property(
-        self, message: str, result: dict[str, Any],
+        self,
+        message: str,
+        result: dict[str, Any],
     ) -> AsyncGenerator[dict[str, Any], None]:
         """속성 추가"""
         msg = message.lower()
@@ -170,10 +180,15 @@ class ModifyHandler:
             except Exception as e:
                 yield {"type": "error", "content": f"속성 추가 실패: {str(e)[:100]}"}
         else:
-            yield {"type": "question", "content": "어떤 속성을 추가할까요?\n\n예시:\n- \"우선순위 select 속성 추가해줘 (높음/중간/낮음)\"\n- \"마감일 날짜 속성 추가해줘\"\n- \"메모 텍스트 속성 추가해줘\""}
+            yield {
+                "type": "question",
+                "content": '어떤 속성을 추가할까요?\n\n예시:\n- "우선순위 select 속성 추가해줘 (높음/중간/낮음)"\n- "마감일 날짜 속성 추가해줘"\n- "메모 텍스트 속성 추가해줘"',
+            }
 
     async def _handle_add_view(
-        self, message: str, result: dict[str, Any],
+        self,
+        message: str,
+        result: dict[str, Any],
     ) -> AsyncGenerator[dict[str, Any], None]:
         """뷰 추가/변경"""
         msg = message.lower()
@@ -214,13 +229,16 @@ class ModifyHandler:
             yield {"type": "error", "content": f"뷰 추가 실패: {str(e)[:100]}"}
 
     async def _handle_add_database(
-        self, message: str, result: dict[str, Any],
+        self,
+        message: str,
+        result: dict[str, Any],
     ) -> AsyncGenerator[dict[str, Any], None]:
         """새 데이터베이스 추가"""
         main_page_id = result["pages"][0]["id"]
         yield {"type": "progress", "step": "modifying", "message": "📊 새 데이터베이스를 생성 중..."}
         try:
             from app.agent.blueprint_generator import generate_blueprint
+
             bp = await generate_blueprint(
                 f"단일 데이터베이스만 만들어줘: {message}",
                 ai_key=self.ai_key,
@@ -230,9 +248,7 @@ class ModifyHandler:
                 db_spec = bp["databases"][0]
                 from app.agent.tools.add_database_items import AddDatabaseItemsTool
 
-                db_props = build_database_properties(
-                    db_spec.get("properties", db_spec.get("db_properties", {}))
-                )
+                db_props = build_database_properties(db_spec.get("properties", db_spec.get("db_properties", {})))
                 db = await self.client.create_database(
                     parent_id=main_page_id,
                     title=db_spec.get("title", db_spec.get("db_name", "DB")),
@@ -272,7 +288,7 @@ class ModifyHandler:
                 yield {
                     "type": "complete",
                     "content": (
-                        f"✅ \"{db_spec.get('title', 'DB')}\" 데이터베이스 추가 완료!\n"
+                        f'✅ "{db_spec.get("title", "DB")}" 데이터베이스 추가 완료!\n'
                         f"📊 속성 {len(db_spec.get('properties', db_spec.get('db_properties', {})))}개, 샘플 데이터 포함"
                     ),
                 }
@@ -282,7 +298,9 @@ class ModifyHandler:
             yield {"type": "error", "content": f"DB 추가 실패: {str(e)[:100]}"}
 
     async def _handle_add_relation(
-        self, message: str, result: dict[str, Any],
+        self,
+        message: str,
+        result: dict[str, Any],
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Relation 연결"""
         msg = message.lower()
@@ -290,7 +308,7 @@ class ModifyHandler:
         if len(result["databases"]) < 2:
             yield {
                 "type": "question",
-                "content": "Relation 연결은 2개 이상의 DB가 필요합니다.\n먼저 DB를 추가해주세요! (예: \"태스크 DB 추가해줘\")",
+                "content": 'Relation 연결은 2개 이상의 DB가 필요합니다.\n먼저 DB를 추가해주세요! (예: "태스크 DB 추가해줘")',
             }
             return
 
@@ -308,29 +326,34 @@ class ModifyHandler:
 
         relation_name = f"관련 {target_db['title']}"
         try:
-            await self.client.update_database(source_db["id"], {
-                "properties": {
-                    relation_name: {
-                        "relation": {
-                            "database_id": target_db["id"],
-                            "single_property": {},
+            await self.client.update_database(
+                source_db["id"],
+                {
+                    "properties": {
+                        relation_name: {
+                            "relation": {
+                                "database_id": target_db["id"],
+                                "single_property": {},
+                            }
                         }
                     }
-                }
-            })
+                },
+            )
             yield {
                 "type": "complete",
                 "content": (
                     f"✅ Relation 연결 완료!\n"
                     f"🔗 {source_db['title']} → {target_db['title']}\n"
-                    f"📊 \"{relation_name}\" 속성 추가됨"
+                    f'📊 "{relation_name}" 속성 추가됨'
                 ),
             }
         except Exception as e:
             yield {"type": "error", "content": f"Relation 연결 실패: {str(e)[:100]}"}
 
     async def _handle_add_formula(
-        self, message: str, result: dict[str, Any],
+        self,
+        message: str,
+        result: dict[str, Any],
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Formula 추가"""
         msg = message.lower()
@@ -339,14 +362,13 @@ class ModifyHandler:
         formula = self._detect_formula(msg)
         if formula:
             try:
-                await self.client.update_database(db_id, {
-                    "properties": {
-                        formula["name"]: {
-                            "formula": {"expression": formula["expression"]}
-                        }
-                    }
-                })
-                yield {"type": "complete", "content": f"✅ 수식 속성 추가 완료!\n🔢 \"{formula['name']}\" = {formula['expression'][:50]}"}
+                await self.client.update_database(
+                    db_id, {"properties": {formula["name"]: {"formula": {"expression": formula["expression"]}}}}
+                )
+                yield {
+                    "type": "complete",
+                    "content": f'✅ 수식 속성 추가 완료!\n🔢 "{formula["name"]}" = {formula["expression"][:50]}',
+                }
             except Exception as e:
                 yield {"type": "error", "content": f"수식 추가 실패: {str(e)[:100]}"}
         else:
@@ -354,14 +376,16 @@ class ModifyHandler:
                 "type": "question",
                 "content": (
                     "어떤 수식을 추가할까요?\n\n예시:\n"
-                    "- \"D-Day 수식 추가해줘\" (마감일까지 남은 일수)\n"
-                    "- \"진행률 수식 추가해줘\" (상태 기반 %)\n"
-                    "- \"총액 수식 추가해줘\" (단가 × 수량)"
+                    '- "D-Day 수식 추가해줘" (마감일까지 남은 일수)\n'
+                    '- "진행률 수식 추가해줘" (상태 기반 %)\n'
+                    '- "총액 수식 추가해줘" (단가 × 수량)'
                 ),
             }
 
     async def _handle_add_sub_page(
-        self, message: str, result: dict[str, Any],
+        self,
+        message: str,
+        result: dict[str, Any],
     ) -> AsyncGenerator[dict[str, Any], None]:
         """서브페이지 추가"""
         main_page_id = result["pages"][0]["id"]
@@ -396,12 +420,14 @@ class ModifyHandler:
             ]
             await self.client.add_blocks(sub_page["id"], default_blocks)
             result["pages"].append({"id": sub_page["id"], "title": page_title})
-            yield {"type": "complete", "content": f"✅ \"{page_title}\" 하위 페이지 추가 완료!"}
+            yield {"type": "complete", "content": f'✅ "{page_title}" 하위 페이지 추가 완료!'}
         except Exception as e:
             yield {"type": "error", "content": f"페이지 추가 실패: {str(e)[:100]}"}
 
     async def _handle_add_block(
-        self, message: str, result: dict[str, Any],
+        self,
+        message: str,
+        result: dict[str, Any],
     ) -> AsyncGenerator[dict[str, Any], None]:
         """블록 추가"""
         main_page_id = result["pages"][0]["id"]
@@ -415,7 +441,9 @@ class ModifyHandler:
             yield {"type": "error", "content": f"블록 추가 실패: {str(e)[:100]}"}
 
     async def _handle_delete_item(
-        self, message: str, result: dict[str, Any],
+        self,
+        message: str,
+        result: dict[str, Any],
     ) -> AsyncGenerator[dict[str, Any], None]:
         """뷰 삭제 또는 블록 삭제 (delete_item으로 통합)"""
         msg = message.lower()
@@ -469,9 +497,9 @@ class ModifyHandler:
                         deleted = True
                         break
                 if deleted:
-                    yield {"type": "complete", "content": f"✅ \"{target_text}\" 포함 블록 삭제 완료!"}
+                    yield {"type": "complete", "content": f'✅ "{target_text}" 포함 블록 삭제 완료!'}
                 else:
-                    yield {"type": "error", "content": f"\"{target_text}\"을 포함하는 블록을 찾을 수 없습니다."}
+                    yield {"type": "error", "content": f'"{target_text}"을 포함하는 블록을 찾을 수 없습니다.'}
             except Exception as e:
                 yield {"type": "error", "content": f"블록 삭제 실패: {str(e)[:100]}"}
         else:
@@ -480,12 +508,14 @@ class ModifyHandler:
                 "content": (
                     "어떤 블록을 삭제할까요?\n"
                     "삭제할 블록의 텍스트를 따옴표로 감싸서 알려주세요.\n"
-                    "예: \"FAQ\" 블록 삭제해줘"
+                    '예: "FAQ" 블록 삭제해줘'
                 ),
             }
 
     async def _handle_modify_default(
-        self, message: str, result: dict[str, Any],
+        self,
+        message: str,
+        result: dict[str, Any],
     ) -> AsyncGenerator[dict[str, Any], None]:
         """폴백: 수정 유형을 인식하지 못한 경우 안내 메시지"""
         yield {
@@ -493,23 +523,23 @@ class ModifyHandler:
             "content": (
                 "어떤 수정을 원하시나요?\n\n"
                 "**속성 관련:**\n"
-                "- \"우선순위 select 속성 추가해줘 (높음/중간/낮음)\"\n"
-                "- \"예산 속성 삭제해줘\"\n\n"
+                '- "우선순위 select 속성 추가해줘 (높음/중간/낮음)"\n'
+                '- "예산 속성 삭제해줘"\n\n'
                 "**뷰 관련:**\n"
-                "- \"캘린더 뷰 추가해줘\"\n"
-                "- \"칸반 보드 뷰 추가해줘\"\n\n"
+                '- "캘린더 뷰 추가해줘"\n'
+                '- "칸반 보드 뷰 추가해줘"\n\n'
                 "**DB 관련:**\n"
-                "- \"태스크 DB 추가해줘\"\n"
-                "- \"프로젝트랑 태스크 연결해줘\"\n\n"
+                '- "태스크 DB 추가해줘"\n'
+                '- "프로젝트랑 태스크 연결해줘"\n\n'
                 "**수식:**\n"
-                "- \"D-Day 수식 추가해줘\"\n"
-                "- \"진행률 계산 추가해줘\"\n\n"
+                '- "D-Day 수식 추가해줘"\n'
+                '- "진행률 계산 추가해줘"\n\n'
                 "**삭제:**\n"
-                "- \"캘린더 뷰 삭제해줘\"\n"
+                '- "캘린더 뷰 삭제해줘"\n'
                 "- \"'FAQ' 블록 삭제해줘\"\n\n"
                 "**구조:**\n"
-                "- \"새 하위 페이지 추가해줘\"\n"
-                "- \"FAQ 섹션 추가해줘\""
+                '- "새 하위 페이지 추가해줘"\n'
+                '- "FAQ 섹션 추가해줘"'
             ),
         }
 
@@ -543,12 +573,21 @@ class ModifyHandler:
     def _detect_view_type(self, msg: str) -> str:
         """메시지에서 뷰 타입 감지"""
         view_map = {
-            "보드": "board", "칸반": "board", "kanban": "board", "board": "board",
-            "캘린더": "calendar", "달력": "calendar", "calendar": "calendar",
-            "갤러리": "gallery", "gallery": "gallery",
-            "타임라인": "timeline", "timeline": "timeline",
-            "리스트": "list", "list": "list",
-            "테이블": "table", "table": "table",
+            "보드": "board",
+            "칸반": "board",
+            "kanban": "board",
+            "board": "board",
+            "캘린더": "calendar",
+            "달력": "calendar",
+            "calendar": "calendar",
+            "갤러리": "gallery",
+            "gallery": "gallery",
+            "타임라인": "timeline",
+            "timeline": "timeline",
+            "리스트": "list",
+            "list": "list",
+            "테이블": "table",
+            "table": "table",
         }
         for keyword, view_type in view_map.items():
             if keyword in msg:
@@ -560,7 +599,10 @@ class ModifyHandler:
         if any(w in msg for w in ["d-day", "디데이", "남은 일", "마감까지"]):
             return {"name": "D-Day", "expression": 'dateBetween(prop("마감일"), now(), "days")'}
         if any(w in msg for w in ["진행률", "진행율", "progress"]):
-            return {"name": "진행률", "expression": 'if(prop("상태") == "완료", 100, if(prop("상태") == "진행 중", 50, 0))'}
+            return {
+                "name": "진행률",
+                "expression": 'if(prop("상태") == "완료", 100, if(prop("상태") == "진행 중", 50, 0))',
+            }
         if any(w in msg for w in ["총액", "합계", "total", "총"]) and any(w in msg for w in ["단가", "수량", "가격"]):
             return {"name": "총액", "expression": 'prop("단가") * prop("수량")'}
         if any(w in msg for w in ["상태 이모지", "체크", "완료 표시"]):
@@ -636,22 +678,26 @@ class ModifyHandler:
         blocks: list[dict] = []
 
         if "faq" in msg or "자주" in msg:
-            blocks.extend([
-                {"type": "divider"},
-                {"type": "heading_2", "text": "💡 자주 묻는 질문"},
-                {"type": "toggle", "text": "질문 1", "children_text": "답변을 입력하세요."},
-                {"type": "toggle", "text": "질문 2", "children_text": "답변을 입력하세요."},
-                {"type": "toggle", "text": "질문 3", "children_text": "답변을 입력하세요."},
-            ])
+            blocks.extend(
+                [
+                    {"type": "divider"},
+                    {"type": "heading_2", "text": "💡 자주 묻는 질문"},
+                    {"type": "toggle", "text": "질문 1", "children_text": "답변을 입력하세요."},
+                    {"type": "toggle", "text": "질문 2", "children_text": "답변을 입력하세요."},
+                    {"type": "toggle", "text": "질문 3", "children_text": "답변을 입력하세요."},
+                ]
+            )
         elif "구분" in msg or "divider" in msg:
             blocks.append({"type": "divider"})
         elif "제목" in msg or "헤딩" in msg:
             blocks.append({"type": "heading_2", "text": "새 섹션"})
         else:
-            blocks.extend([
-                {"type": "divider"},
-                {"type": "heading_2", "text": "📌 추가 내용"},
-                {"type": "paragraph", "text": "여기에 내용을 입력하세요."},
-            ])
+            blocks.extend(
+                [
+                    {"type": "divider"},
+                    {"type": "heading_2", "text": "📌 추가 내용"},
+                    {"type": "paragraph", "text": "여기에 내용을 입력하세요."},
+                ]
+            )
 
         return blocks

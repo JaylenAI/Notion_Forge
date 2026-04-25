@@ -14,9 +14,25 @@ from typing import Any
 # ============================================================
 
 VALID_COLORS = {
-    "default", "gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red",
-    "gray_background", "brown_background", "orange_background", "yellow_background",
-    "green_background", "blue_background", "purple_background", "pink_background", "red_background",
+    "default",
+    "gray",
+    "brown",
+    "orange",
+    "yellow",
+    "green",
+    "blue",
+    "purple",
+    "pink",
+    "red",
+    "gray_background",
+    "brown_background",
+    "orange_background",
+    "yellow_background",
+    "green_background",
+    "blue_background",
+    "purple_background",
+    "pink_background",
+    "red_background",
 }
 
 
@@ -27,6 +43,7 @@ def _safe_color(color: str) -> str:
 # ============================================================
 # Phase B: Rich Text (인라인 서식 전체 지원)
 # ============================================================
+
 
 def rich_text(
     content: str,
@@ -111,15 +128,34 @@ def rich_text_mention_database(database_id: str) -> list[dict]:
 def rich_text_template_mention(template_type: str = "today") -> list[dict]:
     """템플릿 멘션 (@today, @now, @me)"""
     if template_type == "me":
-        return [{"type": "mention", "mention": {"type": "template_mention", "template_mention": {"type": "template_mention_user", "template_mention_user": "me"}}}]
-    return [{"type": "mention", "mention": {"type": "template_mention", "template_mention": {"type": "template_mention_date", "template_mention_date": template_type}}}]
+        return [
+            {
+                "type": "mention",
+                "mention": {
+                    "type": "template_mention",
+                    "template_mention": {"type": "template_mention_user", "template_mention_user": "me"},
+                },
+            }
+        ]
+    return [
+        {
+            "type": "mention",
+            "mention": {
+                "type": "template_mention",
+                "template_mention": {"type": "template_mention_date", "template_mention_date": template_type},
+            },
+        }
+    ]
 
 
 # ============================================================
 # Phase A: 기본 블록 (전체)
 # ============================================================
 
-def heading(text: str, level: int = 1, color: str = "default", is_toggleable: bool = False, children: list[dict] | None = None) -> dict[str, Any]:
+
+def heading(
+    text: str, level: int = 1, color: str = "default", is_toggleable: bool = False, children: list[dict] | None = None
+) -> dict[str, Any]:
     """heading_1/2/3/4 블록 — 토글 제목 지원"""
     key = f"heading_{level}"
     block: dict[str, Any] = {
@@ -223,11 +259,13 @@ def table(rows: list[list[str]], has_column_header: bool = True, has_row_header:
         # 폭 맞추기
         while len(cells) < width:
             cells.append(rich_text(""))
-        table_rows.append({
-            "object": "block",
-            "type": "table_row",
-            "table_row": {"cells": cells},
-        })
+        table_rows.append(
+            {
+                "object": "block",
+                "type": "table_row",
+                "table_row": {"cells": cells},
+            }
+        )
     return {
         "object": "block",
         "type": "table",
@@ -243,6 +281,7 @@ def table(rows: list[list[str]], has_column_header: bool = True, has_row_header:
 # ============================================================
 # Phase C: 미디어 블록
 # ============================================================
+
 
 def bookmark(url: str, caption: str = "") -> dict[str, Any]:
     block: dict[str, Any] = {"object": "block", "type": "bookmark", "bookmark": {"url": url}}
@@ -327,6 +366,7 @@ def code_block(code: str, language: str = "python", caption: str = "") -> dict[s
 # ============================================================
 # Phase D: 고급 블록
 # ============================================================
+
 
 def table_of_contents(color: str = "default") -> dict[str, Any]:
     return {"object": "block", "type": "table_of_contents", "table_of_contents": {"color": _safe_color(color)}}
@@ -415,6 +455,7 @@ def tab_block(tabs: list[dict[str, Any]]) -> dict[str, Any]:
 # Phase E: 임베드
 # ============================================================
 
+
 def embed(url: str, caption: str = "") -> dict[str, Any]:
     """임베드 블록 (Google Drive, Figma, GitHub, Tweet, Loom, Miro 등)"""
     block: dict[str, Any] = {
@@ -430,6 +471,7 @@ def embed(url: str, caption: str = "") -> dict[str, Any]:
 # ============================================================
 # Phase F: 버튼 블록
 # ============================================================
+
 
 def button(label: str, actions: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """버튼 블록 — Notion 자동화 트리거
@@ -455,6 +497,7 @@ def button(label: str, actions: list[dict[str, Any]] | None = None) -> dict[str,
 # 멘션 헬퍼 (하위 호환)
 # ============================================================
 
+
 def mention_page(page_id: str, text: str = "") -> dict[str, Any]:
     return {"type": "mention", "mention": {"type": "page", "page": {"id": page_id}}, "plain_text": text}
 
@@ -469,6 +512,7 @@ def mention_date(start: str, end: str | None = None) -> dict[str, Any]:
 # ============================================================
 # 아이콘 헬퍼
 # ============================================================
+
 
 def icon_emoji(emoji: str) -> dict:
     return {"type": "emoji", "emoji": emoji}
@@ -491,10 +535,11 @@ def icon_custom_emoji(custom_emoji_id: str) -> dict:
 # DB 속성 빌더
 # ============================================================
 
+
 def build_database_properties(props: dict[str, Any]) -> dict[str, Any]:
     """DB 속성 스키마 생성"""
     # AI가 잘못 생성할 수 있는 타입명 → Notion API 올바른 타입명
-    TYPE_ALIASES = {
+    type_aliases = {
         "text": "rich_text",
         "string": "rich_text",
         "memo": "rich_text",
@@ -516,8 +561,7 @@ def build_database_properties(props: dict[str, Any]) -> dict[str, Any]:
 
     # title 속성이 반드시 하나 있어야 함 (Notion 필수)
     has_title = any(
-        (isinstance(s, str) and s == "title") or
-        (isinstance(s, dict) and s.get("type") == "title")
+        (isinstance(s, str) and s == "title") or (isinstance(s, dict) and s.get("type") == "title")
         for s in props.values()
     )
     if not has_title:
@@ -532,20 +576,37 @@ def build_database_properties(props: dict[str, Any]) -> dict[str, Any]:
     for name, spec in props.items():
         if isinstance(spec, str):
             # 타입 별칭 자동 변환
-            spec = TYPE_ALIASES.get(spec, spec)
+            spec = type_aliases.get(spec, spec)
             if spec in ("created_time", "created_by", "last_edited_time", "last_edited_by", "unique_id"):
                 result[name] = {spec: {}}
                 continue
             result[name] = {spec: {}}
         elif isinstance(spec, dict):
-            prop_type = TYPE_ALIASES.get(spec["type"], spec["type"])
+            prop_type = type_aliases.get(spec["type"], spec["type"])
             config: dict[str, Any] = {}
             # select/multi_select 옵션 색상 검증
-            VALID_OPTION_COLORS = {"default", "gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"}
+            valid_option_colors = {
+                "default",
+                "gray",
+                "brown",
+                "orange",
+                "yellow",
+                "green",
+                "blue",
+                "purple",
+                "pink",
+                "red",
+            }
             if prop_type in ("select", "multi_select") and "options" in spec:
                 config["options"] = [
-                    {"name": str(opt["name"] if isinstance(opt, dict) else opt),
-                     "color": (opt.get("color", "default") if isinstance(opt, dict) and opt.get("color") in VALID_OPTION_COLORS else "default")}
+                    {
+                        "name": str(opt["name"] if isinstance(opt, dict) else opt),
+                        "color": (
+                            opt.get("color", "default")
+                            if isinstance(opt, dict) and opt.get("color") in valid_option_colors
+                            else "default"
+                        ),
+                    }
                     for opt in spec["options"]
                 ]
             elif prop_type == "status" and "options" in spec:

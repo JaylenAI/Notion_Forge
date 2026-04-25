@@ -1,6 +1,8 @@
 """Blueprint Generator 단위 테스트 (v3: AI 자유 설계)"""
+
 import pytest
-from app.agent.blueprint_generator import generate_blueprint, _smart_fallback, _assemble_blueprint
+
+from app.agent.blueprint_generator import _assemble_blueprint, _smart_fallback, generate_blueprint
 
 
 def test_fallback_exercise():

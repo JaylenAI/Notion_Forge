@@ -5,8 +5,8 @@ Phase 2+: base + mode + layout + views_catalog + relations + design_tokens
 """
 
 import json
-from pathlib import Path
 from functools import lru_cache
+from pathlib import Path
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 GOLDEN_DIR = PROMPTS_DIR / "golden"
@@ -38,13 +38,17 @@ def _load_golden(layout: str) -> str:
             "databases": [],
         }
         for db in data.get("databases", [])[:2]:
-            compact["databases"].append({
-                "title": db.get("title", ""),
-                "db_properties": db.get("db_properties", {}),
-                "views": db.get("views", []),
-            })
+            compact["databases"].append(
+                {
+                    "title": db.get("title", ""),
+                    "db_properties": db.get("db_properties", {}),
+                    "views": db.get("views", []),
+                }
+            )
         if data.get("sub_pages"):
-            compact["sub_pages"] = [{"name": sp.get("name", ""), "icon": sp.get("icon", "")} for sp in data["sub_pages"][:3]]
+            compact["sub_pages"] = [
+                {"name": sp.get("name", ""), "icon": sp.get("icon", "")} for sp in data["sub_pages"][:3]
+            ]
         return f"## GOLDEN EXAMPLE (adapt this to the user's request, don't copy directly):\n```json\n{json.dumps(compact, ensure_ascii=False, indent=2)}\n```"
     except Exception:
         return ""

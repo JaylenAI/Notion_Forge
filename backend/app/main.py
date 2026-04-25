@@ -7,9 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.routers import chat, template, ai, workspace, recipes, oauth, skills
-
 from app.core.logging_config import setup_logging
+from app.routers import ai, chat, oauth, recipes, skills, template, workspace
 
 setup_logging(settings.log_level)
 
@@ -22,18 +21,21 @@ async def lifespan(app: FastAPI):
     if settings.copilot_enabled:
         try:
             from app.core.copilot_client import copilot_manager
+
             await copilot_manager.start()
         except Exception as e:
             logger.warning(f"Copilot 시작 스킵: {e}")
 
     # 이력 보존 정책 — 30일 이상 된 파일 자동 정리
     from app.core.history import cleanup_old_history
+
     cleanup_old_history(retention_days=30)
 
     yield
     if settings.copilot_enabled:
         try:
             from app.core.copilot_client import copilot_manager
+
             await copilot_manager.stop()
         except Exception:
             pass
@@ -86,11 +88,13 @@ def create_app() -> FastAPI:
         copilot_status = {}
         try:
             from app.core.copilot_client import copilot_manager
+
             copilot_status = copilot_manager.get_status()
         except ImportError:
             copilot_status = {"available": False}
 
         from app.core.history import get_recent_history
+
         recent = get_recent_history(days=1, limit=100)
         total = len(recent)
         success_count = sum(1 for r in recent if r.get("metrics", {}).get("success"))

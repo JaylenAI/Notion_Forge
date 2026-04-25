@@ -17,6 +17,7 @@ logger = logging.getLogger("notionforge.metrics")
 @dataclass
 class StageMetric:
     """단일 스테이지 메트릭"""
+
     name: str
     start_time: float = 0.0
     end_time: float = 0.0
@@ -33,6 +34,7 @@ class StageMetric:
 @dataclass
 class GenerationMetrics:
     """한 번의 템플릿 생성에 대한 전체 메트릭"""
+
     session_id: str = ""
     user_input: str = ""
     skill: str = ""
@@ -118,8 +120,5 @@ class GenerationMetrics:
             "gen_eval_attempts": self.gen_eval_attempts,
             "tokens_used": self.tokens_used,
             "total_duration_ms": self.total_duration_ms,
-            "stages": [
-                {"name": s.name, "duration_ms": s.duration_ms, "success": s.success}
-                for s in self.stages
-            ],
+            "stages": [{"name": s.name, "duration_ms": s.duration_ms, "success": s.success} for s in self.stages],
         }

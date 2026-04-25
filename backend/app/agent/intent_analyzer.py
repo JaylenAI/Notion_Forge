@@ -11,14 +11,35 @@ from app.schemas.blueprint import IntentResult
 
 # 색상 매핑
 COLOR_MAP: dict[str, str] = {
-    "하늘색": "blue", "파란색": "blue", "블루": "blue", "blue": "blue",
-    "주황색": "orange", "오렌지": "orange", "orange": "orange",
-    "초록색": "green", "연두색": "green", "그린": "green", "green": "green",
-    "빨간색": "red", "레드": "red", "코랄": "red", "red": "red",
-    "보라색": "purple", "퍼플": "purple", "라벤더": "purple", "purple": "purple",
-    "핑크": "pink", "분홍색": "pink", "pink": "pink",
-    "노란색": "yellow", "옐로우": "yellow", "yellow": "yellow",
-    "회색": "gray", "그레이": "gray", "모노": "gray", "gray": "gray",
+    "하늘색": "blue",
+    "파란색": "blue",
+    "블루": "blue",
+    "blue": "blue",
+    "주황색": "orange",
+    "오렌지": "orange",
+    "orange": "orange",
+    "초록색": "green",
+    "연두색": "green",
+    "그린": "green",
+    "green": "green",
+    "빨간색": "red",
+    "레드": "red",
+    "코랄": "red",
+    "red": "red",
+    "보라색": "purple",
+    "퍼플": "purple",
+    "라벤더": "purple",
+    "purple": "purple",
+    "핑크": "pink",
+    "분홍색": "pink",
+    "pink": "pink",
+    "노란색": "yellow",
+    "옐로우": "yellow",
+    "yellow": "yellow",
+    "회색": "gray",
+    "그레이": "gray",
+    "모노": "gray",
+    "gray": "gray",
 }
 
 TYPE_KEYWORDS: dict[str, list[str]] = {
@@ -77,6 +98,7 @@ async def _copilot_analyze(message: str) -> IntentResult:
     """GitHub Copilot SDK로 의도 분석. 실패 시 Mock 폴백."""
     try:
         from app.core.copilot_client import copilot_manager
+
         text = await copilot_manager.send(
             system_prompt=SYSTEM_PROMPT,
             user_message=message,
@@ -183,9 +205,14 @@ def _parse_ai_response(text: str) -> IntentResult:
         # 제목이 비어있으면 기본값
         if not result.title:
             type_names = {
-                "dashboard": "대시보드", "tracker": "트래커", "bookmark": "북마크 사이트",
-                "project": "프로젝트 보드", "note": "노트", "onboarding": "온보딩 가이드",
-                "crm": "CRM", "custom": "My Workspace",
+                "dashboard": "대시보드",
+                "tracker": "트래커",
+                "bookmark": "북마크 사이트",
+                "project": "프로젝트 보드",
+                "note": "노트",
+                "onboarding": "온보딩 가이드",
+                "crm": "CRM",
+                "custom": "My Workspace",
             }
             result.title = type_names.get(result.template_type, "My Workspace")
         return result
@@ -234,9 +261,14 @@ def _mock_analyze(message: str) -> IntentResult:
             break
 
     title = {
-        "dashboard": "대시보드", "tracker": "트래커", "bookmark": "북마크 사이트",
-        "project": "프로젝트 보드", "note": "노트", "onboarding": "온보딩 가이드",
-        "crm": "CRM", "custom": "My Workspace",
+        "dashboard": "대시보드",
+        "tracker": "트래커",
+        "bookmark": "북마크 사이트",
+        "project": "프로젝트 보드",
+        "note": "노트",
+        "onboarding": "온보딩 가이드",
+        "crm": "CRM",
+        "custom": "My Workspace",
     }.get(template_type, "My Workspace")
 
     confidence = 0.9 if template_type != "custom" else 0.5

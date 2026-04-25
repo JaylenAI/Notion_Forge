@@ -15,10 +15,10 @@ from typing import Any
 import httpx
 
 from app.config import settings
-from app.notion.rate_limiter import RateLimiter
-from app.notion.page_ops import PageOpsMixin
-from app.notion.database_ops import DatabaseOpsMixin
 from app.notion.block_ops import BlockOpsMixin
+from app.notion.database_ops import DatabaseOpsMixin
+from app.notion.page_ops import PageOpsMixin
+from app.notion.rate_limiter import RateLimiter
 from app.notion.view_ops import ViewOpsMixin
 
 logger = logging.getLogger("notionforge.notion_client")
@@ -117,16 +117,12 @@ class NotionClient(PageOpsMixin, DatabaseOpsMixin, BlockOpsMixin, ViewOpsMixin):
         elif page_id:
             kwargs["parent"] = {"page_id": page_id}
 
-        return await self.rate_limiter.call_with_retry(
-            self._real_client.comments.create, **kwargs
-        )
+        return await self.rate_limiter.call_with_retry(self._real_client.comments.create, **kwargs)
 
     async def get_comments(self, block_id: str) -> list:
         if self.mock_mode:
             return []
-        result = await self.rate_limiter.call_with_retry(
-            self._real_client.comments.list, block_id=block_id
-        )
+        result = await self.rate_limiter.call_with_retry(self._real_client.comments.list, block_id=block_id)
         return result.get("results", [])
 
     # ========================================

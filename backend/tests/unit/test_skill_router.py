@@ -1,14 +1,15 @@
 """SkillRouter 단위 테스트: 키워드 매칭 + LLM 분류 하이브리드"""
 
-import pytest
 from unittest.mock import AsyncMock
 
+import pytest
+
 from app.agent.skill_router import (
-    _keyword_score,
-    route_skill,
-    build_skill_guide,
     SkillMatch,
     _extract_skill_essentials,
+    _keyword_score,
+    build_skill_guide,
+    route_skill,
 )
 
 
@@ -55,11 +56,13 @@ class TestRouteSkill:
     @pytest.mark.asyncio
     async def test_ambiguous_calls_llm(self):
         mock_provider = AsyncMock()
-        mock_provider.call = AsyncMock(return_value={
-            "skill_id": "diary",
-            "confidence": 0.85,
-            "reasoning": "일상 기록 요청",
-        })
+        mock_provider.call = AsyncMock(
+            return_value={
+                "skill_id": "diary",
+                "confidence": 0.85,
+                "reasoning": "일상 기록 요청",
+            }
+        )
         result = await route_skill("내 일상을 정리해보고 싶어", provider=mock_provider)
         assert result.skill_id == "diary"
         assert result.method == "llm"
@@ -68,10 +71,12 @@ class TestRouteSkill:
     @pytest.mark.asyncio
     async def test_llm_low_confidence_falls_through(self):
         mock_provider = AsyncMock()
-        mock_provider.call = AsyncMock(return_value={
-            "skill_id": "track",
-            "confidence": 0.1,
-        })
+        mock_provider.call = AsyncMock(
+            return_value={
+                "skill_id": "track",
+                "confidence": 0.1,
+            }
+        )
         result = await route_skill("뭔가 만들어줘", provider=mock_provider)
         assert result.skill_id is None or result.confidence <= 0.3
 

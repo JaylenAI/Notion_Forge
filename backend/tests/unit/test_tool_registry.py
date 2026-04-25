@@ -1,7 +1,8 @@
 """ToolRegistry 단위 테스트"""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from app.agent.tools.base import BaseTool
 from app.agent.tools.registry import ToolRegistry
@@ -30,9 +31,15 @@ class TestToolRegistryInit:
 
     def test_expected_tools_present(self, registry):
         expected = [
-            "create_page", "create_database", "add_blocks",
-            "add_database_items", "create_columns", "link_databases",
-            "create_view", "apply_color_theme", "generate_cover",
+            "create_page",
+            "create_database",
+            "add_blocks",
+            "add_database_items",
+            "create_columns",
+            "link_databases",
+            "create_view",
+            "apply_color_theme",
+            "generate_cover",
         ]
         for name in expected:
             assert registry.get(name) is not None, f"{name} not registered"
@@ -57,10 +64,7 @@ class TestToolSpecs:
             assert "properties" in func["parameters"]
 
     def test_required_fields_exclude_optional(self, registry):
-        spec = next(
-            s for s in registry.get_tool_specs()
-            if s["function"]["name"] == "create_page"
-        )
+        spec = next(s for s in registry.get_tool_specs() if s["function"]["name"] == "create_page")
         required = spec["function"]["parameters"]["required"]
         assert "parent_id" in required
         assert "title" in required

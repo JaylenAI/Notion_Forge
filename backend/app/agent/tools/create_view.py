@@ -9,7 +9,10 @@ class CreateViewTool(BaseTool):
     description = "데이터베이스에 뷰를 추가합니다 (gallery, board, calendar, timeline, list, chart, form)"
     parameters = {
         "database_id": {"type": "string", "description": "대상 DB ID"},
-        "view_type": {"type": "string", "description": "뷰 타입 (gallery, board, calendar, timeline, list, table, chart, form)"},
+        "view_type": {
+            "type": "string",
+            "description": "뷰 타입 (gallery, board, calendar, timeline, list, table, chart, form)",
+        },
         "title": {"type": "string", "description": "뷰 제목", "optional": True},
         "group_by": {"type": "string", "description": "그룹화 속성 이름", "optional": True},
         "sorts": {"type": "array", "description": "정렬 [{property, direction}]", "optional": True},

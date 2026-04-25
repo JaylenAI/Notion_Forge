@@ -5,19 +5,49 @@ blueprint_generator.py에서 분리된 모듈.
 
 import logging
 
-from app.skills import load_skill, _get_all_skills
+from app.skills import _get_all_skills, load_skill
 
 logger = logging.getLogger("notionforge.skill_matcher")
 
 
 TIER2_SKILLS = {
-    "fitness", "habit", "health", "diet", "reading", "recipe", "movie", "music", "cafe",
-    "project", "sprint", "bug", "meeting", "travel", "wedding", "goals",
-    "bookmark", "inventory", "contact", "budget", "investment", "subscription",
-    "study", "language", "sales",
+    "fitness",
+    "habit",
+    "health",
+    "diet",
+    "reading",
+    "recipe",
+    "movie",
+    "music",
+    "cafe",
+    "project",
+    "sprint",
+    "bug",
+    "meeting",
+    "travel",
+    "wedding",
+    "goals",
+    "bookmark",
+    "inventory",
+    "contact",
+    "budget",
+    "investment",
+    "subscription",
+    "study",
+    "language",
+    "sales",
     # Phase 4 추가
-    "onboarding", "wiki", "sop", "team_home", "life_os",
-    "diary", "gratitude", "review", "blog", "youtube", "social",
+    "onboarding",
+    "wiki",
+    "sop",
+    "team_home",
+    "life_os",
+    "diary",
+    "gratitude",
+    "review",
+    "blog",
+    "youtube",
+    "social",
 }
 
 
@@ -89,7 +119,9 @@ def build_skill_guide(user_message: str = "") -> str:
             # 매칭된 스킬은 전체 내용을 로딩 (핵심 DB 구조 + 뷰 + 패턴)
             essentials = _extract_skill_essentials(skill_md)
             info = all_skills.get(matched_skill, {})
-            parts.append(f"## MATCHED SKILL: {matched_skill} ({info.get('description', '')[:50]})\n{essentials}\n⚠️ FOLLOW THIS SKILL'S DB PROPERTIES AND VIEWS EXACTLY!")
+            parts.append(
+                f"## MATCHED SKILL: {matched_skill} ({info.get('description', '')[:50]})\n{essentials}\n⚠️ FOLLOW THIS SKILL'S DB PROPERTIES AND VIEWS EXACTLY!"
+            )
             logger.info(f"[Skill Match] {matched_skill} (키워드 매칭)")
 
     # 2. 나머지 스킬은 이름+설명만 (토큰 절약)

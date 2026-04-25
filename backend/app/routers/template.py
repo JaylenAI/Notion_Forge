@@ -1,6 +1,6 @@
 """템플릿 생성 REST API 라우터"""
 
-from fastapi import APIRouter, Body, UploadFile, File
+from fastapi import APIRouter, Body, File, UploadFile
 
 from app.agent.blueprint_generator import generate_blueprint
 from app.agent.orchestrator import AgentOrchestrator
@@ -87,12 +87,15 @@ async def document_to_notion(file: UploadFile = File(...)):
                 {"type": "heading_1", "text": f"📊 {db_title}"},
                 {"type": "database_ref", "db_index": 0},
             ],
-            "databases": [{
-                "title": db_title, "is_inline": True,
-                "properties": parsed["properties"],
-                "views": ["table"],
-                "sample_items": parsed.get("sample_items", []),
-            }],
+            "databases": [
+                {
+                    "title": db_title,
+                    "is_inline": True,
+                    "properties": parsed["properties"],
+                    "views": ["table"],
+                    "sample_items": parsed.get("sample_items", []),
+                }
+            ],
             "sub_pages": [],
         }
         return {"success": True, "blueprint": blueprint, "hint": parsed["hint"]}
@@ -145,8 +148,8 @@ async def agent_loop_generate(
     ai_model: str = Body(""),
 ):
     """Agent Loop 기반 생성 — Plan-Execute-Reflect"""
-    from app.config import settings as cfg
     from app.agent.agent_loop import AgentLoop
+    from app.config import settings as cfg
     from app.notion.client import NotionClient
 
     client = NotionClient(

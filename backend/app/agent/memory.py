@@ -6,7 +6,7 @@
 
 import json
 import logging
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -69,9 +69,7 @@ class EpisodicMemory:
             "value": value,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
-        self._preferences_file.write_text(
-            json.dumps(prefs, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        self._preferences_file.write_text(json.dumps(prefs, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def get_preference(self, key: str, default: Any = None) -> Any:
         prefs = self._load_preferences()
@@ -118,9 +116,7 @@ class EpisodicMemory:
         prev_avg = entry["avg_attempts"]
         entry["avg_attempts"] = round(prev_avg + (episode.gen_eval_attempts - prev_avg) / total, 2)
 
-        self._stats_file.write_text(
-            json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        self._stats_file.write_text(json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def build_memory_context(self, skill: str = "", limit: int = 3) -> str:
         """AI 프롬프트에 주입할 메모리 컨텍스트 빌드"""
@@ -129,7 +125,7 @@ class EpisodicMemory:
         prefs = self.get_all_preferences()
         if prefs:
             pref_lines = [f"- {k}: {v}" for k, v in list(prefs.items())[:5]]
-            parts.append(f"## User Preferences\n" + "\n".join(pref_lines))
+            parts.append("## User Preferences\n" + "\n".join(pref_lines))
 
         if skill:
             similar = self.get_similar_episodes(skill, limit=limit)

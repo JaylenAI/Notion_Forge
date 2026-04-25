@@ -4,7 +4,6 @@ Copilot SDK를 통해 GPT-4.1, GPT-5.x, Claude 등 다양한 모델에
 API 키 없이 접근 가능. GitHub Copilot 구독 인증 기반.
 """
 
-import asyncio
 import logging
 from typing import Any
 
@@ -41,6 +40,7 @@ class CopilotManager:
             return self._available
         try:
             from copilot import CopilotClient  # noqa: F401
+
             self._available = True
         except ImportError:
             self._available = False
@@ -55,6 +55,7 @@ class CopilotManager:
             return
         try:
             from copilot import CopilotClient
+
             self._client = CopilotClient()
             await self._client.start()
             self._started = True
@@ -120,6 +121,7 @@ class CopilotManager:
     def get_status(self) -> dict[str, Any]:
         """현재 상태"""
         from app.config import settings
+
         return {
             "available": self.is_available(),
             "started": self._started,

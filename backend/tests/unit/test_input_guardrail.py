@@ -1,6 +1,5 @@
 """Input Guardrail 테스트"""
 
-import pytest
 from app.agent.input_guardrail import validate_input
 
 

@@ -39,7 +39,7 @@ class AddDatabaseItemsTool(BaseTool):
             real_props = await self._get_real_property_map(database_id)
 
         if not real_props:
-            logger.info(f"[샘플 데이터] 실제 DB 속성을 조회할 수 없음 → blueprint 속성으로 폴백")
+            logger.info("[샘플 데이터] 실제 DB 속성을 조회할 수 없음 → blueprint 속성으로 폴백")
             # blueprint 속성을 real_props 형태로 변환해서 사용
             real_props = _blueprint_to_real_props(db_properties)
 
@@ -53,7 +53,7 @@ class AddDatabaseItemsTool(BaseTool):
             try:
                 props = _build_item_props(item, db_properties, real_props, prop_name_map)
                 if not props:
-                    logger.info(f"[샘플 항목 {i+1}] 속성 변환 결과 비어있음, 스킵")
+                    logger.info(f"[샘플 항목 {i + 1}] 속성 변환 결과 비어있음, 스킵")
                     continue
                 result = await self.client.add_database_item(
                     database_id=database_id,
@@ -65,7 +65,7 @@ class AddDatabaseItemsTool(BaseTool):
             except Exception as e:
                 err_msg = str(e)[:120]
                 errors.append(err_msg)
-                logger.info(f"[샘플 항목 {i+1} 실패] {err_msg}")
+                logger.info(f"[샘플 항목 {i + 1} 실패] {err_msg}")
                 continue
 
         logger.info(f"[샘플 데이터] 결과: {len(results)}/{len(items)} 성공, {len(errors)} 실패")
@@ -103,9 +103,7 @@ def _blueprint_to_real_props(db_properties: dict) -> dict[str, dict]:
     return result
 
 
-def _build_property_name_map(
-    blueprint_props: dict, real_props: dict
-) -> dict[str, str]:
+def _build_property_name_map(blueprint_props: dict, real_props: dict) -> dict[str, str]:
     """blueprint 속성명 -> 실제 Notion 속성명 매핑 테이블 생성.
 
     1단계: 정확히 일치하는 이름
@@ -266,33 +264,71 @@ def _format_value(prop_type: str, value: Any) -> dict[str, Any]:
         # 한국어 값은 그대로 전달, 영어/변형은 한국어로 통일
         status_map = {
             # 영어 → 한국어
-            "not started": "시작 전", "todo": "시작 전", "to do": "시작 전",
-            "Not started": "시작 전", "TODO": "시작 전",
-            "in progress": "진행 중", "doing": "진행 중", "active": "진행 중",
+            "not started": "시작 전",
+            "todo": "시작 전",
+            "to do": "시작 전",
+            "Not started": "시작 전",
+            "TODO": "시작 전",
+            "in progress": "진행 중",
+            "doing": "진행 중",
+            "active": "진행 중",
             "In progress": "진행 중",
-            "done": "완료", "completed": "완료", "finished": "완료",
-            "Done": "완료", "Completed": "완료",
+            "done": "완료",
+            "completed": "완료",
+            "finished": "완료",
+            "Done": "완료",
+            "Completed": "완료",
             # 한국어 변형 → 표준 한국어
-            "시작전": "시작 전", "대기": "시작 전", "미시작": "시작 전",
-            "예정": "시작 전", "계획": "시작 전", "준비": "시작 전",
-            "대기 중": "시작 전", "대기중": "시작 전",
-            "진행중": "진행 중", "진행": "진행 중",
-            "작업 중": "진행 중", "작업중": "진행 중",
-            "처리 중": "진행 중", "처리중": "진행 중", "활성": "진행 중",
-            "완료됨": "완료", "끝": "완료", "마감": "완료",
-            "종료": "완료", "해결": "완료", "해결됨": "완료",
+            "시작전": "시작 전",
+            "대기": "시작 전",
+            "미시작": "시작 전",
+            "예정": "시작 전",
+            "계획": "시작 전",
+            "준비": "시작 전",
+            "대기 중": "시작 전",
+            "대기중": "시작 전",
+            "진행중": "진행 중",
+            "진행": "진행 중",
+            "작업 중": "진행 중",
+            "작업중": "진행 중",
+            "처리 중": "진행 중",
+            "처리중": "진행 중",
+            "활성": "진행 중",
+            "완료됨": "완료",
+            "끝": "완료",
+            "마감": "완료",
+            "종료": "완료",
+            "해결": "완료",
+            "해결됨": "완료",
             # 독서/학습
-            "읽기 전": "시작 전", "읽기전": "시작 전", "미독": "시작 전",
-            "읽는 중": "진행 중", "읽는중": "진행 중", "독서 중": "진행 중",
-            "읽음": "완료", "독서완료": "완료", "다 읽음": "완료",
-            "수강 전": "시작 전", "수강전": "시작 전",
-            "수강 중": "진행 중", "수강중": "진행 중", "학습 중": "진행 중",
-            "수강 완료": "완료", "수강완료": "완료",
+            "읽기 전": "시작 전",
+            "읽기전": "시작 전",
+            "미독": "시작 전",
+            "읽는 중": "진행 중",
+            "읽는중": "진행 중",
+            "독서 중": "진행 중",
+            "읽음": "완료",
+            "독서완료": "완료",
+            "다 읽음": "완료",
+            "수강 전": "시작 전",
+            "수강전": "시작 전",
+            "수강 중": "진행 중",
+            "수강중": "진행 중",
+            "학습 중": "진행 중",
+            "수강 완료": "완료",
+            "수강완료": "완료",
             # 콘텐츠
-            "기획": "시작 전", "기획 중": "시작 전",
-            "작성 중": "진행 중", "작성중": "진행 중",
-            "리뷰": "진행 중", "리뷰 중": "진행 중", "검토 중": "진행 중",
-            "발행": "완료", "발행됨": "완료", "배포": "완료", "출시": "완료",
+            "기획": "시작 전",
+            "기획 중": "시작 전",
+            "작성 중": "진행 중",
+            "작성중": "진행 중",
+            "리뷰": "진행 중",
+            "리뷰 중": "진행 중",
+            "검토 중": "진행 중",
+            "발행": "완료",
+            "발행됨": "완료",
+            "배포": "완료",
+            "출시": "완료",
         }
         mapped = status_map.get(str(value).strip(), str(value).strip())
         return {"status": {"name": mapped}}

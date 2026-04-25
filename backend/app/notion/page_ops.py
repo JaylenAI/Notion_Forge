@@ -109,16 +109,12 @@ class PageOpsMixin:
     async def archive_page(self, page_id: str) -> dict:
         if self.mock_mode:
             return {"id": page_id, "in_trash": True}
-        return await self.rate_limiter.call_with_retry(
-            self._real_client.pages.update, page_id=page_id, in_trash=True
-        )
+        return await self.rate_limiter.call_with_retry(self._real_client.pages.update, page_id=page_id, in_trash=True)
 
     async def restore_page(self, page_id: str) -> dict:
         if self.mock_mode:
             return {"id": page_id, "in_trash": False}
-        return await self.rate_limiter.call_with_retry(
-            self._real_client.pages.update, page_id=page_id, in_trash=False
-        )
+        return await self.rate_limiter.call_with_retry(self._real_client.pages.update, page_id=page_id, in_trash=False)
 
     async def lock_page(self, page_id: str, locked: bool = True) -> dict:
         if self.mock_mode:
@@ -127,9 +123,7 @@ class PageOpsMixin:
         resp = await self._http_client.patch(f"/pages/{page_id}", json={"is_locked": locked})
         return resp.json()
 
-    async def create_page_markdown(
-        self, parent_id: str, title: str, markdown: str, icon: str | None = None
-    ) -> dict:
+    async def create_page_markdown(self, parent_id: str, title: str, markdown: str, icon: str | None = None) -> dict:
         if self.mock_mode:
             return self._mock_page(parent_id, title, icon, None)
         body: dict[str, Any] = {

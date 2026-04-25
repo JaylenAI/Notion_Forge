@@ -10,8 +10,7 @@ class BaseTool(ABC):
     parameters: dict[str, Any] = {}
 
     @abstractmethod
-    async def execute(self, **kwargs: Any) -> dict[str, Any]:
-        ...
+    async def execute(self, **kwargs: Any) -> dict[str, Any]: ...
 
     def to_tool_spec(self) -> dict[str, Any]:
         return {
@@ -22,10 +21,7 @@ class BaseTool(ABC):
                 "parameters": {
                     "type": "object",
                     "properties": self.parameters,
-                    "required": [
-                        k for k, v in self.parameters.items()
-                        if not v.get("optional", False)
-                    ],
+                    "required": [k for k, v in self.parameters.items() if not v.get("optional", False)],
                 },
             },
         }

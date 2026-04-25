@@ -128,15 +128,19 @@ class DatabaseOpsMixin:
                 elif "validation" in error_text.lower() or "property" in error_text.lower():
                     retry_props = dict(properties)
                     if "status" in error_text.lower():
-                        retry_props = {k: v for k, v in retry_props.items() if not (isinstance(v, dict) and "status" in v)}
-                        logger.warning(f"[DB Item 폴백] status 속성 제거 후 재시도")
+                        retry_props = {
+                            k: v for k, v in retry_props.items() if not (isinstance(v, dict) and "status" in v)
+                        }
+                        logger.warning("[DB Item 폴백] status 속성 제거 후 재시도")
                     elif "select" in error_text.lower():
-                        retry_props = {k: v for k, v in retry_props.items() if not (isinstance(v, dict) and "select" in v)}
-                        logger.warning(f"[DB Item 폴백] select 속성 제거 후 재시도")
+                        retry_props = {
+                            k: v for k, v in retry_props.items() if not (isinstance(v, dict) and "select" in v)
+                        }
+                        logger.warning("[DB Item 폴백] select 속성 제거 후 재시도")
                     else:
                         title_only = {k: v for k, v in retry_props.items() if isinstance(v, dict) and "title" in v}
                         retry_props = title_only if title_only else retry_props
-                        logger.warning(f"[DB Item 폴백] title만으로 재시도")
+                        logger.warning("[DB Item 폴백] title만으로 재시도")
                     page_data["properties"] = retry_props
                     page_data.pop("icon", None)
                     await self.rate_limiter.acquire()

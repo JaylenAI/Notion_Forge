@@ -1,7 +1,8 @@
 """AgentLoop 단위 테스트"""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.agent.agent_loop import AgentLoop
 
@@ -87,7 +88,12 @@ class TestAgentLoopRun:
         loop = AgentLoop(client=mock_client)
         plan = {
             "plan": [
-                {"step": 1, "tool": "create_page", "args": {"parent_id": "parent-1", "title": "Main"}, "description": "메인 페이지"},
+                {
+                    "step": 1,
+                    "tool": "create_page",
+                    "args": {"parent_id": "parent-1", "title": "Main"},
+                    "description": "메인 페이지",
+                },
                 {"step": 2, "tool": "apply_color_theme", "args": {"theme": "green"}, "description": "테마"},
             ],
             "reasoning": "2단계 테스트",
@@ -108,8 +114,7 @@ class TestAgentLoopRun:
             "reasoning": "실패 테스트",
         }
         reflection = {"action": "continue", "feedback": "skip"}
-        with patch.object(loop, "_plan", return_value=plan), \
-             patch.object(loop, "_reflect", return_value=reflection):
+        with patch.object(loop, "_plan", return_value=plan), patch.object(loop, "_reflect", return_value=reflection):
             result = await loop.run("fail test", parent_page_id="parent-1")
         assert result["steps_completed"] == 1
 
@@ -133,10 +138,12 @@ class TestAgentLoopRun:
             return await original_execute(tool_name, **kwargs)
 
         reflection = {"action": "retry", "modified_args": {"theme": "blue"}}
-        with patch.object(loop, "_plan", return_value=plan), \
-             patch.object(loop, "_reflect", return_value=reflection), \
-             patch.object(loop.registry, "execute", side_effect=mock_execute):
-            result = await loop.run("retry test", parent_page_id="parent-1")
+        with (
+            patch.object(loop, "_plan", return_value=plan),
+            patch.object(loop, "_reflect", return_value=reflection),
+            patch.object(loop.registry, "execute", side_effect=mock_execute),
+        ):
+            await loop.run("retry test", parent_page_id="parent-1")
         assert call_count == 2
 
 

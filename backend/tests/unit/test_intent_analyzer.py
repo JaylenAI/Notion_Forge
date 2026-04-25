@@ -1,5 +1,5 @@
 """Intent Analyzer 단위 테스트"""
-import pytest
+
 from app.agent.intent_analyzer import _mock_analyze, _override_intent
 
 

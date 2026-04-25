@@ -102,10 +102,7 @@ class AgentLoop:
 
     async def _plan(self, user_message: str, parent_page_id: str) -> dict[str, Any] | None:
         system = PLANNER_SYSTEM.format(tool_descriptions=self.registry.get_tool_descriptions())
-        enriched_message = (
-            f"Parent page ID: {parent_page_id}\n"
-            f"User request: {user_message}"
-        )
+        enriched_message = f"Parent page ID: {parent_page_id}\nUser request: {user_message}"
 
         max_chars = self.provider.get_max_prompt_chars()
         if max_chars > 0 and len(system) > max_chars:

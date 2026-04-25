@@ -4,7 +4,6 @@
 애매한 경우(score ≤ 1)에만 LLM으로 정밀 분류.
 """
 
-import json
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -14,12 +13,42 @@ from app.skills import _get_all_skills, load_skill
 logger = logging.getLogger("notionforge.skill_router")
 
 TIER2_SKILLS = {
-    "fitness", "habit", "health", "diet", "reading", "recipe", "movie", "music", "cafe",
-    "project", "sprint", "bug", "meeting", "travel", "wedding", "goals",
-    "bookmark", "inventory", "contact", "budget", "investment", "subscription",
-    "study", "language", "sales",
-    "onboarding", "wiki", "sop", "team_home", "life_os",
-    "diary", "gratitude", "review", "blog", "youtube", "social",
+    "fitness",
+    "habit",
+    "health",
+    "diet",
+    "reading",
+    "recipe",
+    "movie",
+    "music",
+    "cafe",
+    "project",
+    "sprint",
+    "bug",
+    "meeting",
+    "travel",
+    "wedding",
+    "goals",
+    "bookmark",
+    "inventory",
+    "contact",
+    "budget",
+    "investment",
+    "subscription",
+    "study",
+    "language",
+    "sales",
+    "onboarding",
+    "wiki",
+    "sop",
+    "team_home",
+    "life_os",
+    "diary",
+    "gratitude",
+    "review",
+    "blog",
+    "youtube",
+    "social",
 }
 
 CLASSIFY_SYSTEM = """You are a template skill classifier. Given a user request, pick the BEST matching skill_id.

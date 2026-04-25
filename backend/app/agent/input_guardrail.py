@@ -38,6 +38,7 @@ def _get_limits() -> tuple[int, int]:
     """설정에서 길이 제한 로드"""
     try:
         from app.config import settings
+
         return settings.input_min_length, settings.input_max_length
     except Exception:
         return 2, 2000
@@ -46,6 +47,7 @@ def _get_limits() -> tuple[int, int]:
 @dataclass
 class GuardrailResult:
     """검증 결과"""
+
     is_valid: bool
     error_message: str = ""
     risk_level: str = "none"  # none, low, medium, high

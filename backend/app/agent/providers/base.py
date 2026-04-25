@@ -24,7 +24,11 @@ class BaseProvider(ABC):
         ...
 
     async def call_with_timeout(
-        self, system_prompt: str, user_message: str, model: str = "", timeout: float = DEFAULT_TIMEOUT_SECONDS,
+        self,
+        system_prompt: str,
+        user_message: str,
+        model: str = "",
+        timeout: float = DEFAULT_TIMEOUT_SECONDS,
     ) -> dict[str, Any] | None:
         try:
             return await asyncio.wait_for(self.call(system_prompt, user_message, model), timeout=timeout)
@@ -58,7 +62,7 @@ class BaseProvider(ABC):
         end = text.rfind("}")
         if start != -1 and end > start:
             try:
-                return json.loads(text[start:end + 1])
+                return json.loads(text[start : end + 1])
             except json.JSONDecodeError:
                 pass
 

@@ -10,7 +10,6 @@
 import json
 from typing import Any, AsyncGenerator
 
-
 ARCHITECT_PROMPT = """You are a Notion template ARCHITECT. Given a user request, design the STRUCTURE only.
 
 Output JSON:
@@ -101,7 +100,9 @@ If no fixes needed, output the same JSON unchanged.
 """
 
 
-async def _call_agent(system_prompt: str, user_content: str, ai_key: str = "", ai_model: str = "") -> dict[str, Any] | None:
+async def _call_agent(
+    system_prompt: str, user_content: str, ai_key: str = "", ai_model: str = ""
+) -> dict[str, Any] | None:
     """단일 에이전트 호출 — ProviderRouter 기반"""
     from app.agent.providers.router import ProviderRouter
 
@@ -147,10 +148,9 @@ async def multi_agent_pipeline(
         if "databases" in content:
             for i, db in enumerate(content["databases"]):
                 if i < len(architecture.get("databases", [])):
-                    architecture["databases"][i].update({
-                        k: v for k, v in db.items()
-                        if k in ("sample_items", "description", "icon")
-                    })
+                    architecture["databases"][i].update(
+                        {k: v for k, v in db.items() if k in ("sample_items", "description", "icon")}
+                    )
         if "sub_pages" in content:
             architecture["sub_pages"] = content["sub_pages"]
         if "faq" in content:

@@ -15,15 +15,15 @@ class ToolRegistry:
         self._register_all(client)
 
     def _register_all(self, client: NotionClient) -> None:
-        from app.agent.tools.create_page import CreatePageTool
-        from app.agent.tools.create_database import CreateDatabaseTool
         from app.agent.tools.add_blocks import AddBlocksTool
         from app.agent.tools.add_database_items import AddDatabaseItemsTool
-        from app.agent.tools.create_columns import CreateColumnsTool
-        from app.agent.tools.link_databases import LinkDatabasesTool
-        from app.agent.tools.create_view import CreateViewTool
         from app.agent.tools.apply_color_theme import ApplyColorThemeTool
+        from app.agent.tools.create_columns import CreateColumnsTool
+        from app.agent.tools.create_database import CreateDatabaseTool
+        from app.agent.tools.create_page import CreatePageTool
+        from app.agent.tools.create_view import CreateViewTool
         from app.agent.tools.generate_cover import GenerateCoverTool
+        from app.agent.tools.link_databases import LinkDatabasesTool
 
         for tool in [
             CreatePageTool(client),
@@ -50,10 +50,7 @@ class ToolRegistry:
         return [tool.to_tool_spec() for tool in self._tools.values()]
 
     def get_tool_descriptions(self) -> str:
-        return "\n".join(
-            f"- {tool.name}: {tool.description}"
-            for tool in self._tools.values()
-        )
+        return "\n".join(f"- {tool.name}: {tool.description}" for tool in self._tools.values())
 
     async def execute(self, tool_name: str, **kwargs: Any) -> dict[str, Any]:
         tool = self._tools.get(tool_name)

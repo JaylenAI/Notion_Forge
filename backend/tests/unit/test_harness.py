@@ -1,14 +1,13 @@
 """하네스 엔지니어링 테스트: PromptAssembler + LayoutRouter + PostProcessor"""
 
-import pytest
-from app.agent.prompt_assembler import PromptAssembler, _load_module
-from app.agent.layout_router import LayoutRouter, LayoutResult
+from app.agent.layout_router import LayoutRouter
 from app.agent.post_processor import BlueprintValidator
-
+from app.agent.prompt_assembler import PromptAssembler
 
 # ============================================================
 # PromptAssembler 테스트
 # ============================================================
+
 
 class TestPromptAssembler:
     def setup_method(self):
@@ -62,8 +61,16 @@ class TestPromptAssembler:
         """8개 레이아웃 .md 파일 존재 확인"""
         layouts = self.assembler.available_layouts()
         assert len(layouts) == 8
-        expected = {"sidebar_main", "gallery_hero", "category_hub", "kanban_board",
-                    "calendar_main", "dashboard_widgets", "simple_tracker", "portfolio"}
+        expected = {
+            "sidebar_main",
+            "gallery_hero",
+            "category_hub",
+            "kanban_board",
+            "calendar_main",
+            "dashboard_widgets",
+            "simple_tracker",
+            "portfolio",
+        }
         assert set(layouts) == expected
 
     def test_available_modes(self):
@@ -87,6 +94,7 @@ class TestPromptAssembler:
 # ============================================================
 # LayoutRouter 테스트
 # ============================================================
+
 
 class TestLayoutRouter:
     def setup_method(self):
@@ -152,6 +160,7 @@ class TestLayoutRouter:
 # PostProcessor 테스트
 # ============================================================
 
+
 class TestPostProcessor:
     def setup_method(self):
         self.validator = BlueprintValidator()
@@ -193,10 +202,13 @@ class TestPostProcessor:
         content = {
             "blocks": [
                 {"type": "callout", "text": "환영", "icon": "📋", "color": "blue_background"},
-                {"type": "column_list", "columns": [
-                    [{"type": "callout", "text": "stat"}],
-                    [{"type": "database_ref", "db_index": 0}],
-                ]},
+                {
+                    "type": "column_list",
+                    "columns": [
+                        [{"type": "callout", "text": "stat"}],
+                        [{"type": "database_ref", "db_index": 0}],
+                    ],
+                },
             ],
             "databases": [{"title": "DB1", "db_properties": {"이름": "title"}, "sample_items": []}],
         }
@@ -226,15 +238,17 @@ class TestPostProcessor:
         """영어 상태값을 한국어로 매핑"""
         content = {
             "blocks": [{"type": "callout", "text": "환영", "icon": "📋", "color": "blue_background"}],
-            "databases": [{
-                "title": "Tasks",
-                "db_properties": {"이름": "title", "상태": "status"},
-                "sample_items": [
-                    {"이름": "Task1", "상태": "Not started"},
-                    {"이름": "Task2", "상태": "In progress"},
-                    {"이름": "Task3", "상태": "Done"},
-                ],
-            }],
+            "databases": [
+                {
+                    "title": "Tasks",
+                    "db_properties": {"이름": "title", "상태": "status"},
+                    "sample_items": [
+                        {"이름": "Task1", "상태": "Not started"},
+                        {"이름": "Task2", "상태": "In progress"},
+                        {"이름": "Task3", "상태": "Done"},
+                    ],
+                }
+            ],
         }
         result = self.validator.validate_and_fix(content)
         statuses = [item["상태"] for item in result["databases"][0]["sample_items"]]
@@ -262,16 +276,18 @@ class TestPostProcessor:
                 {"type": "database_ref", "db_index": 0},
                 {"type": "divider"},
             ],
-            "databases": [{
-                "title": "태스크",
-                "db_properties": {"이름": "title", "상태": "status", "날짜": "date"},
-                "views": [{"type": "board", "title": "칸반"}],
-                "sample_items": [
-                    {"이름": "작업1", "상태": "진행 중", "날짜": "2026-04-01"},
-                    {"이름": "작업2", "상태": "완료", "날짜": "2026-04-02"},
-                    {"이름": "작업3", "상태": "시작 전", "날짜": "2026-04-03"},
-                ],
-            }],
+            "databases": [
+                {
+                    "title": "태스크",
+                    "db_properties": {"이름": "title", "상태": "status", "날짜": "date"},
+                    "views": [{"type": "board", "title": "칸반"}],
+                    "sample_items": [
+                        {"이름": "작업1", "상태": "진행 중", "날짜": "2026-04-01"},
+                        {"이름": "작업2", "상태": "완료", "날짜": "2026-04-02"},
+                        {"이름": "작업3", "상태": "시작 전", "날짜": "2026-04-03"},
+                    ],
+                }
+            ],
         }
         result = self.validator.validate_and_fix(content)
         # callout 유지
