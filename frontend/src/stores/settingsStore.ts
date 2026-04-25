@@ -4,21 +4,22 @@ import { useConnectionStore } from "./connectionStore";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:9500";
 const SETTINGS_KEY = "notionforge_settings";
+const PUBLIC_SETTINGS_KEY = "notionforge_public";
 
 export type PageName = "dashboard" | "library" | "integrations" | "profile" | "support";
 
 function loadSettings(): Settings {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return {
-        notionKey: parsed.notionKey ?? "",
-        pageId: parsed.pageId ?? "",
-        aiKey: parsed.aiKey ?? "",
-        aiModel: parsed.aiModel ?? "",
-      };
-    }
+    const secrets = sessionStorage.getItem(SETTINGS_KEY);
+    const pub = localStorage.getItem(PUBLIC_SETTINGS_KEY);
+    const s = secrets ? JSON.parse(secrets) : {};
+    const p = pub ? JSON.parse(pub) : {};
+    return {
+      notionKey: s.notionKey ?? "",
+      pageId: p.pageId ?? "",
+      aiKey: s.aiKey ?? "",
+      aiModel: p.aiModel ?? "",
+    };
   } catch {
     // ignore
   }
@@ -26,7 +27,14 @@ function loadSettings(): Settings {
 }
 
 function saveSettings(settings: Settings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  sessionStorage.setItem(SETTINGS_KEY, JSON.stringify({
+    notionKey: settings.notionKey,
+    aiKey: settings.aiKey,
+  }));
+  localStorage.setItem(PUBLIC_SETTINGS_KEY, JSON.stringify({
+    pageId: settings.pageId,
+    aiModel: settings.aiModel,
+  }));
 }
 
 interface SettingsState {
