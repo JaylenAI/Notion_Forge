@@ -324,7 +324,7 @@ async def _call_ai_for_content(
             history_text = "\n".join(f"[{m['role']}]: {m['content'][:150]}" for m in recent[:-1])
             prompt += f"\n\n## History:\n{history_text[:400]}"
 
-    result = await provider.call(prompt, user_message, model=ai_model)
+    result = await provider.call_with_timeout(prompt, user_message, model=ai_model)
     if not result:
         return None
     if "databases" in result or "db_properties" in result:

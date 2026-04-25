@@ -1,4 +1,4 @@
-"""Claude AI Provider"""
+"""Claude AI Provider — 타임아웃 + 에러 핸들링 강화"""
 
 import logging
 from typing import Any
@@ -25,10 +25,17 @@ class ClaudeProvider(BaseProvider):
             response = await client.messages.create(
                 model=model or self.default_model,
                 max_tokens=4096,
-                system=system_prompt,
+                system=system_prompt + "\n\n반드시 유효한 JSON만 응답하세요. 다른 텍스트는 포함하지 마세요.",
                 messages=[{"role": "user", "content": user_message}],
             )
-            return self.extract_json(response.content[0].text)
+            text = response.content[0].text
+
+            logger.info(f"[Claude] 토큰: {response.usage.input_tokens}→{response.usage.output_tokens}")
+
+            return self.extract_json(text)
+        except ImportError:
+            logger.warning("[Claude] anthropic 패키지 미설치")
+            return None
         except Exception as e:
-            logger.warning(f"[Claude 에러] {e}")
+            logger.warning(f"[Claude 에러] {type(e).__name__}: {str(e)[:150]}")
             return None

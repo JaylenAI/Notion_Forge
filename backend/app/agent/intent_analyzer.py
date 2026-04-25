@@ -119,11 +119,17 @@ async def _gemini_analyze(message: str) -> IntentResult:
     """Gemini Flash API로 의도 분석 (무료). 실패 시 Mock 폴백."""
     try:
         from google import genai
+        from google.genai import types
 
         client = genai.Client(api_key=settings.gemini_api_key)
         response = await client.aio.models.generate_content(
             model="gemini-2.5-flash",
-            contents=f"{SYSTEM_PROMPT}\n\n사용자 요청: {message}",
+            contents=message,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                response_mime_type="application/json",
+                temperature=0.3,
+            ),
         )
 
         text = response.text or ""
@@ -132,24 +138,31 @@ async def _gemini_analyze(message: str) -> IntentResult:
             return result
         return _mock_analyze(message)
     except Exception as e:
-        logger.warning(f"[Gemini 폴백] {e}")
+        logger.warning(f"[Gemini 폴백] {type(e).__name__}: {str(e)[:100]}")
         return _mock_analyze(message)
 
 
 async def _claude_analyze(message: str) -> IntentResult:
-    """Claude API로 의도 분석 (유료)"""
-    import anthropic
+    """Claude API로 의도 분석 (유료). 실패 시 Mock 폴백."""
+    try:
+        import anthropic
 
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
-    response = await client.messages.create(
-        model=settings.claude_model,
-        max_tokens=1024,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": message}],
-    )
+        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+        response = await client.messages.create(
+            model=settings.claude_model,
+            max_tokens=1024,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": message}],
+        )
 
-    text = response.content[0].text
-    return _parse_ai_response(text)
+        text = response.content[0].text
+        result = _parse_ai_response(text)
+        if result.confidence > 0:
+            return result
+        return _mock_analyze(message)
+    except Exception as e:
+        logger.warning(f"[Claude 폴백] {e}")
+        return _mock_analyze(message)
 
 
 def _parse_ai_response(text: str) -> IntentResult:
@@ -181,11 +194,14 @@ def _parse_ai_response(text: str) -> IntentResult:
 
 
 def _override_intent(message: str, intent: str) -> str:
-    """CREATE 키워드가 있으면 QUESTION을 CREATE로 강제 보정"""
-    if intent == "QUESTION":
+    """CREATE 키워드가 있으면 QUESTION/MODIFY를 CREATE로 강제 보정"""
+    if intent in ("QUESTION", "MODIFY"):
         msg = message.lower()
         create_keywords = ["만들어", "생성", "제작", "만들자", "ㄱㄱ", "구축", "설계"]
-        if any(kw in msg for kw in create_keywords):
+        modify_keywords = ["추가", "수정", "바꿔", "변경", "삭제", "없애", "제거", "넣어", "빼"]
+        has_create = any(kw in msg for kw in create_keywords)
+        has_modify = any(kw in msg for kw in modify_keywords)
+        if has_create and not has_modify:
             return "CREATE"
     return intent
 
