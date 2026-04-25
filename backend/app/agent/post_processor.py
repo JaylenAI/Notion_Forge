@@ -36,6 +36,7 @@ class BlueprintValidator:
         content = self._ensure_cover_category(content)
         content = self._ensure_sub_page_icons(content)
         content = self._label_table_of_contents(content)
+        content = self._validate_view_properties(content)
         content = self._enhance_design_diversity(content)
         return content
 
@@ -281,6 +282,49 @@ class BlueprintValidator:
                     matched_icon = icon
                     break
             sub["icon"] = matched_icon
+        return content
+
+    def _validate_view_properties(self, content: dict[str, Any]) -> dict[str, Any]:
+        """뷰 설정의 속성 참조가 실제 DB 속성과 매칭되는지 검증 + 자동 보정"""
+        for db in content.get("databases", []):
+            props = db.get("db_properties", db.get("properties", {}))
+            prop_names = set(props.keys()) if isinstance(props, dict) else set()
+            prop_types = {}
+            for k, v in (props.items() if isinstance(props, dict) else []):
+                ptype = v if isinstance(v, str) else v.get("type", "") if isinstance(v, dict) else ""
+                prop_types[k] = ptype
+
+            status_props = [k for k, t in prop_types.items() if t == "status"]
+            select_props = [k for k, t in prop_types.items() if t in ("status", "select")]
+            date_props = [k for k, t in prop_types.items() if t == "date"]
+
+            for view in db.get("views", []):
+                vtype = view.get("type", view.get("view_type", "table"))
+
+                if vtype == "board":
+                    group_by = view.get("group_by")
+                    if group_by and group_by not in prop_names:
+                        fallback = status_props[0] if status_props else (select_props[0] if select_props else None)
+                        view["group_by"] = fallback
+                        if view["group_by"]:
+                            logger.info(f"[ViewFix] board group_by '{group_by}' → '{view['group_by']}'")
+                    if not view.get("group_by") and status_props:
+                        view["group_by"] = status_props[0]
+
+                elif vtype in ("calendar", "timeline"):
+                    date_prop = view.get("date_property") or view.get("date_property_id")
+                    if date_prop and date_prop not in prop_names:
+                        view["date_property"] = date_props[0] if date_props else None
+                        if view["date_property"]:
+                            logger.info(f"[ViewFix] {vtype} date_property '{date_prop}' → '{view['date_property']}'")
+                    if not (view.get("date_property") or view.get("date_property_id")) and date_props:
+                        view["date_property"] = date_props[0]
+
+                elif vtype == "chart":
+                    x_axis = view.get("x_axis")
+                    if x_axis and x_axis not in prop_names:
+                        view["x_axis"] = select_props[0] if select_props else None
+
         return content
 
     def _enhance_design_diversity(self, content: dict[str, Any]) -> dict[str, Any]:
