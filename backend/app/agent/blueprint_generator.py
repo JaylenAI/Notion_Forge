@@ -130,6 +130,40 @@ def _evaluate_ai_output(content: dict[str, Any]) -> tuple[bool, list[str]]:
         if not sub.get("icon"):
             errors.append(f"sub_pages[{si}]: icon이 없습니다. 이모지 아이콘을 추가하세요.")
 
+    # Level 5: Relation / Formula / Rollup 무결성 검증
+    databases = content.get("databases", [])
+    for di, db in enumerate(databases):
+        props = db.get("db_properties", db.get("properties", {}))
+        for pname, pspec in props.items():
+            if not isinstance(pspec, dict):
+                continue
+            prop_type = pspec.get("type", "")
+
+            if prop_type == "relation":
+                target_idx = pspec.get("target_db_index")
+                if target_idx is None:
+                    errors.append(f"databases[{di}].{pname}: relation에 target_db_index가 없습니다.")
+                elif not isinstance(target_idx, int) or target_idx < 0 or target_idx >= db_count:
+                    errors.append(
+                        f"databases[{di}].{pname}: target_db_index={target_idx}가 유효 범위(0~{db_count - 1})를 벗어납니다."
+                    )
+                elif target_idx == di:
+                    errors.append(f"databases[{di}].{pname}: 자기 자신을 참조하는 relation은 지원하지 않습니다.")
+
+            elif prop_type == "formula":
+                expr = pspec.get("expression", "")
+                if not expr:
+                    errors.append(f"databases[{di}].{pname}: formula에 expression이 없습니다.")
+
+            elif prop_type == "rollup":
+                if not pspec.get("relation_property"):
+                    errors.append(f"databases[{di}].{pname}: rollup에 relation_property가 없습니다.")
+                rel_prop = pspec.get("relation_property", "")
+                if rel_prop and rel_prop not in props:
+                    errors.append(
+                        f"databases[{di}].{pname}: rollup의 relation_property '{rel_prop}'가 같은 DB에 존재하지 않습니다."
+                    )
+
     is_pass = len(errors) == 0
     return is_pass, errors
 

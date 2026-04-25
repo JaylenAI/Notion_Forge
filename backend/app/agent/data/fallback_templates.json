@@ -10,8 +10,13 @@
         {"type": "divider"},
         {"type": "heading_1", "text": "🏋️ 운동 기록", "color": "orange_background"},
         {"type": "database_ref", "db_index": 0},
+        {"type": "linked_view", "db_index": 0, "view_type": "calendar", "title": "운동 캘린더"},
         {"type": "divider"},
-        {"type": "toggle", "text": "💡 사용법", "children_text": "매일 아침 이 페이지를 열고 운동을 기록하세요. 캘린더 뷰에서 주간 패턴을 확인할 수 있습니다."}
+        {"type": "heading_2", "text": "📋 운동 루틴", "color": "orange_background"},
+        {"type": "paragraph", "text": "주간 루틴을 설정하고 기록과 연결하세요."},
+        {"type": "database_ref", "db_index": 1},
+        {"type": "divider"},
+        {"type": "toggle", "text": "💡 사용법", "children_text": "1. 운동 루틴을 먼저 등록하세요.\n2. 매일 운동 기록 시 해당 루틴을 연결하세요.\n3. 캘린더 뷰에서 주간 패턴을 확인할 수 있습니다."}
       ],
       "databases": [
         {
@@ -22,7 +27,9 @@
             "시간(분)": "number",
             "칼로리": "number",
             "날짜": "date",
-            "완료": "checkbox"
+            "완료": "checkbox",
+            "루틴": {"type": "relation", "target_db_index": 1},
+            "효율(cal/min)": {"type": "formula", "expression": "if(prop(\"시간(분)\") > 0, round(prop(\"칼로리\") / prop(\"시간(분)\") * 10) / 10, 0)"}
           },
           "views": ["calendar", "table"],
           "sample_items": [
@@ -31,6 +38,23 @@
             {"운동명": "요가 플로우", "종류": "스트레칭", "시간(분)": 50, "칼로리": 150, "날짜": "2026-04-03", "완료": true, "icon": "🧘"},
             {"운동명": "수영 1km", "종류": "유산소", "시간(분)": 45, "칼로리": 400, "날짜": "2026-04-04", "완료": false, "icon": "🏊"},
             {"운동명": "플랭크 3세트", "종류": "근력", "시간(분)": 15, "칼로리": 100, "날짜": "2026-04-05", "완료": true, "icon": "💪"}
+          ]
+        },
+        {
+          "title": "운동 루틴",
+          "db_properties": {
+            "루틴명": "title",
+            "카테고리": {"type": "select", "options": [{"name": "유산소", "color": "blue"}, {"name": "근력", "color": "green"}, {"name": "스트레칭", "color": "purple"}, {"name": "복합", "color": "orange"}]},
+            "요일": {"type": "multi_select", "options": [{"name": "월", "color": "gray"}, {"name": "화", "color": "gray"}, {"name": "수", "color": "gray"}, {"name": "목", "color": "gray"}, {"name": "금", "color": "gray"}, {"name": "토", "color": "blue"}, {"name": "일", "color": "red"}]},
+            "목표 시간(분)": "number",
+            "설명": "rich_text"
+          },
+          "views": ["table", "gallery"],
+          "sample_items": [
+            {"루틴명": "아침 유산소", "카테고리": "유산소", "요일": ["월", "수", "금"], "목표 시간(분)": 30, "설명": "가볍게 러닝 또는 자전거", "icon": "🏃"},
+            {"루틴명": "상체 근력", "카테고리": "근력", "요일": ["화", "목"], "목표 시간(분)": 45, "설명": "벤치프레스, 덤벨 운동", "icon": "💪"},
+            {"루틴명": "주말 요가", "카테고리": "스트레칭", "요일": ["토", "일"], "목표 시간(분)": 60, "설명": "빈야사 요가 플로우", "icon": "🧘"},
+            {"루틴명": "HIIT 서킷", "카테고리": "복합", "요일": ["월", "수", "금"], "목표 시간(분)": 20, "설명": "고강도 인터벌 트레이닝", "icon": "🔥"}
           ]
         }
       ],
@@ -47,6 +71,11 @@
         {"type": "divider"},
         {"type": "heading_1", "text": "📚 독서 기록", "color": "green_background"},
         {"type": "database_ref", "db_index": 0},
+        {"type": "linked_view", "db_index": 0, "view_type": "gallery", "title": "서재 갤러리"},
+        {"type": "divider"},
+        {"type": "heading_2", "text": "✍️ 저자 관리", "color": "green_background"},
+        {"type": "paragraph", "text": "좋아하는 저자를 관리하고 독서 기록과 연결하세요."},
+        {"type": "database_ref", "db_index": 1},
         {"type": "divider"}
       ],
       "databases": [
@@ -58,7 +87,9 @@
             "장르": {"type": "select", "options": [{"name": "소설", "color": "blue"}, {"name": "자기계발", "color": "green"}, {"name": "기술", "color": "orange"}, {"name": "에세이", "color": "purple"}]},
             "상태": "status",
             "평점": "number",
-            "날짜": "date"
+            "날짜": "date",
+            "저자 정보": {"type": "relation", "target_db_index": 1},
+            "평점 등급": {"type": "formula", "expression": "if(prop(\"평점\") >= 5, \"⭐ 필독\", if(prop(\"평점\") >= 4, \"👍 추천\", if(prop(\"평점\") >= 3, \"📖 보통\", \"🤔 아쉬움\")))"}
           },
           "views": ["gallery", "table"],
           "sample_items": [
@@ -67,6 +98,23 @@
             {"책 제목": "데미안", "저자": "헤르만 헤세", "장르": "소설", "평점": 4, "날짜": "2026-03-25", "icon": "📗"},
             {"책 제목": "아토믹 해빗", "저자": "제임스 클리어", "장르": "자기계발", "평점": 5, "날짜": "2026-03-28", "icon": "📙"},
             {"책 제목": "나는 나로 살기로 했다", "저자": "김수현", "장르": "에세이", "평점": 3, "날짜": "2026-04-01", "icon": "📔"}
+          ]
+        },
+        {
+          "title": "저자 관리",
+          "db_properties": {
+            "저자명": "title",
+            "국적": "rich_text",
+            "장르": {"type": "select", "options": [{"name": "소설", "color": "blue"}, {"name": "자기계발", "color": "green"}, {"name": "기술", "color": "orange"}, {"name": "에세이", "color": "purple"}]},
+            "대표작": "rich_text",
+            "메모": "rich_text"
+          },
+          "views": ["table"],
+          "sample_items": [
+            {"저자명": "게리 켈러", "국적": "미국", "장르": "자기계발", "대표작": "원씽", "메모": "집중력의 대가", "icon": "✍️"},
+            {"저자명": "로버트 마틴", "국적": "미국", "장르": "기술", "대표작": "클린 코드", "메모": "소프트웨어 장인정신", "icon": "💻"},
+            {"저자명": "헤르만 헤세", "국적": "독일", "장르": "소설", "대표작": "데미안", "메모": "노벨문학상 수상자", "icon": "🏆"},
+            {"저자명": "제임스 클리어", "국적": "미국", "장르": "자기계발", "대표작": "아토믹 해빗", "메모": "습관 전문가", "icon": "🧠"}
           ]
         }
       ],
@@ -83,8 +131,14 @@
         {"type": "divider"},
         {"type": "heading_1", "text": "🗂️ 프로젝트 태스크", "color": "blue_background"},
         {"type": "database_ref", "db_index": 0},
+        {"type": "linked_view", "db_index": 0, "view_type": "board", "title": "칸반 보드"},
         {"type": "divider"},
-        {"type": "toggle", "text": "💡 사용법", "children_text": "보드 뷰에서 칸반으로, 타임라인 뷰에서 일정을 관리하세요."}
+        {"type": "heading_2", "text": "🎯 마일스톤", "color": "blue_background"},
+        {"type": "paragraph", "text": "프로젝트 주요 이정표를 관리하고 태스크와 연결하세요."},
+        {"type": "database_ref", "db_index": 1},
+        {"type": "linked_view", "db_index": 1, "view_type": "timeline", "title": "마일스톤 타임라인"},
+        {"type": "divider"},
+        {"type": "toggle", "text": "💡 사용법", "children_text": "1. 마일스톤을 먼저 등록하세요.\n2. 태스크 생성 시 해당 마일스톤을 연결하세요.\n3. D-Day 수식으로 남은 일수를 자동 추적합니다.\n4. 보드 뷰에서 칸반으로, 타임라인 뷰에서 일정을 관리하세요."}
       ],
       "databases": [
         {
@@ -95,7 +149,9 @@
             "담당자": "rich_text",
             "우선순위": {"type": "select", "options": [{"name": "높음", "color": "red"}, {"name": "중간", "color": "yellow"}, {"name": "낮음", "color": "green"}]},
             "기한": "date",
-            "카테고리": {"type": "select", "options": [{"name": "기획", "color": "blue"}, {"name": "개발", "color": "green"}, {"name": "디자인", "color": "purple"}, {"name": "QA", "color": "orange"}]}
+            "카테고리": {"type": "select", "options": [{"name": "기획", "color": "blue"}, {"name": "개발", "color": "green"}, {"name": "디자인", "color": "purple"}, {"name": "QA", "color": "orange"}]},
+            "마일스톤": {"type": "relation", "target_db_index": 1},
+            "D-Day": {"type": "formula", "expression": "dateBetween(prop(\"기한\"), now(), \"days\")"}
           },
           "views": ["board", "timeline", "table"],
           "sample_items": [
@@ -104,6 +160,24 @@
             {"태스크": "백엔드 API", "담당자": "박개발", "우선순위": "중간", "기한": "2026-04-15", "카테고리": "개발", "icon": "⚙️"},
             {"태스크": "프론트엔드 구현", "담당자": "최개발", "우선순위": "중간", "기한": "2026-04-18", "카테고리": "개발", "icon": "🖥️"},
             {"태스크": "QA 테스트", "담당자": "정QA", "우선순위": "낮음", "기한": "2026-04-22", "카테고리": "QA", "icon": "🧪"}
+          ]
+        },
+        {
+          "title": "마일스톤",
+          "db_properties": {
+            "마일스톤명": "title",
+            "목표일": "date",
+            "상태": "status",
+            "설명": "rich_text",
+            "우선순위": {"type": "select", "options": [{"name": "핵심", "color": "red"}, {"name": "중요", "color": "yellow"}, {"name": "일반", "color": "gray"}]},
+            "D-Day": {"type": "formula", "expression": "dateBetween(prop(\"목표일\"), now(), \"days\")"}
+          },
+          "views": ["timeline", "table"],
+          "sample_items": [
+            {"마일스톤명": "기획 완료", "목표일": "2026-04-07", "설명": "PRD 및 와이어프레임 확정", "우선순위": "핵심", "icon": "📋"},
+            {"마일스톤명": "디자인 완료", "목표일": "2026-04-12", "설명": "UI/UX 디자인 시스템 확정", "우선순위": "핵심", "icon": "🎨"},
+            {"마일스톤명": "MVP 개발 완료", "목표일": "2026-04-20", "설명": "핵심 기능 구현 완료", "우선순위": "중요", "icon": "🚀"},
+            {"마일스톤명": "QA 통과", "목표일": "2026-04-25", "설명": "전체 테스트 통과 및 버그 수정", "우선순위": "일반", "icon": "✅"}
           ]
         }
       ],
@@ -118,10 +192,20 @@
       "blocks": [
         {"type": "callout", "text": "수입과 지출을 체계적으로 기록하고 재정 목표를 달성하세요! 💰", "icon": "💰", "color": "green_background"},
         {"type": "divider"},
+        {"type": "column_list", "columns": [
+          [{"type": "callout", "text": "💵 월 수입\n₩3,500,000", "icon": "💵", "color": "green_background"}],
+          [{"type": "callout", "text": "💳 월 지출\n₩577,800", "icon": "💳", "color": "red_background"}],
+          [{"type": "callout", "text": "🏦 월 저축\n₩500,000", "icon": "🏦", "color": "blue_background"}]
+        ]},
         {"type": "heading_1", "text": "💰 수입/지출 기록", "color": "green_background"},
         {"type": "database_ref", "db_index": 0},
+        {"type": "linked_view", "db_index": 0, "view_type": "calendar", "title": "월간 지출 캘린더"},
         {"type": "divider"},
-        {"type": "toggle", "text": "💡 사용법", "children_text": "매일 지출을 기록하세요. 카테고리별로 필터링하면 어디서 돈이 빠져나가는지 한눈에 볼 수 있습니다."}
+        {"type": "heading_2", "text": "📊 예산 목표", "color": "green_background"},
+        {"type": "paragraph", "text": "카테고리별 월 예산을 설정하고 지출을 추적하세요."},
+        {"type": "database_ref", "db_index": 1},
+        {"type": "divider"},
+        {"type": "toggle", "text": "💡 사용법", "children_text": "1. 예산 목표에 카테고리별 월 예산을 설정하세요.\n2. 매일 지출을 기록하고 예산 카테고리를 연결하세요.\n3. 캘린더 뷰에서 월간 지출 패턴을 확인하세요."}
       ],
       "databases": [
         {
@@ -132,7 +216,8 @@
             "구분": {"type": "select", "options": [{"name": "수입", "color": "green"}, {"name": "지출", "color": "red"}, {"name": "저축", "color": "blue"}]},
             "카테고리": {"type": "select", "options": [{"name": "식비", "color": "orange"}, {"name": "교통", "color": "blue"}, {"name": "문화", "color": "purple"}, {"name": "생활", "color": "gray"}, {"name": "급여", "color": "green"}]},
             "날짜": "date",
-            "메모": "rich_text"
+            "메모": "rich_text",
+            "예산 항목": {"type": "relation", "target_db_index": 1}
           },
           "views": ["table", "calendar"],
           "sample_items": [
@@ -141,6 +226,22 @@
             {"내역": "지하철 정기권", "금액": 55000, "구분": "지출", "카테고리": "교통", "날짜": "2026-04-02", "메모": "1개월", "icon": "🚇"},
             {"내역": "넷플릭스", "금액": 17000, "구분": "지출", "카테고리": "문화", "날짜": "2026-04-03", "메모": "월 구독", "icon": "🎬"},
             {"내역": "비상금 저축", "금액": 500000, "구분": "저축", "카테고리": "생활", "날짜": "2026-04-05", "메모": "CMA 계좌", "icon": "🏦"}
+          ]
+        },
+        {
+          "title": "예산 목표",
+          "db_properties": {
+            "카테고리명": "title",
+            "월 예산": "number",
+            "우선순위": {"type": "select", "options": [{"name": "필수", "color": "red"}, {"name": "중요", "color": "yellow"}, {"name": "여유", "color": "green"}]},
+            "메모": "rich_text"
+          },
+          "views": ["table"],
+          "sample_items": [
+            {"카테고리명": "식비", "월 예산": 400000, "우선순위": "필수", "메모": "외식 포함", "icon": "🍽️"},
+            {"카테고리명": "교통", "월 예산": 100000, "우선순위": "필수", "메모": "대중교통 + 택시", "icon": "🚇"},
+            {"카테고리명": "문화/여가", "월 예산": 150000, "우선순위": "여유", "메모": "구독, 영화, 취미", "icon": "🎬"},
+            {"카테고리명": "저축", "월 예산": 500000, "우선순위": "중요", "메모": "CMA + 적금", "icon": "🏦"}
           ]
         }
       ],
@@ -157,7 +258,10 @@
         {"type": "quote", "text": "기록하지 않으면 기억나지 않는다."},
         {"type": "divider"},
         {"type": "heading_1", "text": "📔 나의 일기", "color": "purple_background"},
-        {"type": "database_ref", "db_index": 0}
+        {"type": "database_ref", "db_index": 0},
+        {"type": "linked_view", "db_index": 0, "view_type": "calendar", "title": "감정 캘린더"},
+        {"type": "divider"},
+        {"type": "toggle", "text": "💡 사용법", "children_text": "1. 매일 저녁 하루를 돌아보며 기록하세요.\n2. 에너지 점수(1-10)로 컨디션을 추적하세요.\n3. 에너지 레벨 수식이 자동으로 상태를 표시합니다.\n4. 캘린더 뷰에서 감정 패턴을 확인하세요."}
       ],
       "databases": [
         {
@@ -168,7 +272,8 @@
             "기분": {"type": "select", "options": [{"name": "최고", "color": "green"}, {"name": "좋음", "color": "blue"}, {"name": "보통", "color": "yellow"}, {"name": "우울", "color": "gray"}, {"name": "화남", "color": "red"}]},
             "내용": "rich_text",
             "에너지": "number",
-            "하이라이트": "checkbox"
+            "하이라이트": "checkbox",
+            "에너지 레벨": {"type": "formula", "expression": "if(prop(\"에너지\") >= 8, \"🔥 넘침\", if(prop(\"에너지\") >= 6, \"⚡ 충분\", if(prop(\"에너지\") >= 4, \"😐 보통\", \"😫 부족\")))"}
           },
           "views": ["gallery", "calendar"],
           "sample_items": [
@@ -192,7 +297,14 @@
         {"type": "callout", "text": "콘텐츠 제작부터 발행까지 체계적으로 관리하세요! 📱", "icon": "📱", "color": "blue_background"},
         {"type": "divider"},
         {"type": "heading_1", "text": "📱 콘텐츠 파이프라인", "color": "blue_background"},
-        {"type": "database_ref", "db_index": 0}
+        {"type": "database_ref", "db_index": 0},
+        {"type": "linked_view", "db_index": 0, "view_type": "board", "title": "진행 상태 보드"},
+        {"type": "divider"},
+        {"type": "heading_2", "text": "💡 아이디어 뱅크", "color": "blue_background"},
+        {"type": "paragraph", "text": "떠오르는 아이디어를 저장하고, 콘텐츠 제작 시 연결하세요."},
+        {"type": "database_ref", "db_index": 1},
+        {"type": "divider"},
+        {"type": "toggle", "text": "💡 사용법", "children_text": "1. 아이디어가 떠오르면 아이디어 뱅크에 저장하세요.\n2. 콘텐츠 제작 시 아이디어를 연결하세요.\n3. 발행 D-Day 수식으로 마감을 추적하세요.\n4. 보드 뷰에서 제작 진행 상태를 관리하세요."}
       ],
       "databases": [
         {
@@ -203,7 +315,9 @@
             "발행일": "date",
             "플랫폼": {"type": "select", "options": [{"name": "블로그", "color": "blue"}, {"name": "인스타", "color": "pink"}, {"name": "유튜브", "color": "red"}, {"name": "뉴스레터", "color": "green"}]},
             "형태": {"type": "select", "options": [{"name": "글", "color": "gray"}, {"name": "영상", "color": "orange"}, {"name": "이미지", "color": "purple"}]},
-            "설명": "rich_text"
+            "설명": "rich_text",
+            "아이디어": {"type": "relation", "target_db_index": 1},
+            "발행 D-Day": {"type": "formula", "expression": "dateBetween(prop(\"발행일\"), now(), \"days\")"}
           },
           "views": ["board", "calendar"],
           "sample_items": [
@@ -213,9 +327,26 @@
             {"제목": "주간 뉴스레터 #12", "발행일": "2026-04-14", "플랫폼": "뉴스레터", "형태": "글", "설명": "이번 주 테크 뉴스", "icon": "📬"},
             {"제목": "코딩 튜토리얼", "발행일": "2026-04-15", "플랫폼": "유튜브", "형태": "영상", "설명": "React 19 새 기능", "icon": "💻"}
           ]
+        },
+        {
+          "title": "아이디어 뱅크",
+          "db_properties": {
+            "아이디어": "title",
+            "플랫폼": {"type": "select", "options": [{"name": "블로그", "color": "blue"}, {"name": "인스타", "color": "pink"}, {"name": "유튜브", "color": "red"}, {"name": "뉴스레터", "color": "green"}, {"name": "미정", "color": "gray"}]},
+            "우선순위": {"type": "select", "options": [{"name": "높음", "color": "red"}, {"name": "중간", "color": "yellow"}, {"name": "낮음", "color": "green"}]},
+            "메모": "rich_text",
+            "영감 출처": "url"
+          },
+          "views": ["table", "board"],
+          "sample_items": [
+            {"아이디어": "AI 코딩 도구 비교 시리즈", "플랫폼": "블로그", "우선순위": "높음", "메모": "GitHub Copilot vs Cursor vs Claude Code", "icon": "🤖"},
+            {"아이디어": "개발자 데스크 투어", "플랫폼": "유튜브", "우선순위": "중간", "메모": "장비 소개 + 작업 환경", "icon": "🖥️"},
+            {"아이디어": "주간 테크 뉴스 자동화", "플랫폼": "뉴스레터", "우선순위": "높음", "메모": "RSS 수집 → 요약 → 발송", "icon": "📰"},
+            {"아이디어": "피그마 플러그인 추천", "플랫폼": "인스타", "우선순위": "낮음", "메모": "카드뉴스 5장 구성", "icon": "🎨"}
+          ]
         }
       ],
-      "sub_pages": [{"name": "아이디어 뱅크", "icon": "💡", "description": "콘텐츠 아이디어 모음"}],
+      "sub_pages": [{"name": "콘텐츠 가이드라인", "icon": "📋", "description": "브랜드 톤앤매너, 스타일 가이드"}],
       "faq": []
     },
     "학업": {
@@ -231,14 +362,16 @@
         {"type": "paragraph", "text": ""},
         {"type": "heading_1", "text": "📝 과제 트래커", "color": "purple_background"},
         {"type": "database_ref", "db_index": 1},
+        {"type": "linked_view", "db_index": 1, "view_type": "calendar", "title": "과제 마감 캘린더"},
         {"type": "paragraph", "text": ""},
         {"type": "heading_1", "text": "📅 시험 일정", "color": "orange_background"},
         {"type": "database_ref", "db_index": 2},
+        {"type": "linked_view", "db_index": 2, "view_type": "calendar", "title": "시험 캘린더"},
         {"type": "paragraph", "text": ""},
         {"type": "heading_1", "text": "📖 학습 노트", "color": "green_background"},
         {"type": "database_ref", "db_index": 3},
         {"type": "divider"},
-        {"type": "toggle", "text": "💡 사용 가이드", "children_text": "학기 초에 수강 과목을 등록하고, 과제와 시험 일정을 추가하세요. 학습 노트로 복습 내용을 정리할 수 있습니다."}
+        {"type": "toggle", "text": "💡 사용 가이드", "children_text": "1. 학기 초에 수강 과목을 등록하세요.\n2. 과제와 시험은 과목과 자동 연결됩니다.\n3. D-Day 수식으로 마감일을 자동 추적합니다.\n4. 학습 노트로 복습 내용을 정리하고 과목과 연결하세요."}
       ],
       "databases": [
         {
@@ -263,53 +396,56 @@
           "title": "과제 트래커",
           "db_properties": {
             "과제명": "title",
-            "과목": "rich_text",
+            "과목": {"type": "relation", "target_db_index": 0},
             "상태": "status",
             "마감일": "date",
             "유형": {"type": "select", "options": [{"name": "레포트", "color": "blue"}, {"name": "프로젝트", "color": "green"}, {"name": "발표", "color": "orange"}, {"name": "퀴즈", "color": "purple"}]},
-            "배점": "number"
+            "배점": "number",
+            "D-Day": {"type": "formula", "expression": "dateBetween(prop(\"마감일\"), now(), \"days\")"},
+            "학점": {"type": "rollup", "relation_property": "과목", "target_property": "학점", "function": "sum"}
           },
           "views": ["board", "calendar", "table"],
           "sample_items": [
-            {"과제명": "자료구조 과제 #3", "과목": "데이터 구조", "마감일": "2026-04-28", "유형": "프로젝트", "배점": 15, "icon": "💻"},
-            {"과제명": "경영 사례 분석", "과목": "경영학원론", "마감일": "2026-05-02", "유형": "레포트", "배점": 20, "icon": "📝"},
-            {"과제명": "심리학 실험 보고서", "과목": "심리학개론", "마감일": "2026-05-05", "유형": "레포트", "배점": 25, "icon": "🧪"},
-            {"과제명": "영어 프레젠테이션", "과목": "영어회화", "마감일": "2026-05-10", "유형": "발표", "배점": 30, "icon": "🎤"}
+            {"과제명": "자료구조 과제 #3", "마감일": "2026-04-28", "유형": "프로젝트", "배점": 15, "icon": "💻"},
+            {"과제명": "경영 사례 분석", "마감일": "2026-05-02", "유형": "레포트", "배점": 20, "icon": "📝"},
+            {"과제명": "심리학 실험 보고서", "마감일": "2026-05-05", "유형": "레포트", "배점": 25, "icon": "🧪"},
+            {"과제명": "영어 프레젠테이션", "마감일": "2026-05-10", "유형": "발표", "배점": 30, "icon": "🎤"}
           ]
         },
         {
           "title": "시험 일정",
           "db_properties": {
             "시험명": "title",
-            "과목": "rich_text",
+            "과목": {"type": "relation", "target_db_index": 0},
             "날짜": "date",
             "범위": "rich_text",
             "유형": {"type": "select", "options": [{"name": "중간고사", "color": "blue"}, {"name": "기말고사", "color": "red"}, {"name": "퀴즈", "color": "green"}]},
-            "준비도": {"type": "select", "options": [{"name": "완벽", "color": "green"}, {"name": "보통", "color": "yellow"}, {"name": "부족", "color": "red"}]}
+            "준비도": {"type": "select", "options": [{"name": "완벽", "color": "green"}, {"name": "보통", "color": "yellow"}, {"name": "부족", "color": "red"}]},
+            "D-Day": {"type": "formula", "expression": "dateBetween(prop(\"날짜\"), now(), \"days\")"}
           },
           "views": ["calendar", "table"],
           "sample_items": [
-            {"시험명": "자료구조 중간고사", "과목": "데이터 구조", "날짜": "2026-04-20", "범위": "1-7장", "유형": "중간고사", "준비도": "보통", "icon": "📝"},
-            {"시험명": "경영학 중간고사", "과목": "경영학원론", "날짜": "2026-04-22", "범위": "1-5장", "유형": "중간고사", "준비도": "부족", "icon": "📊"},
-            {"시험명": "심리학 퀴즈", "과목": "심리학개론", "날짜": "2026-04-15", "범위": "3-4장", "유형": "퀴즈", "준비도": "완벽", "icon": "✅"},
-            {"시험명": "영어 스피킹 테스트", "과목": "영어회화", "날짜": "2026-04-25", "범위": "Unit 1-6", "유형": "중간고사", "준비도": "보통", "icon": "🗣️"}
+            {"시험명": "자료구조 중간고사", "날짜": "2026-04-20", "범위": "1-7장", "유형": "중간고사", "준비도": "보통", "icon": "📝"},
+            {"시험명": "경영학 중간고사", "날짜": "2026-04-22", "범위": "1-5장", "유형": "중간고사", "준비도": "부족", "icon": "📊"},
+            {"시험명": "심리학 퀴즈", "날짜": "2026-04-15", "범위": "3-4장", "유형": "퀴즈", "준비도": "완벽", "icon": "✅"},
+            {"시험명": "영어 스피킹 테스트", "날짜": "2026-04-25", "범위": "Unit 1-6", "유형": "중간고사", "준비도": "보통", "icon": "🗣️"}
           ]
         },
         {
           "title": "학습 노트",
           "db_properties": {
             "제목": "title",
-            "과목": "rich_text",
+            "과목": {"type": "relation", "target_db_index": 0},
             "날짜": "date",
             "유형": {"type": "select", "options": [{"name": "수업 정리", "color": "blue"}, {"name": "복습", "color": "green"}, {"name": "요약", "color": "purple"}]},
             "중요도": {"type": "select", "options": [{"name": "높음", "color": "red"}, {"name": "중간", "color": "yellow"}, {"name": "낮음", "color": "gray"}]}
           },
           "views": ["table", "gallery"],
           "sample_items": [
-            {"제목": "이진 트리 정리", "과목": "데이터 구조", "날짜": "2026-04-10", "유형": "수업 정리", "중요도": "높음", "icon": "🌳"},
-            {"제목": "SWOT 분석 요약", "과목": "경영학원론", "날짜": "2026-04-12", "유형": "요약", "중요도": "중간", "icon": "📋"},
-            {"제목": "인지심리학 복습", "과목": "심리학개론", "날짜": "2026-04-14", "유형": "복습", "중요도": "높음", "icon": "🧠"},
-            {"제목": "비즈니스 이메일 표현", "과목": "영어회화", "날짜": "2026-04-16", "유형": "수업 정리", "중요도": "낮음", "icon": "📧"}
+            {"제목": "이진 트리 정리", "날짜": "2026-04-10", "유형": "수업 정리", "중요도": "높음", "icon": "🌳"},
+            {"제목": "SWOT 분석 요약", "날짜": "2026-04-12", "유형": "요약", "중요도": "중간", "icon": "📋"},
+            {"제목": "인지심리학 복습", "날짜": "2026-04-14", "유형": "복습", "중요도": "높음", "icon": "🧠"},
+            {"제목": "비즈니스 이메일 표현", "날짜": "2026-04-16", "유형": "수업 정리", "중요도": "낮음", "icon": "📧"}
           ]
         }
       ],
@@ -335,17 +471,21 @@
         {"type": "paragraph", "text": ""},
         {"type": "heading_1", "text": "📋 프로젝트 관리", "color": "blue_background"},
         {"type": "database_ref", "db_index": 0},
+        {"type": "linked_view", "db_index": 0, "view_type": "timeline", "title": "프로젝트 타임라인"},
         {"type": "paragraph", "text": ""},
         {"type": "heading_1", "text": "👥 고객 관리", "color": "green_background"},
         {"type": "database_ref", "db_index": 1},
+        {"type": "linked_view", "db_index": 1, "view_type": "board", "title": "고객 등급 보드"},
         {"type": "paragraph", "text": ""},
         {"type": "heading_1", "text": "💰 매출/비용 관리", "color": "purple_background"},
         {"type": "database_ref", "db_index": 2},
+        {"type": "linked_view", "db_index": 2, "view_type": "calendar", "title": "매출/비용 캘린더"},
         {"type": "paragraph", "text": ""},
         {"type": "heading_1", "text": "📅 미팅/일정", "color": "orange_background"},
         {"type": "database_ref", "db_index": 3},
+        {"type": "linked_view", "db_index": 3, "view_type": "calendar", "title": "미팅 캘린더"},
         {"type": "divider"},
-        {"type": "toggle", "text": "💡 사용 가이드", "children_text": "새 프로젝트를 등록하고, 관련 고객과 미팅 일정을 연결하세요. 매출/비용 DB로 재무를 추적할 수 있습니다."}
+        {"type": "toggle", "text": "💡 사용 가이드", "children_text": "1. 프로젝트를 등록하고 관련 고객을 연결하세요.\n2. 매출/비용에서 프로젝트별 재무를 추적하세요.\n3. 미팅/일정에서 고객과의 약속을 관리하세요.\n4. D-Day 수식으로 프로젝트 마감을 자동 추적합니다."}
       ],
       "databases": [
         {
@@ -357,7 +497,9 @@
             "시작일": "date",
             "마감일": "date",
             "우선순위": {"type": "select", "options": [{"name": "긴급", "color": "red"}, {"name": "높음", "color": "orange"}, {"name": "보통", "color": "yellow"}, {"name": "낮음", "color": "gray"}]},
-            "예산": "number"
+            "예산": "number",
+            "고객": {"type": "relation", "target_db_index": 1},
+            "D-Day": {"type": "formula", "expression": "dateBetween(prop(\"마감일\"), now(), \"days\")"}
           },
           "views": ["board", "timeline", "table"],
           "sample_items": [
@@ -394,7 +536,8 @@
             "금액": "number",
             "날짜": "date",
             "카테고리": {"type": "select", "options": [{"name": "서비스 매출", "color": "green"}, {"name": "인건비", "color": "red"}, {"name": "마케팅비", "color": "orange"}, {"name": "운영비", "color": "gray"}, {"name": "장비", "color": "blue"}]},
-            "메모": "rich_text"
+            "메모": "rich_text",
+            "프로젝트": {"type": "relation", "target_db_index": 0}
           },
           "views": ["table", "calendar"],
           "sample_items": [
@@ -412,7 +555,8 @@
             "참석자": "rich_text",
             "유형": {"type": "select", "options": [{"name": "내부 회의", "color": "blue"}, {"name": "고객 미팅", "color": "green"}, {"name": "외부 행사", "color": "purple"}]},
             "장소": "rich_text",
-            "안건": "rich_text"
+            "안건": "rich_text",
+            "관련 고객": {"type": "relation", "target_db_index": 1}
           },
           "views": ["calendar", "table"],
           "sample_items": [
