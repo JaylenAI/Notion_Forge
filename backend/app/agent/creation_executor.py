@@ -6,6 +6,7 @@ orchestrator.py에서 분리된 생성 실행 전담 클래스.
 - execute_blueprint(): 논스트리밍 편의 래퍼 — 결과 dict만 반환
 """
 
+import asyncio
 import logging
 from typing import Any, AsyncGenerator
 
@@ -98,31 +99,38 @@ class CreationExecutor:
             pass
 
         views = db_spec.get("views", [])
+        view_specs = []
         for view in views:
-            view_spec = view if isinstance(view, dict) else {"type": view}
-            # date_property 이름을 ID로 변환
+            vs = view if isinstance(view, dict) else {"type": view}
             for key in ("date_property", "date_property_id"):
-                dp = view_spec.get(key)
+                dp = vs.get(key)
                 if dp and dp in prop_name_to_id:
-                    view_spec[key] = prop_name_to_id[dp]
-            try:
-                configuration = build_view_configuration(view_spec)
-                await self.client.create_view(
-                    database_id=db_id,
-                    view_type=view_spec.get("type", "table"),
-                    title=view_spec.get("title", ""),
-                    filters=view_spec.get("filters"),
-                    sorts=view_spec.get("sorts"),
-                    group_by=view_spec.get("group_by"),
-                    sub_group_by=view_spec.get("sub_group_by"),
-                    quick_filters=view_spec.get("quick_filters"),
-                    properties=view_spec.get("properties"),
-                    configuration=configuration,
-                )
-            except Exception as e:
-                logger.info(
-                    f"[뷰 생성 스킵] {view.get('type', '?') if isinstance(view, dict) else view}: {str(e)[:80]}"
-                )
+                    vs[key] = prop_name_to_id[dp]
+            view_specs.append(vs)
+
+        async def _create_single_view(vs: dict) -> None:
+            configuration = build_view_configuration(vs)
+            await self.client.create_view(
+                database_id=db_id,
+                view_type=vs.get("type", "table"),
+                title=vs.get("title", ""),
+                filters=vs.get("filters"),
+                sorts=vs.get("sorts"),
+                group_by=vs.get("group_by"),
+                sub_group_by=vs.get("sub_group_by"),
+                quick_filters=vs.get("quick_filters"),
+                properties=vs.get("properties"),
+                configuration=configuration,
+            )
+
+        results = await asyncio.gather(
+            *[_create_single_view(vs) for vs in view_specs],
+            return_exceptions=True,
+        )
+        for i, r in enumerate(results):
+            if isinstance(r, Exception):
+                vt = view_specs[i].get("type", "?") if i < len(view_specs) else "?"
+                logger.info(f"[뷰 생성 스킵] {vt}: {str(r)[:80]}")
 
         return {"id": db_id, "title": db_spec["title"], "views": len(views)}
 
@@ -247,23 +255,20 @@ class CreationExecutor:
     # ── 하위 페이지 블록 채우기 ────────────────────────────────
 
     async def fill_sub_pages(self, blueprint: dict, sub_page_map: dict[str, str], result: dict) -> None:
-        """하위 페이지에 블록 내용 채우기"""
+        """하위 페이지에 블록 내용 병렬 채우기"""
         from app.notion import block_builder as bb
 
-        for sub in blueprint.get("sub_pages", []):
+        async def _fill_single(sub: dict) -> None:
             sub_id = sub_page_map.get(sub["title"])
             if not sub_id:
-                continue
+                return
             sub_blocks = sub.get("blocks", [])
             if sub_blocks:
-                try:
-                    notion_blocks = [
-                        spec_to_block(b) for b in sub_blocks if isinstance(b, dict) and b.get("type") != "database_ref"
-                    ]
-                    if notion_blocks:
-                        await self.client.add_blocks(sub_id, notion_blocks)
-                except Exception as e:
-                    logger.info(f"[하위 페이지 블록 스킵] {sub['title']}: {str(e)[:80]}")
+                notion_blocks = [
+                    spec_to_block(b) for b in sub_blocks if isinstance(b, dict) and b.get("type") != "database_ref"
+                ]
+                if notion_blocks:
+                    await self.client.add_blocks(sub_id, notion_blocks)
             else:
                 color = blueprint.get("metadata", {}).get("color_theme", "blue")
                 bg = f"{color}_background" if color != "default" else "default"
@@ -282,10 +287,13 @@ class CreationExecutor:
                         ],
                     ),
                 ]
-                try:
-                    await self.client.add_blocks(sub_id, default_blocks)
-                except Exception as e:
-                    logger.info(f"[하위 페이지 기본 블록 실패] {sub['title']}: {str(e)[:80]}")
+                await self.client.add_blocks(sub_id, default_blocks)
+
+        subs = blueprint.get("sub_pages", [])
+        fill_results = await asyncio.gather(*[_fill_single(s) for s in subs], return_exceptions=True)
+        for i, r in enumerate(fill_results):
+            if isinstance(r, Exception):
+                logger.info(f"[하위 페이지 블록 스킵] {subs[i].get('title', '?')}: {str(r)[:80]}")
 
     # ── Relation / Rollup / Formula 후처리 ──────────────────────
 
@@ -341,6 +349,67 @@ class CreationExecutor:
                     logger.info(f"[Relation 후처리] {created_dbs[i]['title']}: {list(relation_props.keys())}")
                 except Exception as e:
                     logger.info(f"[Relation 후처리 실패] {created_dbs[i]['title']}: {str(e)[:100]}")
+
+    # ── Pre-creation 검증 (API 호출 전) ──────────────────────────
+
+    @staticmethod
+    def validate_blueprint_integrity(blueprint: dict) -> list[str]:
+        """Blueprint 무결성 사전 검증 — Notion API 호출 전 구조적 문제를 조기 발견"""
+        issues: list[str] = []
+        blocks = blueprint.get("blocks", [])
+        databases = blueprint.get("databases", [])
+        sub_pages = blueprint.get("sub_pages", [])
+        db_count = len(databases)
+
+        if not blueprint.get("main_page", {}).get("title"):
+            issues.append("main_page.title이 비어있습니다.")
+
+        # db_index 범위 검증
+        for i, block in enumerate(blocks):
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "database_ref":
+                idx = block.get("db_index", 0)
+                if idx >= db_count:
+                    issues.append(f"blocks[{i}]: db_index={idx}가 databases({db_count}개) 범위 밖입니다.")
+            if block.get("type") == "linked_view":
+                idx = block.get("db_index", 0)
+                if idx >= db_count:
+                    issues.append(f"blocks[{i}]: linked_view db_index={idx}가 범위 밖입니다.")
+
+        # Relation 그래프 검증
+        for di, db in enumerate(databases):
+            props = db.get("properties", db.get("db_properties", {}))
+            for pname, pspec in props.items():
+                if not isinstance(pspec, dict):
+                    continue
+                if pspec.get("type") == "relation":
+                    target = pspec.get("target_db_index")
+                    if target is not None:
+                        if not isinstance(target, int) or target < 0 or target >= db_count:
+                            issues.append(f"DB[{di}].{pname}: relation target_db_index={target} 범위 밖")
+                        elif target == di:
+                            issues.append(f"DB[{di}].{pname}: 자기참조 relation")
+                if pspec.get("type") == "rollup":
+                    rel_prop = pspec.get("relation_property", "")
+                    if rel_prop and rel_prop not in props:
+                        issues.append(f"DB[{di}].{pname}: rollup의 relation_property '{rel_prop}'가 DB에 없음")
+
+        # DB 속성에 title 타입 존재 확인
+        for di, db in enumerate(databases):
+            props = db.get("properties", db.get("db_properties", {}))
+            has_title = any(v == "title" or (isinstance(v, dict) and v.get("type") == "title") for v in props.values())
+            if not has_title and props:
+                issues.append(f"DB[{di}]: title 타입 속성이 없습니다.")
+
+        # db_parent 참조 검증
+        sub_page_titles = {s.get("title", "") for s in sub_pages}
+        for di, db in enumerate(databases):
+            db_parent = db.get("db_parent", "")
+            if db_parent and db_parent not in sub_page_titles:
+                issues.append(f"DB[{di}]: db_parent '{db_parent}'가 sub_pages에 없습니다.")
+
+        return issues
 
     # ── 생성 후 검증 ────────────────────────────────────────────
 
@@ -411,6 +480,44 @@ class CreationExecutor:
                     if isinstance(col, list):
                         CreationExecutor.resolve_sub_page_refs(col, sub_page_map)
 
+    # ── Blueprint 자동 교정 ──────────────────────────────────────
+
+    @staticmethod
+    def _auto_fix_blueprint(blueprint: dict, issues: list[str]) -> dict:
+        """Pre-creation 검증에서 발견된 문제를 자동 교정"""
+        databases = blueprint.get("databases", [])
+        blocks = blueprint.get("blocks", [])
+        db_count = len(databases)
+
+        for block in blocks:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") in ("database_ref", "linked_view"):
+                idx = block.get("db_index", 0)
+                if idx >= db_count and db_count > 0:
+                    block["db_index"] = 0
+
+        for di, db in enumerate(databases):
+            props = db.get("properties", db.get("db_properties", {}))
+            keys_to_remove = []
+            for pname, pspec in props.items():
+                if not isinstance(pspec, dict):
+                    continue
+                if pspec.get("type") == "relation":
+                    target = pspec.get("target_db_index")
+                    if target is not None and (
+                        not isinstance(target, int) or target < 0 or target >= db_count or target == di
+                    ):
+                        keys_to_remove.append(pname)
+                if pspec.get("type") == "rollup":
+                    rel_prop = pspec.get("relation_property", "")
+                    if rel_prop and rel_prop not in props:
+                        keys_to_remove.append(pname)
+            for k in keys_to_remove:
+                props.pop(k, None)
+
+        return blueprint
+
     # ── Blueprint 전체 실행 (스트리밍) ──────────────────────────
 
     async def execute_streaming(
@@ -426,6 +533,17 @@ class CreationExecutor:
         - {"type": "result", "result": dict}: 최종 결과 (항상 마지막에 yield)
         """
         yield {"type": "progress", "step": "creating", "message": "🏗️ 노션에 생성을 시작합니다..."}
+
+        # 0. Pre-creation 무결성 검증
+        integrity_issues = self.validate_blueprint_integrity(blueprint)
+        if integrity_issues:
+            logger.info(f"[Pre-creation 검증] {len(integrity_issues)}개 문제 발견, 자동 교정 시도")
+            blueprint = self._auto_fix_blueprint(blueprint, integrity_issues)
+            yield {
+                "type": "progress",
+                "step": "pre_validation",
+                "message": f"🔍 사전 검증: {len(integrity_issues)}개 항목 자동 교정 완료",
+            }
 
         result: dict[str, Any] = {"pages": [], "databases": [], "blocks": 0}
         main = blueprint["main_page"]
@@ -456,26 +574,36 @@ class CreationExecutor:
             yield {"type": "result", "result": result}
             return
 
-        # 2. 하위 페이지 먼저 생성
+        # 2. 하위 페이지 병렬 생성
         sub_page_map: dict[str, str] = {}
-        for sub in blueprint.get("sub_pages", []):
+        sub_pages = blueprint.get("sub_pages", [])
+        if sub_pages:
             yield {
                 "type": "progress",
                 "step": "sub_page",
-                "message": f"📁 하위 페이지: {sub.get('icon', '')} {sub['title']}",
+                "message": f"📁 하위 페이지 {len(sub_pages)}개 생성 중...",
             }
-            try:
-                sub_page = await self.client.create_page(
-                    parent_id=main_page_id,
-                    title=sub["title"],
-                    icon=sub.get("icon"),
-                    cover_url=sub.get("cover_url") or main.get("cover_url"),
-                    position="page_end",
-                )
-                sub_page_map[sub["title"]] = sub_page["id"]
-                result["pages"].append({"id": sub_page["id"], "title": sub["title"]})
-            except Exception as e:
-                yield {"type": "progress", "step": "warning", "message": f"⚠️ {sub['title']} 스킵: {str(e)[:50]}"}
+
+            async def _create_sub(sub: dict) -> tuple[str, dict | None, str]:
+                try:
+                    page = await self.client.create_page(
+                        parent_id=main_page_id,
+                        title=sub["title"],
+                        icon=sub.get("icon"),
+                        cover_url=sub.get("cover_url") or main.get("cover_url"),
+                        position="page_end",
+                    )
+                    return sub["title"], page, ""
+                except Exception as e:
+                    return sub["title"], None, str(e)[:50]
+
+            sub_results = await asyncio.gather(*[_create_sub(s) for s in sub_pages])
+            for title, page, error in sub_results:
+                if page:
+                    sub_page_map[title] = page["id"]
+                    result["pages"].append({"id": page["id"], "title": title})
+                else:
+                    yield {"type": "progress", "step": "warning", "message": f"⚠️ {title} 스킵: {error}"}
 
         # 2.5. sub_page_ref 치환
         CreationExecutor.resolve_sub_page_refs(blueprint.get("blocks", []), sub_page_map)

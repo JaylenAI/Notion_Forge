@@ -188,7 +188,7 @@ async def generate_blueprint(
     provider = ProviderRouter.resolve(api_key=ai_key, ai_model=ai_model)
     skill_guide, skill_match = await _build_skill_guide_async(user_message, provider=provider)
 
-    memory_context = memory.build_memory_context(skill=skill_match.skill_id or "")
+    memory_context = memory.build_memory_context(skill=skill_match.skill_id or "", query=user_message)
     if memory_context:
         skill_guide += f"\n\n{memory_context}"
 

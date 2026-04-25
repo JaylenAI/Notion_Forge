@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app.agent.memory import Episode, EpisodicMemory
+from app.agent.memory import Episode, EpisodicMemory, _keyword_similarity, _tokenize
 
 
 @pytest.fixture
@@ -159,6 +159,179 @@ class TestMemoryContext:
         )
         context = memory.build_memory_context(skill="reading")
         assert "success rate" in context
+
+
+class TestTokenize:
+    def test_korean_tokens(self):
+        tokens = _tokenize("운동 기록 만들어줘")
+        assert "운동" in tokens
+        assert "기록" in tokens
+        assert "만들어줘" not in tokens
+
+    def test_english_tokens(self):
+        tokens = _tokenize("project management dashboard")
+        assert "project" in tokens
+        assert "management" in tokens
+        assert "dashboard" in tokens
+
+    def test_stop_words_removed(self):
+        tokens = _tokenize("나의 독서 기록 만들어줘")
+        assert "독서" in tokens
+        assert "기록" in tokens
+        assert "만들어줘" not in tokens
+
+    def test_single_char_removed(self):
+        tokens = _tokenize("a b 가 나다")
+        assert "나다" in tokens
+        assert "가" not in tokens
+
+
+class TestKeywordSimilarity:
+    def test_exact_match(self):
+        score = _keyword_similarity(["운동", "기록"], ["운동", "기록"])
+        assert score == 1.0
+
+    def test_partial_match(self):
+        score = _keyword_similarity(["운동", "기록"], ["운동", "트래커"])
+        assert 0.0 < score < 1.0
+
+    def test_no_match(self):
+        score = _keyword_similarity(["운동", "기록"], ["독서", "감상"])
+        assert score == 0.0
+
+    def test_substring_match(self):
+        score = _keyword_similarity(["프로젝트"], ["프로젝트관리"])
+        assert score > 0.0
+
+    def test_empty_input(self):
+        assert _keyword_similarity([], ["운동"]) == 0.0
+        assert _keyword_similarity(["운동"], []) == 0.0
+
+
+class TestSemanticSearch:
+    def test_query_based_similarity(self, memory):
+        memory.save_episode(
+            Episode(
+                timestamp="2026-04-20T00:00:00Z",
+                user_message="운동 기록 트래커",
+                skill_used="fitness",
+                layout="simple_tracker",
+                success=True,
+            )
+        )
+        memory.save_episode(
+            Episode(
+                timestamp="2026-04-21T00:00:00Z",
+                user_message="독서 감상 기록",
+                skill_used="reading",
+                layout="gallery_hero",
+                success=True,
+            )
+        )
+        memory.save_episode(
+            Episode(
+                timestamp="2026-04-22T00:00:00Z",
+                user_message="운동 루틴 관리",
+                skill_used="fitness",
+                layout="kanban_board",
+                success=True,
+            )
+        )
+        results = memory.get_similar_episodes("fitness", query="운동 루틴")
+        assert len(results) >= 1
+        assert results[0].user_message == "운동 루틴 관리"
+
+    def test_cross_skill_similarity(self, memory):
+        memory.save_episode(
+            Episode(
+                timestamp="2026-04-20T00:00:00Z",
+                user_message="프로젝트 관리 대시보드",
+                skill_used="project",
+                layout="dashboard",
+                success=True,
+            )
+        )
+        results = memory.get_similar_episodes("custom", query="프로젝트 관리")
+        assert len(results) >= 1
+
+    def test_no_query_falls_back_to_skill_match(self, memory):
+        memory.save_episode(
+            Episode(
+                timestamp="2026-04-20T00:00:00Z",
+                user_message="test",
+                skill_used="fitness",
+                layout="simple",
+                success=True,
+            )
+        )
+        results = memory.get_similar_episodes("fitness")
+        assert len(results) == 1
+        assert results[0].skill_used == "fitness"
+
+
+class TestSkillSuccessPatterns:
+    def test_patterns_analysis(self, memory):
+        for layout, success in [("simple", True), ("kanban", True), ("simple", True), ("dashboard", False)]:
+            memory.save_episode(
+                Episode(
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    user_message="test",
+                    skill_used="fitness",
+                    layout=layout,
+                    success=success,
+                    error_types=["gen_eval_exhausted"] if not success else [],
+                )
+            )
+        patterns = memory.get_skill_success_patterns("fitness")
+        assert patterns["total"] == 4
+        assert patterns["success_count"] == 3
+        assert patterns["fail_count"] == 1
+        assert patterns["best_layouts"][0][0] == "simple"
+        assert patterns["common_errors"][0][0] == "gen_eval_exhausted"
+
+    def test_empty_patterns(self, memory):
+        patterns = memory.get_skill_success_patterns("nonexistent")
+        assert patterns == {}
+
+
+class TestCache:
+    def test_cache_reuses_on_same_mtime(self, memory):
+        memory.save_episode(
+            Episode(
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                user_message="test",
+                skill_used="test",
+                layout="test",
+                success=True,
+            )
+        )
+        eps1 = memory._load_episodes_cached()
+        eps2 = memory._load_episodes_cached()
+        assert eps1 is eps2
+
+    def test_cache_invalidated_on_save(self, memory):
+        memory.save_episode(
+            Episode(
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                user_message="test",
+                skill_used="test",
+                layout="test",
+                success=True,
+            )
+        )
+        eps1 = memory._load_episodes_cached()
+        memory.save_episode(
+            Episode(
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                user_message="test2",
+                skill_used="test2",
+                layout="test",
+                success=True,
+            )
+        )
+        eps2 = memory._load_episodes_cached()
+        assert len(eps2) == 2
+        assert eps1 is not eps2
 
 
 class TestClear:
