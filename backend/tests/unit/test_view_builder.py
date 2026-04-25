@@ -57,3 +57,75 @@ class TestBuildViewConfiguration:
         result = build_view_configuration(spec)
         assert result is not None
         assert result["map_by"] == "location"
+
+
+class TestViewBuilderEdgeCases:
+    def test_board_cover_string(self):
+        result = build_view_configuration({"type": "board", "cover": "page_cover"})
+        assert result["cover"] == {"type": "page_cover"}
+
+    def test_board_cover_aspect(self):
+        result = build_view_configuration({"type": "board", "cover_aspect": "contain"})
+        assert result["cover_aspect"] == "contain"
+
+    def test_board_card_layout(self):
+        result = build_view_configuration({"type": "board", "card_layout": "compact"})
+        assert result["card_layout"] == "compact"
+
+    def test_gallery_no_cover(self):
+        assert build_view_configuration({"type": "gallery"}) is None
+
+    def test_gallery_card_layout(self):
+        result = build_view_configuration({"type": "gallery", "cover": "page_cover", "card_layout": "list"})
+        assert result["card_layout"] == "list"
+
+    def test_calendar_no_config(self):
+        assert build_view_configuration({"type": "calendar"}) is None
+
+    def test_calendar_show_weekends(self):
+        result = build_view_configuration({"type": "calendar", "show_weekends": False})
+        assert result["show_weekends"] is False
+
+    def test_chart_no_config(self):
+        assert build_view_configuration({"type": "chart"}) is None
+
+    def test_chart_color_theme(self):
+        result = build_view_configuration({"type": "chart", "color_theme": "blue"})
+        assert result["color_theme"] == "blue"
+
+    def test_chart_show_data_labels(self):
+        result = build_view_configuration({"type": "chart", "show_data_labels": True})
+        assert result["show_data_labels"] is True
+
+    def test_chart_height(self):
+        result = build_view_configuration({"type": "chart", "height": 300})
+        assert result["height"] == 300
+
+    def test_timeline_no_config(self):
+        assert build_view_configuration({"type": "timeline"}) is None
+
+    def test_timeline_date_property_id(self):
+        result = build_view_configuration({"type": "timeline", "date_property_id": "p-id"})
+        assert result["date_property_id"] == "p-id"
+
+    def test_timeline_end_date(self):
+        result = build_view_configuration({"type": "timeline", "end_date_property_id": "end"})
+        assert result["end_date_property_id"] == "end"
+
+    def test_timeline_arrows_by(self):
+        result = build_view_configuration({"type": "timeline", "arrows_by": "dep"})
+        assert result["arrows_by"] == "dep"
+
+    def test_table_frozen_column(self):
+        result = build_view_configuration({"type": "table", "frozen_column_index": 2})
+        assert result["frozen_column_index"] == 2
+
+    def test_form_submission_permissions(self):
+        result = build_view_configuration({"type": "form", "submission_permissions": "anyone"})
+        assert result["submission_permissions"] == "anyone"
+
+    def test_unknown_type_returns_none(self):
+        assert build_view_configuration({"type": "unknown_view"}) is None
+
+    def test_board_no_config(self):
+        assert build_view_configuration({"type": "board"}) is None

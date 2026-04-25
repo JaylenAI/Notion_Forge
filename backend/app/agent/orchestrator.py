@@ -16,6 +16,7 @@ from app.agent.creation_executor import CreationExecutor
 from app.agent.input_guardrail import validate_input
 from app.agent.intent_analyzer import analyze_intent
 from app.agent.modify_handler import ModifyHandler
+from app.agent.quality_validator import quality_validator
 from app.agent.tools.add_blocks import AddBlocksTool
 from app.agent.tools.add_database_items import AddDatabaseItemsTool
 from app.core.history import save_generation_record
@@ -153,6 +154,23 @@ class AgentOrchestrator:
         yield {"type": "progress", "step": "design_done", "message": self._format_design_msg(blueprint)}
         yield {"type": "blueprint_preview", "content": self._format_preview(blueprint), "blueprint": blueprint}
 
+        # ── QualityValidator 3계층 검증
+        qv_result = quality_validator.validate(blueprint)
+        if not qv_result.passed:
+            critical_msgs = [i.message for i in qv_result.issues if i.severity == "critical"]
+            yield {
+                "type": "progress",
+                "step": "quality_check",
+                "message": f"⚠️ 품질 검증 미통과 (점수: {qv_result.score}/100, 치명적 이슈 {qv_result.critical_count}개)",
+            }
+            logger.warning(f"[QualityValidator] 미통과: {critical_msgs}")
+        else:
+            yield {
+                "type": "progress",
+                "step": "quality_check",
+                "message": f"✅ 품질 검증 통과 (점수: {qv_result.score}/100)",
+            }
+
         # ── Approval Gate
         self._approval_event.clear()
         self._approval_granted = False
@@ -160,6 +178,10 @@ class AgentOrchestrator:
             "type": "approval_request",
             "content": "템플릿 설계를 확인해주세요. 생성을 진행할까요?",
             "blueprint": blueprint,
+            "quality_score": qv_result.score,
+            "quality_issues": [
+                {"severity": i.severity, "message": i.message, "path": i.path} for i in qv_result.issues
+            ],
         }
 
         try:

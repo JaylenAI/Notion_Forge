@@ -18,6 +18,27 @@ from app.notion.client import NotionClient
 
 logger = logging.getLogger("notionforge.creation_executor")
 
+NOTION_RETRY_MAX = 2
+NOTION_RETRY_BACKOFF = 0.5
+
+
+def _is_notion_retryable(error: Exception) -> bool:
+    msg = str(error).lower()
+    retryable = ("rate_limit", "429", "502", "503", "504", "timeout", "connection")
+    return any(kw in msg for kw in retryable)
+
+
+async def _retry_notion(coro_fn, *args, max_retries: int = NOTION_RETRY_MAX, **kwargs):
+    for attempt in range(max_retries + 1):
+        try:
+            return await coro_fn(*args, **kwargs)
+        except Exception as e:
+            if not _is_notion_retryable(e) or attempt == max_retries:
+                raise
+            wait = NOTION_RETRY_BACKOFF * (2**attempt)
+            logger.info(f"[Notion Retry] {attempt + 1}/{max_retries} — {wait}s 후 재시도: {str(e)[:60]}")
+            await asyncio.sleep(wait)
+
 
 class CreationExecutor:
     """Blueprint의 Notion 리소스 생성을 담당하는 실행기."""
@@ -555,7 +576,8 @@ class CreationExecutor:
             "message": f"📄 페이지 생성 중: {main.get('icon', '')} {main['title']}",
         }
         try:
-            page = await self.client.create_page(
+            page = await _retry_notion(
+                self.client.create_page,
                 parent_id=parent_page_id,
                 title=main["title"],
                 icon=main.get("icon"),
@@ -586,7 +608,8 @@ class CreationExecutor:
 
             async def _create_sub(sub: dict) -> tuple[str, dict | None, str]:
                 try:
-                    page = await self.client.create_page(
+                    page = await _retry_notion(
+                        self.client.create_page,
                         parent_id=main_page_id,
                         title=sub["title"],
                         icon=sub.get("icon"),
@@ -762,7 +785,6 @@ class CreationExecutor:
     async def rollback(self, result: dict[str, Any]) -> list[str]:
         """생성 실패 시 롤백 — 생성된 페이지들을 아카이브(삭제) 처리"""
         rolled_back: list[str] = []
-        # 페이지를 역순으로 삭제 (하위 → 메인)
         for page in reversed(result.get("pages", [])):
             page_id = page.get("id")
             if not page_id:
@@ -773,3 +795,28 @@ class CreationExecutor:
             except Exception as e:
                 logger.warning(f"[Rollback 실패] {page.get('title', '?')}: {str(e)[:80]}")
         return rolled_back
+
+    @staticmethod
+    def summarize_partial_result(blueprint: dict, result: dict) -> dict[str, Any]:
+        expected_dbs = len(blueprint.get("databases", []))
+        expected_blocks = len(blueprint.get("blocks", []))
+        expected_subs = len(blueprint.get("sub_pages", []))
+
+        actual_dbs = len(result.get("databases", []))
+        actual_blocks = result.get("blocks", 0)
+        actual_pages = len(result.get("pages", []))
+        actual_subs = max(0, actual_pages - 1)
+
+        completion = 0.0
+        total_expected = expected_dbs + expected_blocks + expected_subs
+        total_actual = actual_dbs + actual_blocks + actual_subs
+        if total_expected > 0:
+            completion = round(total_actual / total_expected * 100, 1)
+
+        return {
+            "completion_pct": min(100.0, completion),
+            "databases": {"expected": expected_dbs, "created": actual_dbs},
+            "blocks": {"expected": expected_blocks, "created": actual_blocks},
+            "sub_pages": {"expected": expected_subs, "created": actual_subs},
+            "is_partial": completion < 100.0 and completion > 0.0,
+        }

@@ -84,15 +84,15 @@ def _parse_markdown(content: str) -> dict[str, Any]:
             blocks.append({"type": "heading_2", "text": stripped[3:]})
         elif stripped.startswith("### "):
             blocks.append({"type": "heading_3", "text": stripped[4:]})
+        # Checkboxes (must be before bulleted list — both start with "- ")
+        elif stripped.startswith("- [ ] ") or stripped.startswith("- [x] "):
+            checked = stripped.startswith("- [x] ")
+            blocks.append({"type": "to_do", "text": stripped[6:], "checked": checked})
         # Lists
         elif stripped.startswith("- ") or stripped.startswith("* "):
             blocks.append({"type": "bulleted_list", "text": stripped[2:]})
         elif re.match(r"^\d+\.\s", stripped):
             blocks.append({"type": "numbered_list", "text": re.sub(r"^\d+\.\s", "", stripped)})
-        # Checkboxes
-        elif stripped.startswith("- [ ] ") or stripped.startswith("- [x] "):
-            checked = stripped.startswith("- [x] ")
-            blocks.append({"type": "to_do", "text": stripped[6:], "checked": checked})
         # Blockquotes
         elif stripped.startswith("> "):
             blocks.append({"type": "quote", "text": stripped[2:]})

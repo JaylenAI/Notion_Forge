@@ -1,6 +1,13 @@
 """Intent Analyzer 단위 테스트"""
 
-from app.agent.intent_analyzer import _mock_analyze, _override_intent
+from app.agent.intent_analyzer import (
+    COLOR_MAP,
+    TYPE_KEYWORDS,
+    _extract_sub_pages,
+    _mock_analyze,
+    _override_intent,
+    _parse_ai_response,
+)
 
 
 def test_create_dashboard():
@@ -81,3 +88,86 @@ class TestOverrideIntent:
         msg = "영상 기획 DB 갤러리 뷰로 만들어줘. 수익 관리 DB도 필요해."
         result = _mock_analyze(msg)
         assert result.intent == "CREATE"
+
+    def test_modify_keeps_modify(self):
+        assert _override_intent("항목 추가해줘", "MODIFY") == "MODIFY"
+
+    def test_both_create_and_modify_keeps_original(self):
+        assert _override_intent("만들어서 추가해줘", "MODIFY") == "MODIFY"
+
+
+class TestParseAIResponse:
+    def test_valid_json(self):
+        text = '{"intent": "CREATE", "template_type": "dashboard", "confidence": 0.9, "title": "테스트"}'
+        result = _parse_ai_response(text)
+        assert result.intent == "CREATE"
+        assert result.template_type == "dashboard"
+
+    def test_json_with_surrounding_text(self):
+        text = 'Here is the result: {"intent": "CREATE", "template_type": "project", "confidence": 0.8} done.'
+        result = _parse_ai_response(text)
+        assert result.intent == "CREATE"
+
+    def test_no_json_returns_question(self):
+        result = _parse_ai_response("no json here")
+        assert result.intent == "QUESTION"
+        assert result.confidence == 0.3
+
+    def test_empty_title_gets_default(self):
+        text = '{"intent": "CREATE", "template_type": "dashboard", "confidence": 0.9, "title": ""}'
+        result = _parse_ai_response(text)
+        assert result.title == "대시보드"
+
+    def test_empty_title_project_default(self):
+        text = '{"intent": "CREATE", "template_type": "project", "confidence": 0.9, "title": ""}'
+        result = _parse_ai_response(text)
+        assert result.title == "프로젝트 보드"
+
+
+class TestColorMapAndTypeKeywords:
+    def test_color_map_has_korean_entries(self):
+        assert COLOR_MAP["보라색"] == "purple"
+        assert COLOR_MAP["핑크"] == "pink"
+        assert COLOR_MAP["노란색"] == "yellow"
+        assert COLOR_MAP["회색"] == "gray"
+
+    def test_type_keywords_crm(self):
+        assert "crm" in TYPE_KEYWORDS
+        assert "고객" in TYPE_KEYWORDS["crm"]
+
+    def test_type_keywords_note(self):
+        assert "note" in TYPE_KEYWORDS
+        assert "노트" in TYPE_KEYWORDS["note"]
+
+
+class TestExtractSubPages:
+    def test_parenthesized_format(self):
+        result = _extract_sub_pages("하위 페이지 3개 (가이드, FAQ, 일정)")
+        assert len(result) == 3
+
+    def test_colon_format(self):
+        result = _extract_sub_pages("하위 페이지: 가이드, FAQ")
+        assert len(result) == 2
+
+    def test_no_sub_pages(self):
+        result = _extract_sub_pages("대시보드 만들어줘")
+        assert result == []
+
+
+class TestMockAnalyzeEdgeCases:
+    def test_crm_type(self):
+        result = _mock_analyze("CRM 고객 관리 만들어줘")
+        assert result.template_type == "crm"
+        assert result.title == "CRM"
+
+    def test_note_type(self):
+        result = _mock_analyze("독서 노트 만들어줘")
+        assert result.template_type == "note"
+
+    def test_color_purple(self):
+        result = _mock_analyze("보라색 대시보드 만들어")
+        assert result.color_theme == "purple"
+
+    def test_delete_is_modify(self):
+        result = _mock_analyze("이 항목 삭제해줘")
+        assert result.intent == "MODIFY"

@@ -43,7 +43,7 @@ source = ["app"]
 omit = ["app/main.py", "app/core/config.py"]
 
 [tool.coverage.report]
-fail_under = 40
+fail_under = 60
 show_missing = true
 exclude_lines = [
     "pragma: no cover",
