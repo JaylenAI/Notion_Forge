@@ -11,6 +11,7 @@ logger = logging.getLogger("notionforge.providers.openai")
 class OpenAIProvider(BaseProvider):
     name = "openai"
     supports_json_mode = True
+    supports_function_calling = True
 
     def __init__(self, api_key: str = "", model: str = ""):
         self.api_key = api_key
@@ -49,4 +50,58 @@ class OpenAIProvider(BaseProvider):
                 return self.extract_json(text)
         except Exception as e:
             logger.warning(f"[OpenAI 에러] {type(e).__name__}: {str(e)[:150]}")
+            return None
+
+    async def call_with_tools(
+        self,
+        system_prompt: str,
+        user_message: str,
+        tools: list[dict[str, Any]],
+        model: str = "",
+    ) -> dict[str, Any] | None:
+        try:
+            import httpx
+
+            body: dict[str, Any] = {
+                "model": model or self.default_model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
+                "temperature": 0.3,
+                "max_tokens": 4096,
+            }
+            if tools:
+                body["tools"] = tools
+                body["tool_choice"] = "auto"
+
+            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS) as client:
+                resp = await client.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                    json=body,
+                )
+                if resp.status_code != 200:
+                    logger.warning(f"[OpenAI FC] HTTP {resp.status_code}: {resp.text[:200]}")
+                    return None
+
+                data = resp.json()
+                message = data["choices"][0]["message"]
+
+                tool_calls = message.get("tool_calls")
+                if tool_calls:
+                    return {
+                        "tool_calls": [
+                            {
+                                "name": tc["function"]["name"],
+                                "arguments": self.extract_json(tc["function"]["arguments"]) or {},
+                            }
+                            for tc in tool_calls
+                        ]
+                    }
+
+                text = message.get("content", "")
+                return self.extract_json(text)
+        except Exception as e:
+            logger.warning(f"[OpenAI FC 에러] {type(e).__name__}: {str(e)[:150]}")
             return None

@@ -17,11 +17,22 @@ class BaseProvider(ABC):
 
     name: str = "base"
     supports_json_mode: bool = False
+    supports_function_calling: bool = False
 
     @abstractmethod
     async def call(self, system_prompt: str, user_message: str, model: str = "") -> dict[str, Any] | None:
         """AI에게 시스템 프롬프트 + 유저 메시지를 보내고 JSON dict를 반환"""
         ...
+
+    async def call_with_tools(
+        self,
+        system_prompt: str,
+        user_message: str,
+        tools: list[dict[str, Any]],
+        model: str = "",
+    ) -> dict[str, Any] | None:
+        """Function calling으로 AI 호출. 기본 구현은 일반 call()로 폴백."""
+        return await self.call(system_prompt, user_message, model)
 
     async def call_with_timeout(
         self,

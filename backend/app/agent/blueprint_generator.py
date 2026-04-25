@@ -223,8 +223,17 @@ async def generate_blueprint(
                 feedback_context = "JSON 파싱 실패. 반드시 유효한 JSON으로 응답하세요. databases 배열이 필수입니다."
                 continue
 
+            # Pydantic Structured Output 검증
+            from app.schemas.blueprint import validate_ai_content
+
+            ai_content, pydantic_errors = validate_ai_content(ai_content)
+            if pydantic_errors:
+                logger.info(f"[Pydantic 검증] {len(pydantic_errors)}개 오류: {pydantic_errors}")
+
             # Evaluate: 구조적 결함 검증
             is_pass, eval_errors = _evaluate_ai_output(ai_content)
+            eval_errors.extend(pydantic_errors)
+            is_pass = is_pass and len(pydantic_errors) == 0
 
             if is_pass:
                 # 검증 통과 → Post-processor 보정 → 반환

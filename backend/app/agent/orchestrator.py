@@ -54,6 +54,7 @@ class AgentOrchestrator:
         self.complexity: str = "standard"
         self.language: str = "ko"
         self.use_pipeline: bool = False
+        self.use_agent_loop: bool = False
 
         # Approval Gate
         self._approval_event: asyncio.Event = asyncio.Event()
@@ -108,6 +109,39 @@ class AgentOrchestrator:
 
         if intent.confidence < 0.5 and intent.missing_info:
             yield {"type": "question", "content": self._build_question(intent), "intent": intent.model_dump()}
+            return
+
+        # ── Agent Loop 모드: Plan-Execute-Reflect 직접 실행
+        if self.use_agent_loop:
+            metrics.start_stage("agent_loop")
+            yield {"type": "progress", "step": "agent_loop", "message": "🤖 Agent Loop 모드로 직접 생성합니다..."}
+
+            from app.agent.agent_loop import AgentLoop
+
+            loop = AgentLoop(client=self.client, api_key=self.ai_key, ai_model=self.ai_model)
+            async for event in loop.run_streaming(message, self.parent_page_id):
+                if event.get("type") == "result":
+                    loop_result = event["result"]
+                else:
+                    yield event
+
+            metrics.end_stage()
+
+            if not loop_result.get("success"):
+                yield {"type": "error", "content": f"Agent Loop 실패: {loop_result.get('error', '알 수 없는 오류')}"}
+                return
+
+            result = {
+                "pages": [{"id": loop_result.get("page_id")}],
+                "databases": [],
+                "blocks": loop_result.get("steps_completed", 0),
+                "main_url": loop_result.get("page_url", ""),
+            }
+            self._last_result = result
+            metrics.finish(success=True)
+            save_generation_record(metrics.to_dict(), {})
+
+            yield {"type": "complete", "content": self._format_complete(result), "result": result}
             return
 
         # ② AI 설계

@@ -1,6 +1,9 @@
+import logging
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
+
+logger = logging.getLogger("notionforge.schemas")
 
 
 class IntentResult(BaseModel):
@@ -13,6 +16,72 @@ class IntentResult(BaseModel):
     missing_info: list[str] | None = None
     confidence: float = 0.0
     modify_type: str | None = None
+
+
+# ── AI 원시 콘텐츠 검증 ────────────────────────────────────
+
+
+class AIContentSpec(BaseModel):
+    """AI가 생성하는 원시 콘텐츠 구조 — Structured Output 검증"""
+
+    title: str = ""
+    icon: str = ""
+    color: str = "blue"
+    skill: str = ""
+    blocks: list[dict[str, Any]] = Field(default_factory=list)
+    databases: list[dict[str, Any]] = Field(default_factory=list)
+    sub_pages: list[dict[str, Any]] = Field(default_factory=list)
+    faq: list[Any] = Field(default_factory=list)
+
+    model_config = {"extra": "allow"}
+
+
+def validate_ai_content(raw: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """AI 출력을 Pydantic으로 검증 + 교정. (교정된 dict, 에러 목록) 반환.
+
+    - 검증 통과 → 정규화된 dict + 빈 에러 목록
+    - 검증 실패 → 원본 dict + 에러 메시지 목록 (Gen-Eval 재시도 트리거용)
+    """
+    errors: list[str] = []
+
+    # db_properties → databases 정규화 (단일 DB 래핑)
+    if "db_properties" in raw and "databases" not in raw:
+        raw = {
+            **raw,
+            "databases": [
+                {
+                    "title": raw.get("title", "DB"),
+                    "db_properties": raw["db_properties"],
+                    "views": raw.get("views", ["table"]),
+                    "sample_items": raw.get("sample_items", []),
+                }
+            ],
+        }
+
+    try:
+        validated = AIContentSpec.model_validate(raw)
+        result = validated.model_dump(exclude_none=True)
+
+        if not result.get("blocks"):
+            errors.append("Pydantic: blocks 배열이 비어있습니다.")
+        if not result.get("databases"):
+            errors.append("Pydantic: databases 배열이 비어있습니다.")
+
+        for di, db in enumerate(result.get("databases", [])):
+            props = db.get("db_properties", db.get("properties", {}))
+            has_title = any(v == "title" or (isinstance(v, dict) and v.get("type") == "title") for v in props.values())
+            if not has_title:
+                errors.append(f"Pydantic: databases[{di}]에 title 타입 속성이 없습니다.")
+
+        if errors:
+            return raw, errors
+        return result, []
+
+    except ValidationError as e:
+        for err in e.errors():
+            loc = ".".join(str(x) for x in err["loc"])
+            errors.append(f"Pydantic: {loc} — {err['msg']}")
+        return raw, errors
 
 
 # ── Blueprint 타입 정의 (Phase 11) ──────────────────────────
