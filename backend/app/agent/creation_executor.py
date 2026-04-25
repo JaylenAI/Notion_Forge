@@ -464,12 +464,27 @@ class CreationExecutor:
         databases = blueprint.get("databases", [])
         db_index = 0
 
+        pending_regular: list[dict] = []
+
+        async def _flush_pending():
+            nonlocal pending_regular
+            if not pending_regular:
+                return
+            notion_blocks = [spec_to_block(b) for b in pending_regular]
+            try:
+                await self.client.add_blocks(main_page_id, notion_blocks)
+                result["blocks"] += len(notion_blocks)
+            except Exception as e:
+                logger.info(f"[블록 배치 추가 실패] {len(notion_blocks)}개: {str(e)[:80]}")
+            pending_regular = []
+
         for block in blocks:
             if not isinstance(block, dict):
                 continue
             block_type = block.get("type", "?")
             try:
                 if block_type == "database_ref":
+                    await _flush_pending()
                     if db_index < len(databases):
                         db_spec = databases[db_index]
                         db_title = db_spec.get("title", db_spec.get("db_name", "DB"))
@@ -485,6 +500,7 @@ class CreationExecutor:
                         db_index += 1
 
                 elif block_type == "column_list":
+                    await _flush_pending()
                     yield {"type": "progress", "step": "block", "message": "🔲 칼럼 레이아웃 생성 중..."}
                     for _ in self.collect_db_refs_in_columns(block):
                         if db_index < len(databases):
@@ -505,6 +521,7 @@ class CreationExecutor:
                     yield {"type": "progress", "step": "block_done", "message": "✅ 칼럼 레이아웃 생성됨"}
 
                 elif block_type == "linked_view":
+                    await _flush_pending()
                     linked_db_idx = block.get("db_index", 0)
                     created_dbs = result.get("databases", [])
                     if linked_db_idx < len(created_dbs):
@@ -521,15 +538,12 @@ class CreationExecutor:
                                 logger.info(f"[링크드 뷰 스킵] {str(e)[:80]}")
 
                 else:
-                    notion_block = spec_to_block(block)
-                    try:
-                        await self.client.add_blocks(main_page_id, [notion_block])
-                        result["blocks"] += 1
-                    except Exception as e:
-                        logger.info(f"[블록 스킵] {block_type}: {str(e)[:80]}")
+                    pending_regular.append(block)
 
             except Exception as e:
                 logger.info(f"[블록 처리 오류] {block_type}: {str(e)[:80]}")
+
+        await _flush_pending()
 
         # 남은 DB 추가
         while db_index < len(databases):
