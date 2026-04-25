@@ -11,16 +11,16 @@ import logging
 import uuid
 from typing import Any, AsyncGenerator
 
+from app.agent.blueprint_generator import generate_blueprint
+from app.agent.creation_executor import CreationExecutor
 from app.agent.input_guardrail import validate_input
 from app.agent.intent_analyzer import analyze_intent
-from app.agent.blueprint_generator import generate_blueprint
+from app.agent.modify_handler import ModifyHandler
 from app.agent.tools.add_blocks import AddBlocksTool
 from app.agent.tools.add_database_items import AddDatabaseItemsTool
-from app.agent.creation_executor import CreationExecutor
-from app.agent.modify_handler import ModifyHandler
-from app.notion.client import NotionClient
-from app.core.metrics import GenerationMetrics
 from app.core.history import save_generation_record
+from app.core.metrics import GenerationMetrics
+from app.notion.client import NotionClient
 from app.schemas.blueprint import IntentResult
 
 logger = logging.getLogger("notionforge.orchestrator")
@@ -81,7 +81,11 @@ class AgentOrchestrator:
         yield {"type": "progress", "step": "intent_analysis", "message": "🔍 요청을 분석하고 있어요..."}
         intent = await analyze_intent(message)
         metrics.end_stage()
-        yield {"type": "progress", "step": "intent_done", "message": f"✅ 의도 파악: {intent.intent} ({intent.template_type})"}
+        yield {
+            "type": "progress",
+            "step": "intent_done",
+            "message": f"✅ 의도 파악: {intent.intent} ({intent.template_type})",
+        }
 
         # 수정 모드 전환
         if intent.intent == "MODIFY" and self._last_result:
@@ -92,7 +96,9 @@ class AgentOrchestrator:
         if self._last_result and intent.intent == "CREATE":
             if self._should_switch_to_modify(message):
                 yield {"type": "progress", "step": "intent_override", "message": "🔄 수정 모드로 전환합니다..."}
-                async for event in self._modifier.handle_modify(message, intent, self._last_result, self._last_blueprint):
+                async for event in self._modifier.handle_modify(
+                    message, intent, self._last_result, self._last_blueprint
+                ):
                     yield event
                 return
 
@@ -116,7 +122,11 @@ class AgentOrchestrator:
         # ── Approval Gate
         self._approval_event.clear()
         self._approval_granted = False
-        yield {"type": "approval_request", "content": "템플릿 설계를 확인해주세요. 생성을 진행할까요?", "blueprint": blueprint}
+        yield {
+            "type": "approval_request",
+            "content": "템플릿 설계를 확인해주세요. 생성을 진행할까요?",
+            "blueprint": blueprint,
+        }
 
         try:
             await asyncio.wait_for(self._approval_event.wait(), timeout=60.0)
@@ -150,7 +160,11 @@ class AgentOrchestrator:
             rolled = await self._executor.rollback(result)
             metrics.finish(success=False, error="empty_result_rollback")
             save_generation_record(metrics.to_dict(), blueprint)
-            msg = f"생성 실패로 롤백 완료: {', '.join(rolled)} 삭제됨.\n다시 시도해주세요." if rolled else "생성 실패. 다시 시도해주세요."
+            msg = (
+                f"생성 실패로 롤백 완료: {', '.join(rolled)} 삭제됨.\n다시 시도해주세요."
+                if rolled
+                else "생성 실패. 다시 시도해주세요."
+            )
             yield {"type": "error", "content": msg}
             return
 
@@ -177,21 +191,25 @@ class AgentOrchestrator:
 
     async def _generate_blueprint(self, message: str, metrics: GenerationMetrics) -> dict[str, Any]:
         """복잡도/언어 힌트 추가 → AI 설계"""
-        complexity_label = {"simple": "간단한", "standard": "표준", "advanced": "고급"}.get(self.complexity, "표준")
         enhanced_msg = message
         if self.complexity != "standard":
-            complexity_hint = {"simple": "\n[COMPLEXITY: simple — 10-15 blocks, 1 DB, minimal]",
-                               "advanced": "\n[COMPLEXITY: advanced — 25-40 blocks, 3-4 DB, 5+ sub_pages, dashboard layout]"}.get(self.complexity, "")
+            complexity_hint = {
+                "simple": "\n[COMPLEXITY: simple — 10-15 blocks, 1 DB, minimal]",
+                "advanced": "\n[COMPLEXITY: advanced — 25-40 blocks, 3-4 DB, 5+ sub_pages, dashboard layout]",
+            }.get(self.complexity, "")
             enhanced_msg = message + complexity_hint
         if self.language != "ko":
-            lang_hint = {"en": "\n[LANGUAGE: English — all text content in English]",
-                         "ja": "\n[LANGUAGE: Japanese — all text content in Japanese]"}.get(self.language, "")
+            lang_hint = {
+                "en": "\n[LANGUAGE: English — all text content in English]",
+                "ja": "\n[LANGUAGE: Japanese — all text content in Japanese]",
+            }.get(self.language, "")
             enhanced_msg += lang_hint
 
         use_pipeline = self.use_pipeline or self.complexity == "advanced"
         if use_pipeline:
-            from app.agent.pipeline import multi_agent_pipeline
             from app.agent.blueprint_generator import _assemble_blueprint
+            from app.agent.pipeline import multi_agent_pipeline
+
             async for event in multi_agent_pipeline(enhanced_msg, ai_key=self.ai_key, ai_model=self.ai_model):
                 if event.get("stage") == "complete":
                     blueprint = _assemble_blueprint(event.get("blueprint"))
@@ -200,7 +218,9 @@ class AgentOrchestrator:
                     return blueprint
 
         return await generate_blueprint(
-            enhanced_msg, ai_key=self.ai_key, ai_model=self.ai_model,
+            enhanced_msg,
+            ai_key=self.ai_key,
+            ai_model=self.ai_model,
             conversation_history=self._conversation,
         )
 
@@ -221,9 +241,27 @@ class AgentOrchestrator:
         """CREATE 의도이지만 수정 키워드가 있으면 MODIFY로 전환"""
         msg_lower = message.lower()
         modify_keywords = ["추가", "넣어", "바꿔", "변경", "삭제", "없애", "제거", "연결", "빼"]
-        context_keywords = ["속성", "뷰", "db", "디비", "데이터베이스", "칼럼", "페이지", "블록",
-                            "수식", "formula", "d-day", "relation", "캘린더", "보드", "갤러리",
-                            "타임라인", "테이블", "리스트", "칸반"]
+        context_keywords = [
+            "속성",
+            "뷰",
+            "db",
+            "디비",
+            "데이터베이스",
+            "칼럼",
+            "페이지",
+            "블록",
+            "수식",
+            "formula",
+            "d-day",
+            "relation",
+            "캘린더",
+            "보드",
+            "갤러리",
+            "타임라인",
+            "테이블",
+            "리스트",
+            "칸반",
+        ]
         has_modify = any(kw in msg_lower for kw in modify_keywords)
         has_context = any(kw in msg_lower for kw in context_keywords)
         return has_modify and has_context
@@ -234,7 +272,7 @@ class AgentOrchestrator:
         if "버튼" in msg:
             return "Notion API에서는 버튼 블록 생성이 불가능합니다.\n\n대안으로 콜아웃 블록에 아이콘을 넣어 버튼처럼 보이게 만들어드립니다."
         if any(w in msg for w in ["갤러리", "캘린더", "칸반", "뷰"]):
-            return "Views API (2026-03-19)로 갤러리, 캘린더, 칸반 뷰를 자동 생성할 수 있습니다!\n\n예: \"프로젝트 보드 만들어줘, 칸반 뷰로\""
+            return 'Views API (2026-03-19)로 갤러리, 캘린더, 칸반 뷰를 자동 생성할 수 있습니다!\n\n예: "프로젝트 보드 만들어줘, 칸반 뷰로"'
         if "전체 너비" in msg or "풀 너비" in msg:
             return "Notion API에서는 페이지 전체 너비 설정이 불가능합니다.\n\n페이지 우측 상단 ··· → 전체 너비 활성화 (3초)"
         if any(w in msg for w in ["가능", "할 수", "뭐야"]):
@@ -250,8 +288,14 @@ class AgentOrchestrator:
 
     def _build_question(self, intent: IntentResult) -> str:
         lines = intent.missing_info or ["어떤 용도의 노션 템플릿을 만들어드릴까요?"]
-        categories = ["📊 프로젝트 관리", "✅ 습관/목표 트래커", "📚 학습/독서 기록",
-                       "🏢 업무용 (CRM, 회의록)", "🔖 북마크/자료 정리", "📝 일기/기록 노트"]
+        categories = [
+            "📊 프로젝트 관리",
+            "✅ 습관/목표 트래커",
+            "📚 학습/독서 기록",
+            "🏢 업무용 (CRM, 회의록)",
+            "🔖 북마크/자료 정리",
+            "📝 일기/기록 노트",
+        ]
         return "\n".join(f"- {q}" for q in lines) + "\n\n인기 카테고리:\n" + "\n".join(f"  {c}" for c in categories)
 
     @staticmethod
@@ -296,5 +340,5 @@ class AgentOrchestrator:
         if result.get("databases"):
             lines.append("• DB 뷰 변경: DB 상단 + 버튼 → 갤러리/캘린더/보드 선택")
         lines.append("")
-        lines.append("💬 수정이 필요하면 말씀해주세요! (예: \"DB에 우선순위 속성 추가해줘\")")
+        lines.append('💬 수정이 필요하면 말씀해주세요! (예: "DB에 우선순위 속성 추가해줘")')
         return "\n".join(lines)

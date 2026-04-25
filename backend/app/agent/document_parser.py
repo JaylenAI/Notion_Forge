@@ -60,10 +60,10 @@ def _parse_csv(content: str) -> dict[str, Any]:
         sample_items.append(item)
 
     return {
-        "hint": f"CSV 데이터 — {len(headers)}개 컬럼, {len(rows)-1}개 행",
+        "hint": f"CSV 데이터 — {len(headers)}개 컬럼, {len(rows) - 1}개 행",
         "properties": properties,
         "sample_items": sample_items,
-        "db_title": filename.rsplit(".", 1)[0] if filename else "Imported Data",
+        "db_title": "Imported Data",
     }
 
 
@@ -114,7 +114,7 @@ def _parse_markdown(content: str) -> dict[str, Any]:
 
 def _parse_text(content: str) -> dict[str, Any]:
     """일반 텍스트 → 구조 추출"""
-    lines = [l.strip() for l in content.split("\n") if l.strip()]
+    lines = [line.strip() for line in content.split("\n") if line.strip()]
 
     # 텍스트를 AI에게 전달할 컨텍스트로 요약
     summary = "\n".join(lines[:30])  # 최대 30줄
@@ -128,6 +128,7 @@ def parse_pdf_bytes(pdf_bytes: bytes) -> dict[str, Any]:
     """PDF 바이트 → 텍스트 추출 (PyMuPDF 선택 설치)"""
     try:
         import fitz  # PyMuPDF
+
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         text = ""
         for page in doc:

@@ -11,24 +11,21 @@ import logging
 logger = logging.getLogger("notionforge.blueprint_generator")
 
 import json
+import random as _random
 from datetime import datetime, timezone
+from pathlib import Path as _Path
 from typing import Any
 
-from app.config import settings
-from app.skills import get_tool_enum_description
-from app.agent.prompt_assembler import prompt_assembler
 from app.agent.layout_router import layout_router
 from app.agent.post_processor import blueprint_validator
+from app.agent.prompt_assembler import prompt_assembler
 from app.agent.skill_router import build_skill_guide as _build_skill_guide_async
-
-from pathlib import Path as _Path
-
-import random as _random
-
+from app.skills import get_tool_enum_description
 
 # ============================================================
 # Cover URL 로딩
 # ============================================================
+
 
 def _load_cover_urls() -> dict[str, list[str]]:
     p = _Path(__file__).parent / "data" / "cover_urls.json"
@@ -37,6 +34,7 @@ def _load_cover_urls() -> dict[str, list[str]]:
         # 하위 호환: string → list 변환
         return {k: (v if isinstance(v, list) else [v]) for k, v in data.items()}
     return {"default": ["https://images.unsplash.com/photo-1557683316-973673baf926?w=1600"]}
+
 
 COVER_URLS: dict[str, list[str]] = _load_cover_urls()
 
@@ -51,19 +49,20 @@ def _pick_cover(category: str, color: str = "default") -> str:
 # Fallback 템플릿 (JSON에서 로딩)
 # ============================================================
 
+
 def _load_fallback_templates() -> tuple[dict[str, dict[str, Any]], dict[str, list[str]]]:
     p = _Path(__file__).parent / "data" / "fallback_templates.json"
     data = json.loads(p.read_text(encoding="utf-8"))
     return data["templates"], data["keywords"]
 
+
 FALLBACK_TEMPLATES, FALLBACK_KEYWORDS = _load_fallback_templates()
-
-
 
 
 # ============================================================
 # Gen-Eval 검증
 # ============================================================
+
 
 def _evaluate_ai_output(content: dict[str, Any]) -> tuple[bool, list[str]]:
     """Gen-Eval: AI 출력의 구조적 결함을 검증. (pass, errors) 반환."""
@@ -93,17 +92,16 @@ def _evaluate_ai_output(content: dict[str, Any]) -> tuple[bool, list[str]]:
                 if isinstance(col, list):
                     for item in col:
                         if item.get("type") == "database_ref":
-                            errors.append(f"blocks[{i}].columns[{ci}]: database_ref가 column_list 안에 있습니다. page level로 이동 필요.")
+                            errors.append(
+                                f"blocks[{i}].columns[{ci}]: database_ref가 column_list 안에 있습니다. page level로 이동 필요."
+                            )
 
     # Level 2: DB 구조 검증
     for di, db in enumerate(content.get("databases", [])):
         props = db.get("db_properties", db.get("properties", {}))
         if not props:
             errors.append(f"databases[{di}]: 속성(properties)이 비어있습니다.")
-        has_title = any(
-            v == "title" or (isinstance(v, dict) and v.get("type") == "title")
-            for v in props.values()
-        )
+        has_title = any(v == "title" or (isinstance(v, dict) and v.get("type") == "title") for v in props.values())
         if not has_title:
             errors.append(f"databases[{di}]: title 타입 속성이 없습니다. 최소 1개 필요합니다.")
         samples = db.get("sample_items", [])
@@ -140,6 +138,7 @@ def _evaluate_ai_output(content: dict[str, Any]) -> tuple[bool, list[str]]:
 # 메인 함수
 # ============================================================
 
+
 async def generate_blueprint(
     user_message: str,
     ai_key: str = "",
@@ -148,8 +147,9 @@ async def generate_blueprint(
 ) -> dict[str, Any]:
     """Gen-Eval 피드백 루프: AI 생성 → 검증 → 실패 시 에러 피드백 → 재생성 (최대 3회)"""
     import time
+
+    from app.agent.memory import Episode, memory
     from app.agent.providers.router import ProviderRouter
-    from app.agent.memory import memory, Episode
 
     provider = ProviderRouter.resolve(api_key=ai_key, ai_model=ai_model)
     skill_guide, skill_match = await _build_skill_guide_async(user_message, provider=provider)
@@ -176,13 +176,16 @@ async def generate_blueprint(
                 )
 
             ai_content = await _call_ai_for_content(
-                enhanced_message, ai_key=ai_key, ai_model=ai_model,
-                extra_context=skill_guide, conversation_history=conversation_history,
+                enhanced_message,
+                ai_key=ai_key,
+                ai_model=ai_model,
+                extra_context=skill_guide,
+                conversation_history=conversation_history,
             )
             elapsed = time.time() - t0
 
             if not ai_content or (not ai_content.get("databases") and not ai_content.get("db_properties")):
-                logger.info(f"[Gen-Eval 시도 {attempt+1}/{max_retries}] AI 응답 파싱 실패 ({elapsed:.1f}s)")
+                logger.info(f"[Gen-Eval 시도 {attempt + 1}/{max_retries}] AI 응답 파싱 실패 ({elapsed:.1f}s)")
                 feedback_context = "JSON 파싱 실패. 반드시 유효한 JSON으로 응답하세요. databases 배열이 필수입니다."
                 continue
 
@@ -198,20 +201,22 @@ async def generate_blueprint(
                 blueprint["metadata"]["skill_match_method"] = skill_match.method
                 blueprint["metadata"]["gen_eval_attempts"] = attempt + 1
                 blueprint["metadata"]["gen_eval_time"] = round(elapsed, 1)
-                logger.info(f"[Gen-Eval 통과] 시도 {attempt+1}/{max_retries}, {elapsed:.1f}s")
-                memory.save_episode(Episode(
-                    timestamp=datetime.now(timezone.utc).isoformat(),
-                    user_message=user_message[:200],
-                    skill_used=skill_match.skill_id or "custom",
-                    layout=layout_router.route(user_message).layout,
-                    success=True,
-                    gen_eval_attempts=attempt + 1,
-                ))
+                logger.info(f"[Gen-Eval 통과] 시도 {attempt + 1}/{max_retries}, {elapsed:.1f}s")
+                memory.save_episode(
+                    Episode(
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                        user_message=user_message[:200],
+                        skill_used=skill_match.skill_id or "custom",
+                        layout=layout_router.route(user_message).layout,
+                        success=True,
+                        gen_eval_attempts=attempt + 1,
+                    )
+                )
                 return blueprint
 
             # 검증 실패 → 에러를 피드백으로 구성
             error_count = len(eval_errors)
-            logger.info(f"[Gen-Eval 시도 {attempt+1}/{max_retries}] 검증 실패: {error_count}개 오류 ({elapsed:.1f}s)")
+            logger.info(f"[Gen-Eval 시도 {attempt + 1}/{max_retries}] 검증 실패: {error_count}개 오류 ({elapsed:.1f}s)")
             for err in eval_errors[:5]:
                 logger.info(f"  - {err}")
 
@@ -223,17 +228,19 @@ async def generate_blueprint(
             # 피드백 구성: 에러 메시지를 AI에게 다시 전달
             feedback_context = "\n".join(eval_errors[:8])
 
-            # 전략 변경: 마지막 재시도에서는 간소화 힌트 추가
+            # 전략 변경: 마지막 재시도에서는 구조 안정화 힌트 추가
             if attempt == max_retries - 2:
                 feedback_context += (
                     "\n\n[STRATEGY CHANGE] 이전 시도들이 실패했습니다. "
-                    "더 간단한 구조로 생성하세요: DB 1-2개, 블록 8-12개, "
-                    "복잡한 중첩 구조 대신 평면적 배치를 사용하세요."
+                    "오류를 수정하는 데 집중하세요. databases 배열의 DB 개수는 유저 요청에 맞게 유지하되, "
+                    "각 DB에 title 속성과 sample_items 3개 이상을 반드시 포함하세요. "
+                    "column_list 안에 database_ref를 넣지 마세요. "
+                    "중첩 구조를 줄이되, 유저가 요청한 DB 개수와 뷰는 보존하세요."
                 )
 
         except Exception as e:
             elapsed = time.time() - t0
-            logger.info(f"[Gen-Eval 시도 {attempt+1}/{max_retries}] 예외: {str(e)[:100]} ({elapsed:.1f}s)")
+            logger.info(f"[Gen-Eval 시도 {attempt + 1}/{max_retries}] 예외: {str(e)[:100]} ({elapsed:.1f}s)")
             feedback_context = f"이전 시도에서 오류 발생: {str(e)[:200]}. 올바른 JSON으로 다시 응답하세요."
 
     # Circuit Breaker: 최대 재시도 초과 → 가장 좋았던 결과 사용 또는 폴백
@@ -247,15 +254,17 @@ async def generate_blueprint(
         return blueprint
 
     logger.info("[Gen-Eval 전체 실패 → 스마트 폴백 사용]")
-    memory.save_episode(Episode(
-        timestamp=datetime.now(timezone.utc).isoformat(),
-        user_message=user_message[:200],
-        skill_used=skill_match.skill_id or "custom",
-        layout=layout_router.route(user_message).layout,
-        success=False,
-        gen_eval_attempts=max_retries,
-        error_types=["gen_eval_exhausted"],
-    ))
+    memory.save_episode(
+        Episode(
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            user_message=user_message[:200],
+            skill_used=skill_match.skill_id or "custom",
+            layout=layout_router.route(user_message).layout,
+            success=False,
+            gen_eval_attempts=max_retries,
+            error_types=["gen_eval_exhausted"],
+        )
+    )
     content = _smart_fallback(user_message)
     blueprint = _assemble_blueprint(content)
     blueprint["metadata"]["generation_method"] = "smart_fallback"
@@ -265,6 +274,7 @@ async def generate_blueprint(
 # ============================================================
 # 모드 감지
 # ============================================================
+
 
 def _detect_mode(user_message: str) -> str:
     """유저 메시지에서 복잡도 모드 감지"""
@@ -288,6 +298,7 @@ def _detect_mode(user_message: str) -> str:
 # AI 호출
 # ============================================================
 
+
 async def _call_ai_for_content(
     user_message: str,
     ai_key: str = "",
@@ -301,7 +312,9 @@ async def _call_ai_for_content(
     layout_result = layout_router.route(user_message)
     skills_desc = get_tool_enum_description()
     prompt = prompt_assembler.assemble(mode=mode, layout=layout_result.layout, skills=skills_desc)
-    logger.info(f"[Harness] mode={mode}, layout={layout_result.layout} (conf={layout_result.confidence:.2f}, {layout_result.reason})")
+    logger.info(
+        f"[Harness] mode={mode}, layout={layout_result.layout} (conf={layout_result.confidence:.2f}, {layout_result.reason})"
+    )
 
     if extra_context:
         prompt += f"\n\n## Skill Guidelines:\n{extra_context[:1200]}"
@@ -315,7 +328,10 @@ async def _call_ai_for_content(
     max_chars = provider.get_max_prompt_chars()
     if max_chars > 0 and len(prompt) > max_chars:
         prompt = prompt_assembler.assemble_compact(
-            mode=mode, layout=layout_result.layout, skills=skills_desc, max_chars=max_chars,
+            mode=mode,
+            layout=layout_result.layout,
+            skills=skills_desc,
+            max_chars=max_chars,
         )
         if extra_context:
             prompt += f"\n\n## Skill Guidelines:\n{extra_context[:600]}"
@@ -324,7 +340,8 @@ async def _call_ai_for_content(
             history_text = "\n".join(f"[{m['role']}]: {m['content'][:150]}" for m in recent[:-1])
             prompt += f"\n\n## History:\n{history_text[:400]}"
 
-    result = await provider.call_with_timeout(prompt, user_message, model=ai_model)
+    timeout = 90.0 if mode == "advanced" else 45.0
+    result = await provider.call_with_timeout(prompt, user_message, model=ai_model, timeout=timeout)
     if not result:
         return None
     if "databases" in result or "db_properties" in result:
@@ -335,6 +352,7 @@ async def _call_ai_for_content(
 # ============================================================
 # Blueprint 조립: AI가 준 데이터를 그대로 사용
 # ============================================================
+
 
 def _assemble_blueprint(content: dict) -> dict[str, Any]:
     """AI가 생성한 전체 구조를 Blueprint로 조립"""
@@ -361,7 +379,12 @@ def _assemble_blueprint(content: dict) -> dict[str, Any]:
         # blocks가 없으면 (폴백 등) 기본 구조 생성
         bg = f"{color}_background" if color != "default" else "default"
         blueprint["blocks"] = [
-            {"type": "callout", "text": content.get("callout_text", f"{title}에 오신 걸 환영합니다!"), "icon": content.get("icon", "📋"), "color": bg},
+            {
+                "type": "callout",
+                "text": content.get("callout_text", f"{title}에 오신 걸 환영합니다!"),
+                "icon": content.get("icon", "📋"),
+                "color": bg,
+            },
             {"type": "divider"},
             {"type": "heading_1", "text": f"📊 {content.get('db_name', title)}", "color": bg},
             {"type": "database_ref", "db_index": 0},
@@ -379,16 +402,18 @@ def _assemble_blueprint(content: dict) -> dict[str, Any]:
                     views.append({"type": v, "title": v})
                 elif isinstance(v, dict):
                     views.append(v)
-            blueprint["databases"].append({
-                "title": db.get("title", db.get("db_name", "Items")),
-                "is_inline": True,
-                "properties": db.get("db_properties", db.get("properties", {"이름": "title"})),
-                "views": views,
-                "sample_items": db.get("sample_items", []),
-                "description": db.get("description", ""),
-                "icon": db.get("icon"),
-                "cover_url": db.get("cover_url"),
-            })
+            blueprint["databases"].append(
+                {
+                    "title": db.get("title", db.get("db_name", "Items")),
+                    "is_inline": True,
+                    "properties": db.get("db_properties", db.get("properties", {"이름": "title"})),
+                    "views": views,
+                    "sample_items": db.get("sample_items", []),
+                    "description": db.get("description", ""),
+                    "icon": db.get("icon"),
+                    "cover_url": db.get("cover_url"),
+                }
+            )
     elif content.get("db_properties"):
         # 단일 DB (하위 호환)
         views = []
@@ -397,13 +422,15 @@ def _assemble_blueprint(content: dict) -> dict[str, Any]:
                 views.append({"type": v, "title": v})
             elif isinstance(v, dict):
                 views.append(v)
-        blueprint["databases"].append({
-            "title": content.get("db_name", "Items"),
-            "is_inline": True,
-            "properties": content["db_properties"],
-            "views": views,
-            "sample_items": content.get("sample_items", []),
-        })
+        blueprint["databases"].append(
+            {
+                "title": content.get("db_name", "Items"),
+                "is_inline": True,
+                "properties": content["db_properties"],
+                "views": views,
+                "sample_items": content.get("sample_items", []),
+            }
+        )
 
     # sub_pages: AI가 blocks를 설계했으면 그대로 사용, 없으면 기본 블록
     bg = f"{color}_background" if color != "default" else "default"
@@ -414,15 +441,26 @@ def _assemble_blueprint(content: dict) -> dict[str, Any]:
         if not sub_blocks:
             # AI가 블록을 설계하지 않은 경우에만 기본 블록 생성
             sub_blocks = [
-                {"type": "heading_1", "text": f"{sub.get('icon', '📄')} {sub.get('name', sub.get('title', ''))}", "color": bg},
-                {"type": "callout", "text": sub.get("description", f"{sub.get('name', '')} 관련 내용을 정리하세요."), "icon": "📌", "color": bg},
+                {
+                    "type": "heading_1",
+                    "text": f"{sub.get('icon', '📄')} {sub.get('name', sub.get('title', ''))}",
+                    "color": bg,
+                },
+                {
+                    "type": "callout",
+                    "text": sub.get("description", f"{sub.get('name', '')} 관련 내용을 정리하세요."),
+                    "icon": "📌",
+                    "color": bg,
+                },
                 {"type": "divider"},
             ]
-        blueprint["sub_pages"].append({
-            "title": sub.get("name", sub.get("title", "서브페이지")),
-            "icon": sub.get("icon", "📄"),
-            "blocks": sub_blocks,
-        })
+        blueprint["sub_pages"].append(
+            {
+                "title": sub.get("name", sub.get("title", "서브페이지")),
+                "icon": sub.get("icon", "📄"),
+                "blocks": sub_blocks,
+            }
+        )
 
     return blueprint
 
@@ -430,6 +468,7 @@ def _assemble_blueprint(content: dict) -> dict[str, Any]:
 # ============================================================
 # 스마트 폴백 (AI 실패 시)
 # ============================================================
+
 
 def _smart_fallback(user_message: str) -> dict[str, Any]:
     msg = user_message.lower()

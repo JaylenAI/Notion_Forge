@@ -12,8 +12,8 @@
 """
 
 import logging
-from datetime import datetime, timedelta
 import random
+from datetime import datetime, timedelta
 
 logger = logging.getLogger("notionforge.post_processor")
 
@@ -67,16 +67,15 @@ class BlueprintValidator:
         if not blocks:
             return content
 
-        has_guide = any(
-            b.get("type") == "toggle" and "가이드" in b.get("text", "")
-            for b in blocks
-        )
+        has_guide = any(b.get("type") == "toggle" and "가이드" in b.get("text", "") for b in blocks)
         if not has_guide:
-            blocks.append({
-                "type": "toggle",
-                "text": "📖 사용 가이드",
-                "children_text": "이 템플릿의 사용법을 확인하세요.",
-            })
+            blocks.append(
+                {
+                    "type": "toggle",
+                    "text": "📖 사용 가이드",
+                    "children_text": "이 템플릿의 사용법을 확인하세요.",
+                }
+            )
             content["blocks"] = blocks
         return content
 
@@ -172,17 +171,28 @@ class BlueprintValidator:
     def _fix_status_values(self, content: dict[str, Any]) -> dict[str, Any]:
         """status 속성의 sample_items 값을 표준 한국어로 통일"""
         status_map = {
-            "not started": "시작 전", "todo": "시작 전", "to do": "시작 전",
-            "in progress": "진행 중", "doing": "진행 중",
-            "done": "완료", "completed": "완료", "finished": "완료",
-            "시작전": "시작 전", "대기": "시작 전", "미시작": "시작 전",
-            "진행중": "진행 중", "작업중": "진행 중",
-            "완료됨": "완료", "끝": "완료",
+            "not started": "시작 전",
+            "todo": "시작 전",
+            "to do": "시작 전",
+            "in progress": "진행 중",
+            "doing": "진행 중",
+            "done": "완료",
+            "completed": "완료",
+            "finished": "완료",
+            "시작전": "시작 전",
+            "대기": "시작 전",
+            "미시작": "시작 전",
+            "진행중": "진행 중",
+            "작업중": "진행 중",
+            "완료됨": "완료",
+            "끝": "완료",
         }
 
         for db in content.get("databases", []):
             props = db.get("db_properties", db.get("properties", {}))
-            status_keys = [k for k, v in props.items() if v == "status" or (isinstance(v, dict) and v.get("type") == "status")]
+            status_keys = [
+                k for k, v in props.items() if v == "status" or (isinstance(v, dict) and v.get("type") == "status")
+            ]
 
             for item in db.get("sample_items", []):
                 for key in status_keys:
@@ -262,15 +272,29 @@ class BlueprintValidator:
             content["cover_category"] = color_to_category.get(color, "minimal")
         return content
 
-
     def _ensure_sub_page_icons(self, content: dict[str, Any]) -> dict[str, Any]:
         """서브페이지에 아이콘이 없으면 제목 기반으로 추론"""
         icon_hints: dict[str, str] = {
-            "공지": "📢", "가이드": "📖", "FAQ": "❓", "설정": "⚙️",
-            "자료": "📚", "일정": "📅", "회의": "🤝", "보고": "📊",
-            "규칙": "📜", "도서": "📚", "과제": "📝", "게시": "💬",
-            "소개": "👋", "체크": "✅", "목표": "🎯", "리소스": "🔗",
-            "정책": "📋", "프로세스": "🔄", "팀": "👥", "멤버": "👤",
+            "공지": "📢",
+            "가이드": "📖",
+            "FAQ": "❓",
+            "설정": "⚙️",
+            "자료": "📚",
+            "일정": "📅",
+            "회의": "🤝",
+            "보고": "📊",
+            "규칙": "📜",
+            "도서": "📚",
+            "과제": "📝",
+            "게시": "💬",
+            "소개": "👋",
+            "체크": "✅",
+            "목표": "🎯",
+            "리소스": "🔗",
+            "정책": "📋",
+            "프로세스": "🔄",
+            "팀": "👥",
+            "멤버": "👤",
         }
         for sub in content.get("sub_pages", []):
             if sub.get("icon"):
@@ -290,7 +314,7 @@ class BlueprintValidator:
             props = db.get("db_properties", db.get("properties", {}))
             prop_names = set(props.keys()) if isinstance(props, dict) else set()
             prop_types = {}
-            for k, v in (props.items() if isinstance(props, dict) else []):
+            for k, v in props.items() if isinstance(props, dict) else []:
                 ptype = v if isinstance(v, str) else v.get("type", "") if isinstance(v, dict) else ""
                 prop_types[k] = ptype
 
@@ -339,12 +363,8 @@ class BlueprintValidator:
 
         has_quote = "quote" in block_types
         has_divider = "divider" in block_types
-        has_column = "column_list" in block_types
 
-        children_count = sum(
-            1 for b in blocks
-            if isinstance(b, dict) and (b.get("children") or b.get("children_text"))
-        )
+        children_count = sum(1 for b in blocks if isinstance(b, dict) and (b.get("children") or b.get("children_text")))
 
         if not has_quote and len(blocks) >= 5:
             title = content.get("title", "")
@@ -363,8 +383,7 @@ class BlueprintValidator:
 
         if not has_divider and len(blocks) >= 6:
             db_ref_positions = [
-                i for i, b in enumerate(blocks)
-                if isinstance(b, dict) and b.get("type") == "database_ref"
+                i for i, b in enumerate(blocks) if isinstance(b, dict) and b.get("type") == "database_ref"
             ]
             for offset, pos in enumerate(db_ref_positions):
                 actual_pos = pos + offset
@@ -397,7 +416,12 @@ def _generate_sample_items(
 ) -> list[dict[str, Any]]:
     """속성 타입 기반으로 현실적인 샘플 데이터 자동 생성"""
     existing = existing or []
-    existing_titles = {item.get(next(iter(item), ""), "") for item in existing}
+    existing_titles: set[str] = set()
+    for item in existing:
+        for v in item.values():
+            if isinstance(v, str):
+                existing_titles.add(v)
+                break
 
     title_key = ""
     for k, v in props.items():
@@ -431,15 +455,14 @@ def _generate_sample_items(
     elif any(w in title_hints for w in ["영화", "시청", "드라마"]):
         title_pools["matched"] = ["인터스텔라", "기생충", "쇼생크 탈출", "인셉션", "라라랜드"]
     else:
-        title_pools["matched"] = [f"{db_title} 항목 {i+1}" for i in range(5)]
+        title_pools["matched"] = [f"{db_title} 항목 {i + 1}" for i in range(5)]
 
     pool = title_pools.get("matched", title_pools["default"])
     available = [t for t in pool if t not in existing_titles]
     if len(available) < count:
-        available.extend([f"{db_title} {i+1}" for i in range(count)])
+        available.extend([f"{db_title} {i + 1}" for i in range(count)])
 
     statuses = ["시작 전", "진행 중", "완료"]
-    select_colors = ["blue", "green", "orange", "purple", "red", "pink"]
 
     items: list[dict[str, Any]] = []
     base_date = datetime.now()

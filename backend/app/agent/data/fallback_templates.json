@@ -217,6 +217,217 @@
       ],
       "sub_pages": [{"name": "아이디어 뱅크", "icon": "💡", "description": "콘텐츠 아이디어 모음"}],
       "faq": []
+    },
+    "학업": {
+      "skill": "study",
+      "title": "학업 관리 허브",
+      "icon": "🎓",
+      "color": "blue",
+      "blocks": [
+        {"type": "callout", "text": "수강 과목, 과제, 시험, 학습 노트를 한곳에서 관리하세요! 🎓", "icon": "🎓", "color": "blue_background"},
+        {"type": "divider"},
+        {"type": "heading_1", "text": "📚 수강 과목", "color": "blue_background"},
+        {"type": "database_ref", "db_index": 0},
+        {"type": "paragraph", "text": ""},
+        {"type": "heading_1", "text": "📝 과제 트래커", "color": "purple_background"},
+        {"type": "database_ref", "db_index": 1},
+        {"type": "paragraph", "text": ""},
+        {"type": "heading_1", "text": "📅 시험 일정", "color": "orange_background"},
+        {"type": "database_ref", "db_index": 2},
+        {"type": "paragraph", "text": ""},
+        {"type": "heading_1", "text": "📖 학습 노트", "color": "green_background"},
+        {"type": "database_ref", "db_index": 3},
+        {"type": "divider"},
+        {"type": "toggle", "text": "💡 사용 가이드", "children_text": "학기 초에 수강 과목을 등록하고, 과제와 시험 일정을 추가하세요. 학습 노트로 복습 내용을 정리할 수 있습니다."}
+      ],
+      "databases": [
+        {
+          "title": "수강 과목",
+          "db_properties": {
+            "과목명": "title",
+            "교수": "rich_text",
+            "학점": "number",
+            "요일": {"type": "select", "options": [{"name": "월수", "color": "blue"}, {"name": "화목", "color": "green"}, {"name": "금", "color": "purple"}]},
+            "시간": "rich_text",
+            "강의실": "rich_text"
+          },
+          "views": ["table", "gallery"],
+          "sample_items": [
+            {"과목명": "데이터 구조", "교수": "김교수", "학점": 3, "요일": "월수", "시간": "09:00-10:30", "강의실": "공학관 301", "icon": "💻"},
+            {"과목명": "경영학원론", "교수": "이교수", "학점": 3, "요일": "화목", "시간": "13:00-14:30", "강의실": "경영관 201", "icon": "📊"},
+            {"과목명": "심리학개론", "교수": "박교수", "학점": 3, "요일": "월수", "시간": "11:00-12:30", "강의실": "인문관 105", "icon": "🧠"},
+            {"과목명": "영어회화", "교수": "Smith", "학점": 2, "요일": "금", "시간": "10:00-12:00", "강의실": "어학관 402", "icon": "🌍"}
+          ]
+        },
+        {
+          "title": "과제 트래커",
+          "db_properties": {
+            "과제명": "title",
+            "과목": "rich_text",
+            "상태": "status",
+            "마감일": "date",
+            "유형": {"type": "select", "options": [{"name": "레포트", "color": "blue"}, {"name": "프로젝트", "color": "green"}, {"name": "발표", "color": "orange"}, {"name": "퀴즈", "color": "purple"}]},
+            "배점": "number"
+          },
+          "views": ["board", "calendar", "table"],
+          "sample_items": [
+            {"과제명": "자료구조 과제 #3", "과목": "데이터 구조", "마감일": "2026-04-28", "유형": "프로젝트", "배점": 15, "icon": "💻"},
+            {"과제명": "경영 사례 분석", "과목": "경영학원론", "마감일": "2026-05-02", "유형": "레포트", "배점": 20, "icon": "📝"},
+            {"과제명": "심리학 실험 보고서", "과목": "심리학개론", "마감일": "2026-05-05", "유형": "레포트", "배점": 25, "icon": "🧪"},
+            {"과제명": "영어 프레젠테이션", "과목": "영어회화", "마감일": "2026-05-10", "유형": "발표", "배점": 30, "icon": "🎤"}
+          ]
+        },
+        {
+          "title": "시험 일정",
+          "db_properties": {
+            "시험명": "title",
+            "과목": "rich_text",
+            "날짜": "date",
+            "범위": "rich_text",
+            "유형": {"type": "select", "options": [{"name": "중간고사", "color": "blue"}, {"name": "기말고사", "color": "red"}, {"name": "퀴즈", "color": "green"}]},
+            "준비도": {"type": "select", "options": [{"name": "완벽", "color": "green"}, {"name": "보통", "color": "yellow"}, {"name": "부족", "color": "red"}]}
+          },
+          "views": ["calendar", "table"],
+          "sample_items": [
+            {"시험명": "자료구조 중간고사", "과목": "데이터 구조", "날짜": "2026-04-20", "범위": "1-7장", "유형": "중간고사", "준비도": "보통", "icon": "📝"},
+            {"시험명": "경영학 중간고사", "과목": "경영학원론", "날짜": "2026-04-22", "범위": "1-5장", "유형": "중간고사", "준비도": "부족", "icon": "📊"},
+            {"시험명": "심리학 퀴즈", "과목": "심리학개론", "날짜": "2026-04-15", "범위": "3-4장", "유형": "퀴즈", "준비도": "완벽", "icon": "✅"},
+            {"시험명": "영어 스피킹 테스트", "과목": "영어회화", "날짜": "2026-04-25", "범위": "Unit 1-6", "유형": "중간고사", "준비도": "보통", "icon": "🗣️"}
+          ]
+        },
+        {
+          "title": "학습 노트",
+          "db_properties": {
+            "제목": "title",
+            "과목": "rich_text",
+            "날짜": "date",
+            "유형": {"type": "select", "options": [{"name": "수업 정리", "color": "blue"}, {"name": "복습", "color": "green"}, {"name": "요약", "color": "purple"}]},
+            "중요도": {"type": "select", "options": [{"name": "높음", "color": "red"}, {"name": "중간", "color": "yellow"}, {"name": "낮음", "color": "gray"}]}
+          },
+          "views": ["table", "gallery"],
+          "sample_items": [
+            {"제목": "이진 트리 정리", "과목": "데이터 구조", "날짜": "2026-04-10", "유형": "수업 정리", "중요도": "높음", "icon": "🌳"},
+            {"제목": "SWOT 분석 요약", "과목": "경영학원론", "날짜": "2026-04-12", "유형": "요약", "중요도": "중간", "icon": "📋"},
+            {"제목": "인지심리학 복습", "과목": "심리학개론", "날짜": "2026-04-14", "유형": "복습", "중요도": "높음", "icon": "🧠"},
+            {"제목": "비즈니스 이메일 표현", "과목": "영어회화", "날짜": "2026-04-16", "유형": "수업 정리", "중요도": "낮음", "icon": "📧"}
+          ]
+        }
+      ],
+      "sub_pages": [
+        {"name": "학기 목표", "icon": "🎯", "description": "이번 학기 학습 목표와 계획"},
+        {"name": "참고 자료", "icon": "📎", "description": "강의 자료, 참고 사이트 모음"}
+      ],
+      "faq": []
+    },
+    "비즈니스": {
+      "skill": "business",
+      "title": "비즈니스 관리 허브",
+      "icon": "🏢",
+      "color": "blue",
+      "blocks": [
+        {"type": "callout", "text": "프로젝트, 고객, 재무, 일정을 체계적으로 관리하세요! 🏢", "icon": "🏢", "color": "blue_background"},
+        {"type": "divider"},
+        {"type": "column_list", "columns": [
+          [{"type": "callout", "text": "📊 활성 프로젝트\n12건", "icon": "📊", "color": "blue_background"}],
+          [{"type": "callout", "text": "👥 총 고객\n48명", "icon": "👥", "color": "green_background"}],
+          [{"type": "callout", "text": "💰 월 매출\n₩15,000,000", "icon": "💰", "color": "purple_background"}]
+        ]},
+        {"type": "paragraph", "text": ""},
+        {"type": "heading_1", "text": "📋 프로젝트 관리", "color": "blue_background"},
+        {"type": "database_ref", "db_index": 0},
+        {"type": "paragraph", "text": ""},
+        {"type": "heading_1", "text": "👥 고객 관리", "color": "green_background"},
+        {"type": "database_ref", "db_index": 1},
+        {"type": "paragraph", "text": ""},
+        {"type": "heading_1", "text": "💰 매출/비용 관리", "color": "purple_background"},
+        {"type": "database_ref", "db_index": 2},
+        {"type": "paragraph", "text": ""},
+        {"type": "heading_1", "text": "📅 미팅/일정", "color": "orange_background"},
+        {"type": "database_ref", "db_index": 3},
+        {"type": "divider"},
+        {"type": "toggle", "text": "💡 사용 가이드", "children_text": "새 프로젝트를 등록하고, 관련 고객과 미팅 일정을 연결하세요. 매출/비용 DB로 재무를 추적할 수 있습니다."}
+      ],
+      "databases": [
+        {
+          "title": "프로젝트",
+          "db_properties": {
+            "프로젝트명": "title",
+            "상태": "status",
+            "담당자": "rich_text",
+            "시작일": "date",
+            "마감일": "date",
+            "우선순위": {"type": "select", "options": [{"name": "긴급", "color": "red"}, {"name": "높음", "color": "orange"}, {"name": "보통", "color": "yellow"}, {"name": "낮음", "color": "gray"}]},
+            "예산": "number"
+          },
+          "views": ["board", "timeline", "table"],
+          "sample_items": [
+            {"프로젝트명": "웹사이트 리뉴얼", "담당자": "김팀장", "시작일": "2026-04-01", "마감일": "2026-05-15", "우선순위": "긴급", "예산": 5000000, "icon": "🌐"},
+            {"프로젝트명": "모바일 앱 v2.0", "담당자": "이개발", "시작일": "2026-04-10", "마감일": "2026-06-30", "우선순위": "높음", "예산": 8000000, "icon": "📱"},
+            {"프로젝트명": "마케팅 캠페인", "담당자": "박마케터", "시작일": "2026-04-15", "마감일": "2026-05-01", "우선순위": "보통", "예산": 2000000, "icon": "📢"},
+            {"프로젝트명": "고객 피드백 분석", "담당자": "최분석", "시작일": "2026-04-20", "마감일": "2026-04-30", "우선순위": "낮음", "예산": 500000, "icon": "📊"}
+          ]
+        },
+        {
+          "title": "고객 관리",
+          "db_properties": {
+            "고객명": "title",
+            "회사": "rich_text",
+            "등급": {"type": "select", "options": [{"name": "VIP", "color": "red"}, {"name": "일반", "color": "blue"}, {"name": "잠재", "color": "gray"}]},
+            "연락처": "rich_text",
+            "이메일": "email",
+            "최근 연락일": "date",
+            "메모": "rich_text"
+          },
+          "views": ["table", "board"],
+          "sample_items": [
+            {"고객명": "김대표", "회사": "테크스타트업", "등급": "VIP", "연락처": "010-1234-5678", "이메일": "kim@techstart.kr", "최근 연락일": "2026-04-18", "메모": "4월 미팅 완료", "icon": "⭐"},
+            {"고객명": "이사장", "회사": "미디어그룹", "등급": "VIP", "연락처": "010-2345-6789", "이메일": "lee@media.kr", "최근 연락일": "2026-04-15", "메모": "계약 갱신 논의", "icon": "⭐"},
+            {"고객명": "박과장", "회사": "유통사", "등급": "일반", "연락처": "010-3456-7890", "이메일": "park@dist.kr", "최근 연락일": "2026-04-10", "메모": "견적 발송", "icon": "👤"},
+            {"고객명": "정팀장", "회사": "컨설팅펌", "등급": "잠재", "연락처": "010-4567-8901", "이메일": "jung@consult.kr", "최근 연락일": "2026-04-05", "메모": "소개 미팅 예정", "icon": "🔍"}
+          ]
+        },
+        {
+          "title": "매출/비용",
+          "db_properties": {
+            "내역": "title",
+            "구분": {"type": "select", "options": [{"name": "매출", "color": "green"}, {"name": "비용", "color": "red"}, {"name": "투자", "color": "blue"}]},
+            "금액": "number",
+            "날짜": "date",
+            "카테고리": {"type": "select", "options": [{"name": "서비스 매출", "color": "green"}, {"name": "인건비", "color": "red"}, {"name": "마케팅비", "color": "orange"}, {"name": "운영비", "color": "gray"}, {"name": "장비", "color": "blue"}]},
+            "메모": "rich_text"
+          },
+          "views": ["table", "calendar"],
+          "sample_items": [
+            {"내역": "웹사이트 개발 용역", "구분": "매출", "금액": 5000000, "날짜": "2026-04-01", "카테고리": "서비스 매출", "메모": "테크스타트업 프로젝트", "icon": "💵"},
+            {"내역": "4월 인건비", "구분": "비용", "금액": 8000000, "날짜": "2026-04-05", "카테고리": "인건비", "메모": "팀원 4명", "icon": "👥"},
+            {"내역": "구글 광고비", "구분": "비용", "금액": 500000, "날짜": "2026-04-10", "카테고리": "마케팅비", "메모": "4월 캠페인", "icon": "📢"},
+            {"내역": "서버 호스팅", "구분": "비용", "금액": 200000, "날짜": "2026-04-15", "카테고리": "운영비", "메모": "AWS 월 비용", "icon": "☁️"}
+          ]
+        },
+        {
+          "title": "미팅/일정",
+          "db_properties": {
+            "제목": "title",
+            "날짜": "date",
+            "참석자": "rich_text",
+            "유형": {"type": "select", "options": [{"name": "내부 회의", "color": "blue"}, {"name": "고객 미팅", "color": "green"}, {"name": "외부 행사", "color": "purple"}]},
+            "장소": "rich_text",
+            "안건": "rich_text"
+          },
+          "views": ["calendar", "table"],
+          "sample_items": [
+            {"제목": "주간 스탠드업", "날짜": "2026-04-21", "참석자": "전체 팀", "유형": "내부 회의", "장소": "회의실 A", "안건": "주간 진행 상황 공유", "icon": "📋"},
+            {"제목": "테크스타트업 미팅", "날짜": "2026-04-22", "참석자": "김대표, 김팀장", "유형": "고객 미팅", "장소": "고객사", "안건": "프로젝트 중간 리뷰", "icon": "🤝"},
+            {"제목": "디자인 세미나", "날짜": "2026-04-25", "참석자": "디자인팀", "유형": "외부 행사", "장소": "코엑스", "안건": "UX 트렌드 2026", "icon": "🎨"},
+            {"제목": "분기 리뷰", "날짜": "2026-04-28", "참석자": "경영진", "유형": "내부 회의", "장소": "대회의실", "안건": "Q1 실적 리뷰 및 Q2 계획", "icon": "📊"}
+          ]
+        }
+      ],
+      "sub_pages": [
+        {"name": "사업 계획", "icon": "📑", "description": "사업 전략 및 로드맵"},
+        {"name": "계약서 보관", "icon": "📂", "description": "고객 계약서 및 문서 관리"}
+      ],
+      "faq": []
     }
   },
   "keywords": {
@@ -225,6 +436,8 @@
     "가계부": ["가계부", "예산", "지출", "수입", "돈", "재정", "구독", "절약", "저축", "투자", "재테크", "금융", "카드", "budget", "expense", "finance", "money", "subscription"],
     "일기": ["일기", "다이어리", "회고", "감사", "무드", "기분", "하루", "일상", "성찰", "journal", "diary", "mood", "gratitude", "reflection"],
     "콘텐츠": ["콘텐츠", "블로그", "유튜브", "인스타", "SNS", "소셜", "마케팅", "뉴스레터", "포스팅", "content", "blog", "youtube", "instagram", "social media", "newsletter"],
-    "프로젝트": ["프로젝트", "태스크", "칸반", "스프린트", "업무", "보드", "일정", "스케줄", "캘린더", "계획", "준비", "여행", "결혼", "대시보드", "홈", "메인", "팀", "워크스페이스", "project", "task", "kanban", "sprint", "dashboard", "schedule", "plan", "travel", "crm", "고객", "영업", "리드"]
+    "학업": ["학업", "학교", "대학", "수강", "과제", "시험", "학습", "수업", "강의", "학기", "학생", "공부", "과목", "교수", "중간고사", "기말", "학점", "study", "school", "university", "college", "exam", "course", "assignment", "semester"],
+    "비즈니스": ["비즈니스", "사업", "창업", "회사", "기업", "프리랜서", "프리랜싱", "영업", "매출", "거래", "고객", "클라이언트", "대시보드", "허브", "워크스페이스", "crm", "erp", "business", "startup", "company", "freelance", "client", "revenue", "sales"],
+    "프로젝트": ["프로젝트", "태스크", "칸반", "스프린트", "업무", "보드", "일정", "스케줄", "캘린더", "계획", "준비", "여행", "결혼", "홈", "메인", "팀", "project", "task", "kanban", "sprint", "dashboard", "schedule", "plan", "travel"]
   }
 }

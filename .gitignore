@@ -40,9 +40,9 @@ htmlcov/
 .coverage
 .pytest_cache/
 
-# Data (history, logs)
-data/
-backend/data/
+# Data (history, logs — runtime generated)
+/data/
+/backend/data/
 
 # Build
 *.tsbuildinfo
