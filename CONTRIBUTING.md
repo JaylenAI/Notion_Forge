@@ -6,91 +6,115 @@ NotionForge에 기여해주셔서 감사합니다!
 
 ### 사전 요구사항
 - Python 3.11+
-- Node.js 20+
-- [uv](https://docs.astral.sh/uv/) (Python 패키지 매니저)
+- [uv](https://docs.astral.sh/uv/) (패키지 관리)
+- Node.js 18+ (프론트엔드)
 
-### 로컬 설정
+### 설치
 
 ```bash
-# 저장소 클론
 git clone https://github.com/JaylenAI/notion_ai_agent.git
 cd notion_ai_agent
 
-# 환경변수 설정
-cp .env.example .env
-# .env 파일에 Notion API 키와 AI Provider 키를 입력
-
-# Backend 실행
+# Backend
 cd backend
 uv sync
-uv run uvicorn app.main:app --host 0.0.0.0 --port 9500 --reload
+cp ../.env.example ../.env  # 환경변수 설정
 
-# Frontend 실행 (별도 터미널)
-cd frontend
+# Frontend
+cd ../frontend
 npm install
+```
+
+### 실행
+
+```bash
+# Backend
+cd backend
+uv run uvicorn app.main:app --port 9500 --reload
+
+# Frontend (별도 터미널)
+cd frontend
 npm run dev
 ```
 
-### Docker로 실행
+## 개발 워크플로우
+
+### 브랜치 전략
+
+```
+main     <- 안정 릴리스 (태그로 버전 관리)
+  └── dev  <- 통합 브랜치
+       ├── feature/기능명
+       ├── fix/버그명
+       └── refactor/대상
+```
+
+1. `dev`에서 feature 브랜치 생성
+2. 개발 + 테스트
+3. PR → `dev`로 머지
+4. 릴리스 시 `dev` → `main` 머지 + 태그
+
+### 커밋 컨벤션
+
+```
+<type>: <설명>
+
+Types: feat, fix, refactor, docs, test, chore, perf, ci
+```
+
+### 코드 품질
+
+PR 제출 전 반드시 확인:
 
 ```bash
-cp .env.example .env
-# .env 파일 편집
-docker compose up --build
+cd backend
+
+# 테스트
+uv run pytest tests/ -v
+
+# Lint
+uv run ruff check .
+
+# Format
+uv run ruff format .
 ```
 
-## 프로젝트 구조
+## 기여 가이드라인
 
-```
-backend/
-  app/
-    agent/          # AI 에이전트 (orchestrator, blueprint, pipeline)
-    core/           # 설정, 로깅, 메트릭
-    notion/         # Notion API 클라이언트
-    routers/        # FastAPI 라우터
-    skills/         # 48개 스킬 (SKILL.md)
-    schemas/        # Pydantic 모델
-frontend/
-  src/
-    components/     # React 컴포넌트
-    stores/         # Zustand 스토어
-```
+### 새 기능 추가
+1. Issue에서 논의 먼저
+2. 테스트 먼저 작성 (TDD)
+3. 구현
+4. 문서 업데이트
+5. PR 제출
 
-## 기여 방법
+### 버그 수정
+1. 재현 가능한 테스트 케이스 작성
+2. 수정
+3. 테스트 통과 확인
+4. PR 제출
 
-### 1. Issue 생성
-- 버그 리포트 또는 기능 제안은 GitHub Issue로 생성해주세요
-- 템플릿을 사용하여 필요한 정보를 작성해주세요
+### 새 AI 프로바이더 추가
+1. `app/agent/providers/` 에 새 프로바이더 파일 생성
+2. `BaseProvider` 상속 + `call()` 구현
+3. `router.py`의 `create_provider()`에 등록
+4. 테스트 추가
 
-### 2. Pull Request
-1. Fork 후 feature 브랜치 생성 (`git checkout -b feat/my-feature`)
-2. 변경사항 커밋 (한글 커밋 메시지 사용)
-3. 테스트 실행 (`uv run pytest tests/ -q`)
-4. PR 생성
-
-### 3. 커스텀 스킬 추가
-1. `backend/app/skills/{스킬명}/SKILL.md` 생성
-2. YAML frontmatter + DB Properties + Views + Block Order 작성
-3. `backend/app/skills/__init__.py`의 SKILL_REGISTRY에 등록
-4. `TIER2_SKILLS` set에 추가 (세분화 스킬인 경우)
+### 새 스킬 추가
+1. `app/skills/` 에 스킬 디렉토리 생성
+2. `SKILL.md` 패턴 파일 작성
+3. `__init__.py`에 등록
+4. 테스트로 스킬 매칭 확인
 
 ## 코드 스타일
 
-- Backend: [Ruff](https://docs.astral.sh/ruff/) (`uv run ruff check .`)
-- Frontend: ESLint + Prettier
-- 커밋 메시지: `<type>: <한글 설명>` (feat, fix, refactor, docs, test, chore)
+- Python: ruff (black 호환 포맷)
+- 함수 50줄 이하
+- 파일 800줄 이하
+- 에러 핸들링 필수
+- 하드코딩 금지 (환경변수 사용)
 
-## 테스트
+## 질문이 있으시면
 
-```bash
-# 유닛 테스트
-cd backend
-uv run pytest tests/ -q
-
-# 커버리지
-uv run pytest tests/ --cov=app --cov-report=term-missing
-```
-
-## 라이선스
-
-MIT License
+- [Issues](https://github.com/JaylenAI/notion_ai_agent/issues)에서 질문해주세요
+- 버그 리포트는 Issue 템플릿을 사용해주세요

@@ -410,9 +410,7 @@ class BlueprintValidator:
                     b["color"] = section_colors[0]
 
         # 5. 중첩 콘텐츠 (callout에 children 추가)
-        children_count = sum(
-            1 for b in blocks if isinstance(b, dict) and (b.get("children") or b.get("children_text"))
-        )
+        children_count = sum(1 for b in blocks if isinstance(b, dict) and (b.get("children") or b.get("children_text")))
         if children_count < 2:
             for b in blocks:
                 if not isinstance(b, dict):

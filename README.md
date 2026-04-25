@@ -7,7 +7,7 @@
 **NotionForge**는 사용자가 자연어로 원하는 노션 템플릿을 설명하면, AI Agent가 Notion API를 통해 완성된 템플릿을 자동으로 생성해주는 서비스입니다.
 
 > **소속**: 가짜연구소 - "나만의 자동화 AI Agent 만들기" 프로젝트
-> **버전**: v8.0.0 — 엔터프라이즈급 AI Agent (Plan-Execute-Reflect + Episodic Memory)
+> **버전**: v8.1.0 — 프리미엄 템플릿 + Provider 안정성 + 파이프라인 병렬화
 
 ---
 
@@ -95,7 +95,7 @@ make test       # 테스트 실행
 - **Approval Gate**: 설계 완료 후 사용자 확인/취소 (생성 전 승인)
 - **5-Pass Creation Pipeline**: 페이지 → 서브페이지 → DB → 뷰 → 블록 순차 생성
 - **실시간 스트리밍**: 생성 과정을 단계별로 표시 (의도 분석 → 설계 → 페이지 → DB → 뷰 → 완료)
-- **스마트 폴백**: AI 실패 시 키워드 기반 6개 템플릿 자동 선택
+- **스마트 폴백**: AI 실패 시 키워드 기반 8개 프리미엄 폴백 템플릿 자동 선택
 - **멀티턴 대화형 수정**: 생성 후 "속성 추가해줘", "뷰 바꿔줘", "DB 연결해줘" 등 자연어로 수정
 - **Relation/Rollup/Formula**: DB 간 관계 자동 연결 + 수식 자동 생성 (D-Day, 진행률 등)
 - **멀티 에이전트 파이프라인**: Architect→Designer→Content→Validator 4단계 (고급 모드)
@@ -219,7 +219,7 @@ NotionForge/
 │   │   │   ├── sales/ life_os/                          # Tier2 (crm/기타)
 │   │   │   └── (각 스킬: SKILL.md 패턴 파일)
 │   │   └── schemas/               # Pydantic 스키마
-│   └── tests/                     # 246개 테스트 (100% 통과)
+│   └── tests/                     # 372개 테스트 (100% 통과)
 │
 └── frontend/
     ├── src/
@@ -482,6 +482,21 @@ NotionForge/
 - [x] 246개 테스트 전체 통과 (+95 신규)
 - [x] MIT LICENSE 추가
 - [x] 문서 전체 최신화
+
+### v8.1.0 완료 (2026-04-26) — 프리미엄 템플릿 + Provider 안정성
+- [x] 프리미엄 폴백 템플릿 8종 (Relation/Formula/Rollup/LinkedView 전면 도입)
+- [x] Structured Output (Pydantic AIContentSpec) + Function Calling 5개 프로바이더
+- [x] Agent Loop 통합 (Plan-Execute-Reflect 스트리밍)
+- [x] 디자인 다양성 강화 (통계 카드 자동생성, 헤딩 색상 통일)
+- [x] 파이프라인 병렬화 (서브페이지/뷰/블록 채우기 asyncio.gather)
+- [x] Pre-creation Blueprint 무결성 검증 + 자동 교정
+- [x] 메모리 시멘틱 서치 (키워드 유사도 + 에피소드 캐시)
+- [x] Provider Retry (지수 백오프, transient 에러만 재시도)
+- [x] Circuit Breaker (연속 실패 추적 + 자동 리셋)
+- [x] Provider Fallback Chain (차단된 프로바이더 자동 우회)
+- [x] Gen-Eval Level 5 (Relation/Formula/Rollup 무결성 검증)
+- [x] RateLimiter Semaphore 기반 동시 요청 제한
+- [x] 372개 테스트 전체 통과 (+126 신규)
 
 ### 다음 개발 예정
 

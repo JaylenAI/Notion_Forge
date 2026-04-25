@@ -276,11 +276,11 @@ Select 옵션 색상: `default`, `gray`, `brown`, `orange`, `yellow`, `green`, `
 
 ### Rate Limit 대응 전략
 
-```python
-# 1. 블록 배치 처리 (100개씩)
-# 2. 지수 백오프 (429 → 1초 → 2초 → 4초)
-# 3. 요청 큐 (3req/s 준수)
-# 4. 사전 블록 구성 후 한번에 호출
+```
+1. Semaphore 기반 동시 요청 제한 (max_per_second 슬롯)
+2. 지수 백오프 (429 → 0.5초 → 1초 → 2초)
+3. 병렬 실행 (서브페이지, 뷰, 블록 채우기는 asyncio.gather)
+4. 사전 블록 구성 후 한번에 호출 (100개/요청)
 ```
 
 | 템플릿 유형 | API 호출 | 소요 시간 |
@@ -302,7 +302,51 @@ Select 옵션 색상: `default`, `gray`, `brown`, `orange`, `yellow`, `green`, `
 
 ---
 
-## 6. Notion MCP 활용
+## 6. Provider 안정성 (v8.1.0)
+
+### Retry + Exponential Backoff
+
+```
+call_with_retry(prompt, message, max_retries=2, timeout=45s)
+  → 시도 1: 호출
+  → transient 에러 (429, 503, timeout): 0.5s 대기 후 재시도
+  → 시도 2: 호출
+  → transient 에러: 1.0s 대기 후 재시도
+  → 시도 3: 실패 → None 반환
+  → permanent 에러 (401, 403): 즉시 None 반환 (재시도 없음)
+```
+
+### Circuit Breaker
+
+```
+CircuitBreaker(threshold=3, reset_seconds=120)
+  → 연속 3회 실패 → circuit OPEN (프로바이더 차단)
+  → 120초 후 자동 HALF-OPEN (1회 시도 허용)
+  → 성공 시 → circuit CLOSED (정상 복귀)
+```
+
+### Provider Fallback Chain
+
+```
+resolve_with_fallback(api_key)
+  → primary 프로바이더 확인
+  → circuit OPEN? → fallback chain 탐색 (openai → claude → gemini → groq)
+  → 건강한 프로바이더 반환
+  → 모든 프로바이더 차단? → 전체 리셋 후 primary 강제 사용
+```
+
+### 프리미엄 DB 기능
+
+| 기능 | 설명 | 후처리 |
+|------|------|--------|
+| Relation | DB 간 연결 (target_db_index → 실제 DB ID) | post_process_relations |
+| Formula | 계산 필드 (D-Day, 진행률 등) | post_process_relations |
+| Rollup | 관계 DB 집계 (sum, count, average) | post_process_relations |
+| LinkedView | 다른 페이지에 필터링된 DB 뷰 삽입 | execute_streaming |
+
+---
+
+## 7. Notion MCP 활용
 
 ```
 Notion MCP (조회/보조):
@@ -332,7 +376,7 @@ MCP 서버 설정:
 
 ---
 
-## 7. 프로젝트 디렉토리 구조
+## 8. 프로젝트 디렉토리 구조
 
 ```
 NotionForge/
