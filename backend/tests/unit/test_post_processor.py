@@ -172,6 +172,75 @@ class TestEnsureCoverCategory:
         assert result["cover_category"] == "minimal"
 
 
+class TestEnhanceDesignDiversity:
+    def test_adds_stat_cards_for_multi_db(self, validator):
+        content = {
+            "title": "Test",
+            "color": "blue",
+            "blocks": [
+                {"type": "callout", "text": "Hello", "icon": "🔥"},
+                {"type": "heading_1", "text": "Section"},
+                {"type": "database_ref", "db_index": 0},
+                {"type": "heading_1", "text": "Section 2"},
+                {"type": "database_ref", "db_index": 1},
+            ],
+            "databases": [
+                {"title": "DB1", "sample_items": [{"a": 1}, {"a": 2}]},
+                {"title": "DB2", "sample_items": [{"b": 1}]},
+            ],
+        }
+        result = validator._enhance_design_diversity(content)
+        has_column_list = any(b.get("type") == "column_list" for b in result["blocks"])
+        assert has_column_list
+
+    def test_skips_stat_cards_when_column_exists(self, validator):
+        content = {
+            "title": "Test",
+            "color": "blue",
+            "blocks": [
+                {"type": "callout", "text": "Hello"},
+                {"type": "column_list", "columns": [[{"type": "callout", "text": "existing"}]]},
+                {"type": "database_ref", "db_index": 0},
+                {"type": "database_ref", "db_index": 1},
+            ],
+            "databases": [{"title": "DB1", "sample_items": []}, {"title": "DB2", "sample_items": []}],
+        }
+        result = validator._enhance_design_diversity(content)
+        col_count = sum(1 for b in result["blocks"] if b.get("type") == "column_list")
+        assert col_count == 1
+
+    def test_adds_heading_background_colors(self, validator):
+        content = {
+            "title": "Test",
+            "color": "orange",
+            "blocks": [
+                {"type": "callout", "text": "Hello"},
+                {"type": "heading_1", "text": "Section"},
+                {"type": "heading_2", "text": "Sub"},
+                {"type": "database_ref", "db_index": 0},
+            ],
+            "databases": [{"title": "DB1", "sample_items": []}],
+        }
+        result = validator._enhance_design_diversity(content)
+        headings = [b for b in result["blocks"] if b.get("type") in ("heading_1", "heading_2")]
+        for h in headings:
+            assert h.get("color") == "orange_background"
+
+    def test_build_stat_cards(self, validator):
+        databases = [
+            {"title": "프로젝트", "sample_items": [{}, {}, {}]},
+            {"title": "태스크", "sample_items": [{}, {}]},
+        ]
+        result = BlueprintValidator._build_stat_cards(databases, "blue")
+        assert result is not None
+        assert result["type"] == "column_list"
+        assert len(result["columns"]) == 2
+
+    def test_build_stat_cards_single_db_returns_none(self, validator):
+        result = BlueprintValidator._build_stat_cards([{"title": "A", "sample_items": []}], "blue")
+        assert result is None
+
+
 class TestValidateAndFix:
     def test_full_pipeline(self, validator):
         content = {

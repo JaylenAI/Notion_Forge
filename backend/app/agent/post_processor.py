@@ -352,7 +352,7 @@ class BlueprintValidator:
         return content
 
     def _enhance_design_diversity(self, content: dict[str, Any]) -> dict[str, Any]:
-        """디자인 다양성 보강 — 단조로운 블록 구조에 시각적 요소 추가"""
+        """디자인 다양성 보강 — 단조로운 블록 구조에 프리미엄 시각 요소 추가"""
         blocks = content.get("blocks", [])
         if len(blocks) < 3:
             return content
@@ -363,9 +363,20 @@ class BlueprintValidator:
 
         has_quote = "quote" in block_types
         has_divider = "divider" in block_types
+        has_column_list = "column_list" in block_types
 
-        children_count = sum(1 for b in blocks if isinstance(b, dict) and (b.get("children") or b.get("children_text")))
+        # 1. 통계 대시보드 카드 (column_list 없으면 추가)
+        databases = content.get("databases", [])
+        if not has_column_list and len(databases) >= 2:
+            stat_cards = self._build_stat_cards(databases, color)
+            if stat_cards:
+                insert_pos = next(
+                    (i for i, b in enumerate(blocks) if b.get("type") in ("heading_1", "heading_2", "database_ref")),
+                    2,
+                )
+                blocks.insert(insert_pos, stat_cards)
 
+        # 2. 명언/인사이트 인용구
         if not has_quote and len(blocks) >= 5:
             title = content.get("title", "")
             quote_texts = [
@@ -381,6 +392,7 @@ class BlueprintValidator:
             insert_pos = min(2, len(blocks))
             blocks.insert(insert_pos, quote_block)
 
+        # 3. 섹션 디바이더 (DB ref 앞에 divider 추가)
         if not has_divider and len(blocks) >= 6:
             db_ref_positions = [
                 i for i, b in enumerate(blocks) if isinstance(b, dict) and b.get("type") == "database_ref"
@@ -390,6 +402,17 @@ class BlueprintValidator:
                 if actual_pos > 0 and blocks[actual_pos - 1].get("type") != "divider":
                     blocks.insert(actual_pos, {"type": "divider"})
 
+        # 4. 섹션 헤딩에 배경색 통일
+        section_colors = [bg, f"{color}_background"] if color != "default" else ["blue_background"]
+        for b in blocks:
+            if isinstance(b, dict) and b.get("type") in ("heading_1", "heading_2"):
+                if not b.get("color"):
+                    b["color"] = section_colors[0]
+
+        # 5. 중첩 콘텐츠 (callout에 children 추가)
+        children_count = sum(
+            1 for b in blocks if isinstance(b, dict) and (b.get("children") or b.get("children_text"))
+        )
         if children_count < 2:
             for b in blocks:
                 if not isinstance(b, dict):
@@ -406,6 +429,43 @@ class BlueprintValidator:
 
         content["blocks"] = blocks
         return content
+
+    @staticmethod
+    def _build_stat_cards(databases: list[dict[str, Any]], color: str) -> dict[str, Any] | None:
+        """DB 기반 통계 요약 카드 (column_list) 자동 생성"""
+        color_map = {
+            "blue": ["blue_background", "green_background", "purple_background"],
+            "green": ["green_background", "blue_background", "orange_background"],
+            "orange": ["orange_background", "blue_background", "green_background"],
+            "purple": ["purple_background", "blue_background", "pink_background"],
+            "red": ["red_background", "orange_background", "blue_background"],
+            "pink": ["pink_background", "purple_background", "blue_background"],
+        }
+        colors = color_map.get(color, ["blue_background", "green_background", "purple_background"])
+
+        stat_icons = ["📊", "📋", "🎯", "💡", "📈", "✅"]
+        columns = []
+
+        for i, db in enumerate(databases[:3]):
+            title = db.get("title", f"DB {i + 1}")
+            sample_count = len(db.get("sample_items", []))
+            icon = stat_icons[i % len(stat_icons)]
+            bg_color = colors[i % len(colors)]
+            columns.append(
+                [
+                    {
+                        "type": "callout",
+                        "text": f"{icon} {title}\n{sample_count}건",
+                        "icon": icon,
+                        "color": bg_color,
+                    }
+                ]
+            )
+
+        if len(columns) < 2:
+            return None
+
+        return {"type": "column_list", "columns": columns}
 
 
 def _generate_sample_items(

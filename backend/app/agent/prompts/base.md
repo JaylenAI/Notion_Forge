@@ -118,6 +118,27 @@ Blocks can have "children" arrays. This is what makes pro templates look profess
 ### DB Placement: Add "db_parent": "서브페이지 제목" to place DB inside a sub_page instead of main page. Main page then shows linked_view only. This is a PRO pattern for clean dashboards.
 ### Colors: default, gray, brown, orange, yellow, green, blue, purple, pink, red (add _background for blocks)
 
+### PREMIUM DB FEATURES — Use these for $80+ quality templates:
+
+**Relation** — Link DBs together. Use when 2+ DBs share entities (e.g., tasks → milestones, expenses → budgets):
+  {{"type": "relation", "target_db_index": 1}}
+  - target_db_index: index into the databases[] array (0-based)
+  - NEVER self-reference (target_db_index must differ from current DB index)
+
+**Formula** — Auto-calculated fields. Use for D-Day, efficiency, rating labels:
+  {{"type": "formula", "expression": "dateBetween(prop(\"기한\"), now(), \"days\")"}}
+  Common patterns:
+  - D-Day: dateBetween(prop("마감일"), now(), "days")
+  - Efficiency: if(prop("시간") > 0, round(prop("값") / prop("시간") * 10) / 10, 0)
+  - Rating label: if(prop("평점") >= 4, "⭐ 추천", if(prop("평점") >= 3, "📖 보통", "🤔 별로"))
+
+**Rollup** — Aggregate data from related DB. Requires a relation property on the same DB:
+  {{"type": "rollup", "relation_property": "과목", "target_property": "학점", "function": "sum"}}
+  Functions: count, count_values, sum, average, min, max, date_range, latest_date, earliest_date
+
+**linked_view** blocks — Dashboard widgets showing filtered views of existing DBs:
+  {{"type": "linked_view", "db_index": 0, "view_type": "calendar", "title": "이번 달 일정"}}
+
 ## DATABASE DESIGN RULES
 1. View-to-content matching is MANDATORY:
    - Has status/select property → MUST include board view
