@@ -384,7 +384,13 @@ async def _call_ai_for_content(
             prompt += f"\n\n## History:\n{history_text[:400]}"
 
     timeout = 90.0 if mode == "advanced" else 45.0
-    result = await provider.call_with_timeout(prompt, user_message, model=ai_model, timeout=timeout)
+    result = await provider.call_with_retry(prompt, user_message, model=ai_model, timeout=timeout)
+
+    if result:
+        ProviderRouter.circuit_breaker.record_success(provider.name)
+    else:
+        ProviderRouter.circuit_breaker.record_failure(provider.name)
+
     if not result:
         return None
     if "databases" in result or "db_properties" in result:

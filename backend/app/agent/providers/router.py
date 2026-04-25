@@ -1,10 +1,17 @@
-"""ProviderRouter: API 키 기반 프로바이더 자동 선택"""
+"""ProviderRouter: API 키 기반 프로바이더 자동 선택 + Circuit Breaker + Fallback Chain"""
 
 import logging
+import time
+from typing import Any
 
 from app.agent.providers.base import BaseProvider
 
 logger = logging.getLogger("notionforge.provider_router")
+
+CIRCUIT_BREAKER_THRESHOLD = 3
+CIRCUIT_BREAKER_RESET_SECONDS = 120.0
+
+_FALLBACK_ORDER = ["openai", "claude", "gemini", "groq"]
 
 
 def detect_provider_from_key(api_key: str) -> str:
@@ -24,7 +31,6 @@ def detect_provider_from_key(api_key: str) -> str:
 
 def create_provider(provider_name: str, api_key: str = "", model: str = "") -> BaseProvider:
     """프로바이더 이름으로 인스턴스 생성"""
-    # 순환 임포트 방지를 위해 여기서 임포트
     if provider_name == "claude":
         from app.agent.providers.claude_provider import ClaudeProvider
 
@@ -53,8 +59,56 @@ def create_provider(provider_name: str, api_key: str = "", model: str = "") -> B
         raise ValueError(f"Unknown provider: {provider_name}")
 
 
+class CircuitBreaker:
+    """프로바이더별 연속 실패 추적 — 임계치 초과 시 자동 차단"""
+
+    def __init__(
+        self,
+        threshold: int = CIRCUIT_BREAKER_THRESHOLD,
+        reset_seconds: float = CIRCUIT_BREAKER_RESET_SECONDS,
+    ):
+        self._threshold = threshold
+        self._reset_seconds = reset_seconds
+        self._failures: dict[str, int] = {}
+        self._last_failure_time: dict[str, float] = {}
+
+    def record_success(self, provider_name: str) -> None:
+        self._failures[provider_name] = 0
+
+    def record_failure(self, provider_name: str) -> None:
+        self._failures[provider_name] = self._failures.get(provider_name, 0) + 1
+        self._last_failure_time[provider_name] = time.monotonic()
+        logger.info(f"[CircuitBreaker] {provider_name} 실패 {self._failures[provider_name]}/{self._threshold}")
+
+    def is_open(self, provider_name: str) -> bool:
+        failures = self._failures.get(provider_name, 0)
+        if failures < self._threshold:
+            return False
+        last_time = self._last_failure_time.get(provider_name, 0)
+        if time.monotonic() - last_time > self._reset_seconds:
+            self._failures[provider_name] = 0
+            logger.info(f"[CircuitBreaker] {provider_name} 리셋 (half-open)")
+            return False
+        return True
+
+    def get_status(self) -> dict[str, Any]:
+        return {
+            name: {"failures": self._failures.get(name, 0), "open": self.is_open(name)}
+            for name in set(list(self._failures.keys()))
+        }
+
+    def reset(self) -> None:
+        self._failures.clear()
+        self._last_failure_time.clear()
+
+
+_circuit_breaker = CircuitBreaker()
+
+
 class ProviderRouter:
-    """AI 프로바이더 자동 라우팅"""
+    """AI 프로바이더 자동 라우팅 + Circuit Breaker + Fallback Chain"""
+
+    circuit_breaker = _circuit_breaker
 
     @staticmethod
     def resolve(api_key: str = "", ai_model: str = "") -> BaseProvider:
@@ -67,3 +121,29 @@ class ProviderRouter:
 
         provider_name = settings.ai_provider
         return create_provider(provider_name, model=ai_model)
+
+    @staticmethod
+    def resolve_with_fallback(api_key: str = "", ai_model: str = "") -> BaseProvider:
+        """Circuit Breaker를 확인하여 건강한 프로바이더 반환.
+        primary가 차단되면 fallback chain에서 대체 프로바이더 선택."""
+        if api_key:
+            primary = detect_provider_from_key(api_key)
+        else:
+            from app.config import settings
+
+            primary = settings.ai_provider
+
+        if not _circuit_breaker.is_open(primary):
+            return create_provider(primary, api_key=api_key, model=ai_model)
+
+        logger.warning(f"[ProviderRouter] {primary} circuit open, fallback 탐색")
+        for fallback_name in _FALLBACK_ORDER:
+            if fallback_name == primary:
+                continue
+            if not _circuit_breaker.is_open(fallback_name):
+                logger.info(f"[ProviderRouter] fallback → {fallback_name}")
+                return create_provider(fallback_name, model=ai_model)
+
+        logger.warning("[ProviderRouter] 모든 프로바이더 차단, primary 강제 사용")
+        _circuit_breaker.reset()
+        return create_provider(primary, api_key=api_key, model=ai_model)
