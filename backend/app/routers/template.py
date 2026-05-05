@@ -1,6 +1,11 @@
 """템플릿 생성 REST API 라우터"""
 
+import asyncio
+import json
+import logging
+
 from fastapi import APIRouter, Body, File, UploadFile
+from fastapi.responses import StreamingResponse
 
 from app.agent.blueprint_generator import generate_blueprint
 from app.agent.orchestrator import AgentOrchestrator
@@ -11,43 +16,104 @@ from app.schemas.template import (
     TemplatePreviewResponse,
 )
 
+logger = logging.getLogger("notionforge.template")
+
 router = APIRouter(prefix="/api/templates", tags=["templates"])
+
+GENERATE_TIMEOUT = 180
 
 
 @router.post("/generate", response_model=TemplateGenerateResponse)
 async def generate_template(req: TemplateGenerateRequest):
-    """템플릿 생성 (동기)"""
+    """템플릿 생성 (타임아웃 보호 적용)"""
     agent = AgentOrchestrator(
         notion_token=req.notion_token,
         parent_page_id=req.parent_page_id,
     )
 
-    result = None
-    async for event in agent.process(req.prompt):
-        if event["type"] == "approval_request":
-            # REST API에서는 자동 승인 (WebSocket이 아니므로 유저 입력 불가)
-            agent.approve_creation(approved=True)
-        elif event["type"] == "complete":
-            result = event.get("result", {})
-        elif event["type"] == "question":
-            return TemplateGenerateResponse(
-                success=False,
-                summary={"question": event["content"]},
-            )
+    async def _run() -> TemplateGenerateResponse:
+        result = None
+        async for event in agent.process(req.prompt):
+            if event["type"] == "approval_request":
+                agent.approve_creation(approved=True)
+            elif event["type"] == "complete":
+                result = event.get("result", {})
+            elif event["type"] == "question":
+                return TemplateGenerateResponse(
+                    success=False,
+                    summary={"question": event["content"]},
+                )
 
-    if result:
+        if result:
+            return TemplateGenerateResponse(
+                success=True,
+                notion_url=result.get("main_url"),
+                page_id=result["pages"][0]["id"] if result.get("pages") else None,
+                summary={
+                    "pages": len(result.get("pages", [])),
+                    "databases": len(result.get("databases", [])),
+                    "blocks": result.get("blocks", 0),
+                },
+            )
+        return TemplateGenerateResponse(success=False)
+
+    try:
+        return await asyncio.wait_for(_run(), timeout=GENERATE_TIMEOUT)
+    except asyncio.TimeoutError:
+        logger.warning(f"[generate] 타임아웃 ({GENERATE_TIMEOUT}초): {req.prompt[:50]}")
         return TemplateGenerateResponse(
-            success=True,
-            notion_url=result.get("main_url"),
-            page_id=result["pages"][0]["id"] if result.get("pages") else None,
-            summary={
-                "pages": len(result.get("pages", [])),
-                "databases": len(result.get("databases", [])),
-                "blocks": result.get("blocks", 0),
-            },
+            success=False,
+            summary={"error": f"생성 시간이 {GENERATE_TIMEOUT}초를 초과했습니다. /api/tasks/submit 을 사용해주세요."},
         )
 
-    return TemplateGenerateResponse(success=False)
+
+@router.post("/generate/stream")
+async def generate_template_stream(req: TemplateGenerateRequest):
+    """SSE 스트리밍으로 실시간 진행률 + 결과 전달
+
+    클라이언트는 EventSource로 연결하여 단계별 진행률을 수신합니다.
+    Content-Type: text/event-stream
+    """
+    agent = AgentOrchestrator(
+        notion_token=req.notion_token,
+        parent_page_id=req.parent_page_id,
+    )
+
+    async def event_generator():
+        try:
+            async for event in agent.process(req.prompt):
+                event_type = event.get("type", "")
+
+                if event_type == "approval_request":
+                    agent.approve_creation(approved=True)
+                    yield f"data: {json.dumps({'type': 'approved', 'message': '자동 승인됨'}, ensure_ascii=False)}\n\n"
+                elif event_type == "progress":
+                    yield f"data: {json.dumps({'type': 'progress', 'step': event.get('step'), 'message': event.get('message')}, ensure_ascii=False)}\n\n"
+                elif event_type == "blueprint_preview":
+                    yield f"data: {json.dumps({'type': 'blueprint', 'blueprint': event.get('blueprint')}, ensure_ascii=False)}\n\n"
+                elif event_type == "complete":
+                    result = event.get("result", {})
+                    yield f"data: {json.dumps({'type': 'complete', 'success': True, 'notion_url': result.get('main_url'), 'page_id': result['pages'][0]['id'] if result.get('pages') else None, 'summary': {'pages': len(result.get('pages', [])), 'databases': len(result.get('databases', [])), 'blocks': result.get('blocks', 0)}}, ensure_ascii=False)}\n\n"
+                    return
+                elif event_type == "error":
+                    yield f"data: {json.dumps({'type': 'error', 'message': event.get('content', '오류 발생')}, ensure_ascii=False)}\n\n"
+                    return
+                elif event_type == "question":
+                    yield f"data: {json.dumps({'type': 'question', 'content': event.get('content')}, ensure_ascii=False)}\n\n"
+                    return
+
+            yield f"data: {json.dumps({'type': 'complete', 'success': False, 'message': '생성 완료 이벤트 없음'}, ensure_ascii=False)}\n\n"
+        except asyncio.TimeoutError:
+            yield f"data: {json.dumps({'type': 'error', 'message': '생성 시간 초과'}, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            logger.error(f"[stream] 오류: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/preview", response_model=TemplatePreviewResponse)

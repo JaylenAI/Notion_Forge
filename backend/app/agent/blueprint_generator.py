@@ -233,7 +233,17 @@ async def generate_blueprint(
             # Evaluate: 구조적 결함 검증
             is_pass, eval_errors = _evaluate_ai_output(ai_content)
             eval_errors.extend(pydantic_errors)
-            is_pass = is_pass and len(pydantic_errors) == 0
+
+            # Level 6: CreationExecutor 무결성 검증 (relation/rollup/db_index 교차 검증)
+            from app.agent.creation_executor import CreationExecutor
+
+            integrity_issues = CreationExecutor.validate_blueprint_integrity(
+                {"main_page": ai_content.get("main_page", {"title": "temp"}), **ai_content}
+            )
+            if integrity_issues:
+                eval_errors.extend([f"무결성: {issue}" for issue in integrity_issues])
+
+            is_pass = len(eval_errors) == 0
 
             if is_pass:
                 # 검증 통과 → Post-processor 보정 → 반환
@@ -290,6 +300,16 @@ async def generate_blueprint(
     if best_content:
         logger.info(f"[Gen-Eval 소진] 최선의 결과 사용 (오류 {best_error_count}개, post-processor로 보정)")
         best_content = blueprint_validator.validate_and_fix(best_content)
+
+        # 무결성 자동 교정 적용
+        from app.agent.creation_executor import CreationExecutor
+
+        temp_bp = {"main_page": best_content.get("main_page", {"title": "temp"}), **best_content}
+        integrity_issues = CreationExecutor.validate_blueprint_integrity(temp_bp)
+        if integrity_issues:
+            temp_bp = CreationExecutor._auto_fix_blueprint(temp_bp, integrity_issues)
+            best_content.update({k: v for k, v in temp_bp.items() if k in ("blocks", "databases", "sub_pages")})
+
         blueprint = _assemble_blueprint(best_content)
         blueprint["metadata"]["generation_method"] = "ai_dynamic_partial"
         blueprint["metadata"]["gen_eval_attempts"] = max_retries

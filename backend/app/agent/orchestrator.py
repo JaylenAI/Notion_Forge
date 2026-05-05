@@ -156,19 +156,30 @@ class AgentOrchestrator:
 
         # ── QualityValidator 3계층 검증
         qv_result = quality_validator.validate(blueprint)
-        if not qv_result.passed:
+        if not qv_result.passed and qv_result.critical_count > 0:
             critical_msgs = [i.message for i in qv_result.issues if i.severity == "critical"]
+            logger.warning(f"[QualityValidator] 미통과: {critical_msgs}")
+
+            # 치명적 이슈 시 1회 재생성 시도
             yield {
                 "type": "progress",
-                "step": "quality_check",
-                "message": f"⚠️ 품질 검증 미통과 (점수: {qv_result.score}/100, 치명적 이슈 {qv_result.critical_count}개)",
+                "step": "quality_retry",
+                "message": f"⚠️ 품질 검증 미통과 (점수: {qv_result.score}/100). 재설계 중...",
             }
-            logger.warning(f"[QualityValidator] 미통과: {critical_msgs}")
-        else:
+            blueprint = await self._generate_blueprint(message, metrics)
+            qv_result = quality_validator.validate(blueprint)
+
+        if qv_result.passed:
             yield {
                 "type": "progress",
                 "step": "quality_check",
                 "message": f"✅ 품질 검증 통과 (점수: {qv_result.score}/100)",
+            }
+        else:
+            yield {
+                "type": "progress",
+                "step": "quality_check",
+                "message": f"⚠️ 품질 검증: {qv_result.score}/100 (계속 진행)",
             }
 
         # ── Approval Gate

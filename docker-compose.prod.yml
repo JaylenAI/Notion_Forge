@@ -1,0 +1,51 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: prod
+    ports:
+      - "${BACKEND_PORT:-9500}:9500"
+    env_file:
+      - .env
+    environment:
+      - LOG_LEVEL=WARNING
+    volumes:
+      - backend_data:/app/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9500/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "2.0"
+        reservations:
+          memory: 256M
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: prod
+    ports:
+      - "${FRONTEND_PORT:-9501}:80"
+    environment:
+      - VITE_API_URL=${API_URL:-http://localhost:9500}
+      - VITE_WS_URL=${WS_URL:-ws://localhost:9500}
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.5"
+
+volumes:
+  backend_data:

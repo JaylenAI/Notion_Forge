@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.core.logging_config import setup_logging
-from app.routers import ai, chat, oauth, recipes, skills, template, workspace
+from app.routers import ai, chat, oauth, recipes, skills, tasks, template, workspace
 
 setup_logging(settings.log_level)
 
@@ -45,7 +45,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="NotionForge API",
         description="AI 기반 노션 템플릿 자동 생성 에이전트",
-        version="7.5.0",
+        version="8.0.0",
         docs_url="/docs",
         redoc_url="/redoc",
         lifespan=lifespan,
@@ -77,6 +77,7 @@ def create_app() -> FastAPI:
 
     app.include_router(chat.router)
     app.include_router(template.router)
+    app.include_router(tasks.router)
     app.include_router(ai.router)
     app.include_router(workspace.router)
     app.include_router(recipes.router)
@@ -101,11 +102,11 @@ def create_app() -> FastAPI:
 
         return {
             "status": "ok",
-            "version": "7.5.0",
+            "version": "8.0.0",
             "ai_provider": settings.ai_provider,
             "notion_ready": settings.notion_ready,
             "copilot": copilot_status,
-            "features": 74,
+            "features": 78,
             "skills": 48,
             "today_stats": {
                 "total": total,
@@ -113,6 +114,21 @@ def create_app() -> FastAPI:
                 "success_rate": round(success_count / total * 100, 1) if total > 0 else 0,
             },
         }
+
+    @app.get("/health/ready")
+    async def readiness_check():
+        """쿠버네티스/Docker 준비 상태 확인 — AI provider + Notion 연결 가능 여부"""
+        checks = {
+            "notion_configured": bool(settings.notion_api_key and settings.notion_parent_page_id),
+            "ai_provider_configured": settings.ai_provider != "none",
+        }
+        all_ready = all(checks.values())
+        return {"ready": all_ready, "checks": checks}
+
+    @app.get("/health/live")
+    async def liveness_check():
+        """쿠버네티스 liveness — 서버 응답 가능 여부만"""
+        return {"alive": True}
 
     @app.get("/api/metrics/summary")
     async def metrics_summary():
