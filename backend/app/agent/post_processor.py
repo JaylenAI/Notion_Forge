@@ -323,6 +323,8 @@ class BlueprintValidator:
             date_props = [k for k, t in prop_types.items() if t == "date"]
 
             for view in db.get("views", []):
+                if isinstance(view, str):
+                    continue
                 vtype = view.get("type", view.get("view_type", "table"))
 
                 if vtype == "board":

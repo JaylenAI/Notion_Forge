@@ -1,6 +1,6 @@
-"""Notion Client Mock 모드 테스트: 실제 API 호출 없이 모든 메서드 경로 검증"""
+"""Notion Client 테스트: Mock 모드 + 실제 API 경로 (search, comments, emojis, init)"""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -14,6 +14,27 @@ def mock_client():
         mock_settings.notion_parent_page_id = ""
         client = NotionClient(token="", parent_page_id="")
     assert client.mock_mode is True
+    return client
+
+
+@pytest.fixture
+def real_client():
+    """mock_mode=False인 NotionClient (real API 경로 테스트용)"""
+    with patch("app.notion.client.settings") as mock_settings:
+        mock_settings.notion_api_key = "ntn_real_token_abc"
+        mock_settings.notion_parent_page_id = "parent-id-real"
+        with patch("notion_client.AsyncClient") as mock_sdk:
+            mock_sdk.return_value = MagicMock()
+            with patch("httpx.AsyncClient"):
+                client = NotionClient(token="ntn_real_token_abc", parent_page_id="parent-id-real")
+
+    client._http_client = AsyncMock()
+    client._http_legacy = AsyncMock()
+    client.rate_limiter = AsyncMock()
+    client.rate_limiter.acquire = AsyncMock()
+    client.rate_limiter.call_with_retry = AsyncMock()
+    client._real_client = MagicMock()
+    client.mock_mode = False
     return client
 
 
@@ -192,3 +213,222 @@ class TestViewOps:
             target_page_id="page-456",
         )
         assert result is not None
+
+    async def test_list_views_mock(self, mock_client):
+        result = await mock_client.list_views("db-123")
+        assert result == []
+
+    async def test_get_view_mock(self, mock_client):
+        result = await mock_client.get_view("view-123")
+        assert result["id"] == "view-123"
+
+    async def test_delete_view_mock(self, mock_client):
+        result = await mock_client.delete_view("view-123")
+        assert result is True
+
+    async def test_update_view_mock(self, mock_client):
+        result = await mock_client.update_view("view-123", name="Updated")
+        assert result["id"] == "view-123"
+
+
+# =========================================================
+# Real Mode Tests (non-mock paths)
+# =========================================================
+
+
+class TestInitBehavior:
+    """NotionClient 초기화 동작 검증"""
+
+    def test_mock_mode_when_no_token(self):
+        """토큰 없으면 mock_mode=True"""
+        with patch("app.notion.client.settings") as mock_settings:
+            mock_settings.notion_api_key = ""
+            mock_settings.notion_parent_page_id = ""
+            client = NotionClient(token="", parent_page_id="")
+        assert client.mock_mode is True
+
+    def test_mock_mode_when_no_parent_page_id(self):
+        """parent_page_id 없으면 mock_mode=True"""
+        with patch("app.notion.client.settings") as mock_settings:
+            mock_settings.notion_api_key = "ntn_token"
+            mock_settings.notion_parent_page_id = ""
+            client = NotionClient(token="ntn_token", parent_page_id="")
+        assert client.mock_mode is True
+
+    def test_real_mode_when_both_provided(self):
+        """토큰과 parent_page_id 모두 있으면 mock_mode=False"""
+        with patch("app.notion.client.settings") as mock_settings:
+            mock_settings.notion_api_key = "ntn_real_token"
+            mock_settings.notion_parent_page_id = "page-id-real"
+            with patch("notion_client.AsyncClient"):
+                with patch("httpx.AsyncClient"):
+                    client = NotionClient(token="ntn_real_token", parent_page_id="page-id-real")
+        assert client.mock_mode is False
+        assert client._http_client is not None
+
+    def test_settings_fallback(self):
+        """인자 미제공 시 settings에서 가져옴"""
+        with patch("app.notion.client.settings") as mock_settings:
+            mock_settings.notion_api_key = "settings_token"
+            mock_settings.notion_parent_page_id = "settings_page"
+            with patch("notion_client.AsyncClient"):
+                with patch("httpx.AsyncClient"):
+                    client = NotionClient()
+        assert client.token == "settings_token"
+        assert client.parent_page_id == "settings_page"
+
+
+class TestSearchRealMode:
+    """search() 실제 API 경로 테스트"""
+
+    async def test_search_with_query(self, real_client):
+        """쿼리 포함 검색"""
+        real_client.rate_limiter.call_with_retry = AsyncMock(
+            return_value={"results": [{"id": "page-1", "object": "page"}]}
+        )
+
+        result = await real_client.search(query="프로젝트")
+
+        assert result["results"][0]["id"] == "page-1"
+
+    async def test_search_with_filter_type(self, real_client):
+        """필터 타입 포함 검색"""
+        real_client.rate_limiter.call_with_retry = AsyncMock(
+            return_value={"results": [{"id": "db-1", "object": "database"}]}
+        )
+
+        result = await real_client.search(query="DB", filter_type="database")
+
+        assert result["results"][0]["object"] == "database"
+
+    async def test_search_empty_query(self, real_client):
+        """빈 쿼리 검색"""
+        real_client.rate_limiter.call_with_retry = AsyncMock(return_value={"results": []})
+
+        result = await real_client.search()
+
+        assert result == {"results": []}
+
+
+class TestCommentsRealMode:
+    """Comments API 실제 경로 테스트"""
+
+    async def test_add_comment_with_page_id(self, real_client):
+        """page_id로 코멘트 추가"""
+        real_client.rate_limiter.call_with_retry = AsyncMock(
+            return_value={"id": "comment-1", "parent": {"page_id": "page-123"}}
+        )
+
+        with patch("app.notion.block_builder.rich_text", return_value=[{"text": {"content": "댓글"}}]):
+            result = await real_client.add_comment("댓글 내용", page_id="page-123")
+
+        assert result["id"] == "comment-1"
+
+    async def test_add_comment_with_block_id(self, real_client):
+        """block_id로 코멘트 추가"""
+        real_client.rate_limiter.call_with_retry = AsyncMock(return_value={"id": "comment-2"})
+
+        with patch("app.notion.block_builder.rich_text", return_value=[{"text": {"content": "블록 댓글"}}]):
+            result = await real_client.add_comment("블록 댓글", block_id="block-123")
+
+        assert result["id"] == "comment-2"
+
+    async def test_add_comment_with_discussion_id(self, real_client):
+        """discussion_id로 코멘트 추가"""
+        real_client.rate_limiter.call_with_retry = AsyncMock(return_value={"id": "comment-3"})
+
+        with patch("app.notion.block_builder.rich_text", return_value=[{"text": {"content": "스레드"}}]):
+            result = await real_client.add_comment("스레드 댓글", discussion_id="disc-123")
+
+        assert result["id"] == "comment-3"
+
+    async def test_get_comments(self, real_client):
+        """코멘트 조회"""
+        real_client.rate_limiter.call_with_retry = AsyncMock(return_value={"results": [{"id": "c1"}, {"id": "c2"}]})
+
+        result = await real_client.get_comments("block-123")
+
+        assert len(result) == 2
+
+
+class TestCustomEmojisRealMode:
+    """Custom Emoji API 실제 경로 테스트"""
+
+    async def test_list_custom_emojis_success(self, real_client):
+        """커스텀 이모지 목록 조회 성공"""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"results": [{"id": "emoji-1", "name": "fire"}]}
+        real_client._http_client.get = AsyncMock(return_value=mock_resp)
+
+        result = await real_client.list_custom_emojis()
+
+        assert len(result) == 1
+        assert result[0]["name"] == "fire"
+
+    async def test_list_custom_emojis_api_error(self, real_client):
+        """API 에러 시 빈 리스트"""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 403
+        real_client._http_client.get = AsyncMock(return_value=mock_resp)
+
+        result = await real_client.list_custom_emojis()
+
+        assert result == []
+
+    async def test_list_custom_emojis_exception(self, real_client):
+        """예외 시 빈 리스트"""
+        real_client._http_client.get = AsyncMock(side_effect=Exception("network err"))
+
+        result = await real_client.list_custom_emojis()
+
+        assert result == []
+
+
+class TestUsersRealMode:
+    """Users API 실제 경로 테스트"""
+
+    async def test_list_users_success(self, real_client):
+        """사용자 목록 조회"""
+        real_client.rate_limiter.call_with_retry = AsyncMock(
+            return_value={"results": [{"id": "user-1", "name": "Test User"}]}
+        )
+
+        result = await real_client.list_users()
+
+        assert len(result) == 1
+        assert result[0]["id"] == "user-1"
+
+    async def test_get_user_success(self, real_client):
+        """사용자 조회"""
+        real_client.rate_limiter.call_with_retry = AsyncMock(
+            return_value={"id": "user-1", "name": "Test User", "type": "person"}
+        )
+
+        result = await real_client.get_user("user-1")
+
+        assert result["type"] == "person"
+
+
+class TestClientClose:
+    """클라이언트 종료 테스트"""
+
+    async def test_close_with_http_clients(self, real_client):
+        """http 클라이언트 정리"""
+        real_client._http_client = AsyncMock()
+        real_client._http_client.aclose = AsyncMock()
+        real_client._http_legacy = AsyncMock()
+        real_client._http_legacy.aclose = AsyncMock()
+
+        await real_client.close()
+
+        real_client._http_client.aclose.assert_called_once()
+        real_client._http_legacy.aclose.assert_called_once()
+
+    async def test_close_without_http_client(self, mock_client):
+        """mock_mode에서는 http_client가 없어도 안전하게 종료"""
+        mock_client._http_client = None
+        mock_client._http_legacy = None
+
+        # 예외 없이 완료되어야 함
+        await mock_client.close()

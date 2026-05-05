@@ -1,8 +1,12 @@
 """AI 프로바이더 관련 REST API 라우터"""
 
+from __future__ import annotations
+
 from fastapi import APIRouter, Body
 
 router = APIRouter(prefix="/api/templates", tags=["ai"])
+
+_session_model: str | None = None
 
 
 @router.post("/ai/detect-provider")
@@ -20,7 +24,6 @@ async def detect_provider(api_key: str = Body("", embed=True, max_length=500)):
     if provider == "unknown":
         return {"provider": "unknown", "models": [], "error": "알 수 없는 API 키 형식입니다."}
 
-    # 프로바이더별 모델 목록 조회
     models: list[dict] = []
     try:
         if provider == "openai":
@@ -96,8 +99,22 @@ async def copilot_status():
 
 @router.post("/ai/copilot-model")
 async def set_copilot_model(model: str = Body("gpt-4.1", embed=True)):
-    """Copilot 모델 변경"""
+    """Copilot 모델 변경 (세션 단위 — 글로벌 설정 변경 없음)"""
+    global _session_model
+    allowed_models = ["gpt-4.1", "gpt-4.1-mini", "gpt-5-mini", "gpt-5.2", "claude-sonnet-4-5", "o3-mini", "o4-mini"]
+    if model not in allowed_models:
+        return {"error": f"허용되지 않는 모델입니다. 사용 가능: {', '.join(allowed_models)}"}
+    _session_model = model
+    return {"model": model, "status": "updated", "scope": "session"}
+
+
+@router.get("/ai/current-model")
+async def get_current_model():
+    """현재 활성 모델 조회"""
     from app.config import settings
 
-    settings.copilot_model = model
-    return {"model": model, "status": "updated"}
+    return {
+        "default_model": settings.copilot_model,
+        "session_model": _session_model,
+        "active": _session_model or settings.copilot_model,
+    }

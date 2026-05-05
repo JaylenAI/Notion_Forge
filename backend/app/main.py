@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
 
@@ -8,6 +9,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.core.logging_config import setup_logging
+from app.core.middleware import RateLimitMiddleware, RequestIdMiddleware
 from app.routers import ai, chat, oauth, recipes, skills, tasks, template, workspace
 
 setup_logging(settings.log_level)
@@ -17,7 +19,17 @@ logger = logging.getLogger("notionforge")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """앱 시작/종료 시 Copilot SDK 라이프사이클 관리"""
+    """앱 시작/종료 시 라이프사이클 관리 — 설정 검증 + Copilot + Graceful Shutdown"""
+    # 시작 시 설정 검증
+    if not settings.notion_api_key:
+        logger.warning("NOTION_API_KEY 미설정 — Mock 모드로 동작합니다")
+    if not settings.notion_parent_page_id:
+        logger.warning("NOTION_PARENT_PAGE_ID 미설정 — 생성 기능 제한")
+
+    logger.info(
+        f"NotionForge 시작 — AI Provider: {settings.ai_provider}, Notion: {'ready' if settings.notion_ready else 'mock'}"
+    )
+
     if settings.copilot_enabled:
         try:
             from app.core.copilot_client import copilot_manager
@@ -26,12 +38,14 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"Copilot 시작 스킵: {e}")
 
-    # 이력 보존 정책 — 30일 이상 된 파일 자동 정리
     from app.core.history import cleanup_old_history
 
     cleanup_old_history(retention_days=30)
 
     yield
+
+    # Graceful Shutdown
+    logger.info("NotionForge 종료 중...")
     if settings.copilot_enabled:
         try:
             from app.core.copilot_client import copilot_manager
@@ -39,6 +53,7 @@ async def lifespan(app: FastAPI):
             await copilot_manager.stop()
         except Exception:
             pass
+    logger.info("NotionForge 종료 완료")
 
 
 def create_app() -> FastAPI:
@@ -56,8 +71,12 @@ def create_app() -> FastAPI:
         allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization", "X-Notion-Token"],
+        allow_headers=["Content-Type", "Authorization", "X-Notion-Token", "X-Request-ID"],
     )
+
+    rate_limit_rpm = int(os.environ.get("RATE_LIMIT_RPM", "60"))
+    app.add_middleware(RateLimitMiddleware, rpm=rate_limit_rpm)
+    app.add_middleware(RequestIdMiddleware)
 
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):

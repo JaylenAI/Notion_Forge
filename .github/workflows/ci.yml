@@ -45,7 +45,7 @@ jobs:
             --cov=app \
             --cov-report=xml \
             --cov-report=term-missing \
-            --cov-fail-under=60
+            --cov-fail-under=80
 
       - name: Upload coverage report
         if: always()
@@ -60,7 +60,7 @@ jobs:
         with:
           coverageFile: backend/coverage.xml
           token: ${{ secrets.GITHUB_TOKEN }}
-          thresholdAll: 0.60
+          thresholdAll: 0.80
 
   frontend-lint:
     name: Frontend Lint & TypeCheck
@@ -139,11 +139,25 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - run: cd backend && uv sync --frozen
 
-      - name: Check for hardcoded secrets
+      - name: Check for hardcoded secrets (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bandit security analysis
         run: |
-          ! grep -rn "sk-\|secret_\|password.*=" backend/app/ \
-            --include="*.py" \
-            | grep -v "\.env\|settings\|config\|#\|test" || true
+          cd backend && uv run pip install bandit -q
+          uv run bandit -r app/ -ll -ii --format json -o bandit-report.json || true
+          uv run bandit -r app/ -ll -ii
 
       - name: Check dependencies for known vulnerabilities
-        run: cd backend && uv run pip-audit --strict 2>/dev/null || true
+        run: |
+          cd backend && uv run pip install pip-audit -q
+          uv run pip-audit --strict
+
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: backend/bandit-report.json

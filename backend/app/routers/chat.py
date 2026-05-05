@@ -7,15 +7,19 @@ Approval Gate 대기 중에도 WebSocket 메시지(confirm_create 등)를 수신
 import asyncio
 import json
 import logging
-import traceback
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 logger = logging.getLogger("notionforge.chat")
 
 from app.agent.orchestrator import AgentOrchestrator
+from app.core.middleware import sanitize_error
 
 router = APIRouter(tags=["chat"])
+
+
+WS_INIT_TIMEOUT = 10
+WS_MESSAGE_RATE_LIMIT = 20
 
 
 @router.websocket("/ws/chat")
@@ -24,6 +28,7 @@ async def websocket_chat(websocket: WebSocket):
 
     agent: AgentOrchestrator | None = None
     process_task: asyncio.Task | None = None
+    message_timestamps: list[float] = []
 
     def _handle_control_message(msg_type: str, data: dict) -> bool:
         """설정/승인 등 제어 메시지 처리. 처리했으면 True 반환."""
@@ -59,23 +64,55 @@ async def websocket_chat(websocket: WebSocket):
         return False
 
     try:
+        # init 메시지 대기 (타임아웃 적용)
+        try:
+            raw = await asyncio.wait_for(websocket.receive_text(), timeout=WS_INIT_TIMEOUT)
+            init_data = json.loads(raw)
+            if init_data.get("type") != "init":
+                await websocket.send_json({"type": "error", "content": "init 메시지가 필요합니다."})
+                await websocket.close(code=4001)
+                return
+            notion_token = init_data.get("notion_token", "")
+            if not notion_token or len(notion_token) < 5:
+                await websocket.send_json({"type": "error", "content": "유효한 Notion 토큰이 필요합니다."})
+                await websocket.close(code=4002)
+                return
+            agent = AgentOrchestrator(
+                notion_token=notion_token,
+                parent_page_id=init_data.get("parent_page_id", ""),
+                ai_key=init_data.get("ai_key", ""),
+                ai_model=init_data.get("ai_model", ""),
+            )
+            await websocket.send_json({"type": "system", "content": "연결 완료! 어떤 템플릿을 만들어드릴까요?"})
+        except asyncio.TimeoutError:
+            await websocket.send_json({"type": "error", "content": "연결 시간 초과. init 메시지를 보내주세요."})
+            await websocket.close(code=4003)
+            return
+        except (json.JSONDecodeError, Exception):
+            await websocket.send_json({"type": "error", "content": "잘못된 메시지 형식입니다."})
+            await websocket.close(code=4004)
+            return
+
         while True:
             raw = await websocket.receive_text()
-            data = json.loads(raw)
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                await websocket.send_json({"type": "error", "content": "JSON 형식이 아닙니다."})
+                continue
+
+            # 메시지 Rate Limiting
+            now = asyncio.get_event_loop().time()
+            message_timestamps = [t for t in message_timestamps if now - t < 60]
+            if len(message_timestamps) >= WS_MESSAGE_RATE_LIMIT:
+                await websocket.send_json(
+                    {"type": "error", "content": "메시지 전송 한도 초과. 잠시 후 다시 시도해주세요."}
+                )
+                continue
+            message_timestamps.append(now)
 
             msg_type = data.get("type", "message")
             content = data.get("content", "")
-
-            # ── init: 에이전트 초기화 ──
-            if msg_type == "init":
-                agent = AgentOrchestrator(
-                    notion_token=data.get("notion_token", ""),
-                    parent_page_id=data.get("parent_page_id", ""),
-                    ai_key=data.get("ai_key", ""),
-                    ai_model=data.get("ai_model", ""),
-                )
-                await websocket.send_json({"type": "system", "content": "연결 완료! 어떤 템플릿을 만들어드릴까요?"})
-                continue
 
             # ── 제어 메시지 (승인/취소/설정) ──
             if _handle_control_message(msg_type, data):
@@ -98,10 +135,9 @@ async def websocket_chat(websocket: WebSocket):
                         except Exception:
                             break
                 except Exception as e:
-                    tb = traceback.format_exc()
-                    logger.error(f"[Agent 에러]\n{tb}")
+                    logger.error(f"[Agent 에러] {e}", exc_info=True)
                     try:
-                        await websocket.send_json({"type": "error", "content": f"처리 중 오류: {str(e)[:200]}"})
+                        await websocket.send_json({"type": "error", "content": sanitize_error(e)})
                     except Exception:
                         pass
 
@@ -110,9 +146,9 @@ async def websocket_chat(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     except Exception as e:
-        logger.error(f"[WebSocket 에러] {e}")
+        logger.error(f"[WebSocket 에러] {e}", exc_info=True)
         try:
-            await websocket.send_json({"type": "error", "content": str(e)[:200]})
+            await websocket.send_json({"type": "error", "content": sanitize_error(e)})
         except Exception:
             pass
     finally:

@@ -1,4 +1,4 @@
-"""Notion OAuth 연동 라우터
+"""Notion OAuth 연동 라우터 — CSRF state 검증 포함
 
 환경변수:
   NOTION_OAUTH_CLIENT_ID
@@ -8,9 +8,12 @@
 """
 
 import logging
+import secrets
+import time
+from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import RedirectResponse
 
 from app.config import settings
@@ -22,39 +25,70 @@ router = APIRouter(prefix="/api/oauth", tags=["oauth"])
 NOTION_AUTH_URL = "https://api.notion.com/v1/oauth/authorize"
 NOTION_TOKEN_URL = "https://api.notion.com/v1/oauth/token"
 
+STATE_TTL = 300
+_pending_states: dict[str, float] = {}
+
+
+def _cleanup_expired_states() -> None:
+    now = time.time()
+    expired = [s for s, ts in _pending_states.items() if now - ts > STATE_TTL]
+    for s in expired:
+        del _pending_states[s]
+
 
 @router.get("/authorize")
 async def authorize():
-    """Notion OAuth 인증 시작 — 브라우저 리디렉트"""
+    """Notion OAuth 인증 시작 — CSRF state 포함 리디렉트"""
     client_id = settings.notion_oauth_client_id
     redirect_uri = settings.notion_oauth_redirect_uri
 
     if not client_id:
         return {"error": "NOTION_OAUTH_CLIENT_ID가 설정되지 않았습니다. .env 파일을 확인하세요."}
 
-    auth_url = f"{NOTION_AUTH_URL}?client_id={client_id}&response_type=code&owner=user&redirect_uri={redirect_uri}"
-    return RedirectResponse(url=auth_url)
+    _cleanup_expired_states()
+
+    state = secrets.token_urlsafe(32)
+    _pending_states[state] = time.time()
+
+    params = urlencode(
+        {
+            "client_id": client_id,
+            "response_type": "code",
+            "owner": "user",
+            "redirect_uri": redirect_uri,
+            "state": state,
+        }
+    )
+    return RedirectResponse(url=f"{NOTION_AUTH_URL}?{params}")
 
 
 @router.get("/callback")
-async def callback(code: str = "", error: str = ""):
-    """Notion OAuth 콜백 — 토큰 교환"""
+async def callback(code: str = "", error: str = "", state: str = ""):
+    """Notion OAuth 콜백 — state 검증 + 토큰 교환"""
     frontend_url = settings.frontend_url
 
     if error:
         return RedirectResponse(url=f"{frontend_url}?oauth_error={error}")
 
     if not code:
-        return {"error": "인증 코드가 없습니다."}
+        raise HTTPException(status_code=400, detail="인증 코���가 없습니다.")
+
+    _cleanup_expired_states()
+
+    if not state or state not in _pending_states:
+        raise HTTPException(status_code=403, detail="CSRF 검증 실패. 인증을 다시 시도해주세요.")
+
+    state_created = _pending_states.pop(state)
+    if time.time() - state_created > STATE_TTL:
+        raise HTTPException(status_code=403, detail="인증 세션이 만료되었습니다. 다시 시도해주세요.")
 
     client_id = settings.notion_oauth_client_id
     client_secret = settings.notion_oauth_client_secret
     redirect_uri = settings.notion_oauth_redirect_uri
 
     if not client_id or not client_secret:
-        return {"error": "OAuth 클라이언트 설정이 없습니다."}
+        raise HTTPException(status_code=500, detail="OAuth 클라이언트 설정이 없습니다.")
 
-    # 토큰 교환
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             NOTION_TOKEN_URL,
@@ -69,16 +103,14 @@ async def callback(code: str = "", error: str = ""):
         )
 
         if resp.status_code != 200:
-            return {"error": f"토큰 교환 실패: {resp.text[:200]}"}
+            logger.warning(f"OAuth 토큰 교환 실패: {resp.status_code}")
+            raise HTTPException(status_code=502, detail="토큰 교환에 실패했습니다. 다시 시도해주세요.")
 
         token_data = resp.json()
 
-    # 프론트엔드로 리디렉트 (토큰 전달)
     access_token = token_data.get("access_token", "")
     workspace_name = token_data.get("workspace_name", "")
     workspace_id = token_data.get("workspace_id", "")
-
-    from urllib.parse import urlencode
 
     params = urlencode(
         {

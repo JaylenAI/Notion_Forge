@@ -123,17 +123,32 @@ async def preview_template(req: TemplatePreviewRequest):
     return TemplatePreviewResponse(blueprint=blueprint)
 
 
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
+ALLOWED_EXTENSIONS = {"txt", "md", "csv", "pdf"}
+
+
 @router.post("/document-to-notion")
 async def document_to_notion(file: UploadFile = File(...)):
     """문서 업로드 → 구조 분석 → 블루프린트 프리뷰
 
-    지원: .txt, .md, .csv, .pdf
+    지원: .txt, .md, .csv, .pdf (최대 10MB)
     """
+    from fastapi import HTTPException
+
     from app.agent.document_parser import parse_document, parse_pdf_bytes
 
-    content_bytes = await file.read()
     filename = file.filename or "document.txt"
     ext = filename.rsplit(".", 1)[-1].lower()
+
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=415, detail=f"지원하지 않는 파일 형식입니다. 허용: {', '.join(ALLOWED_EXTENSIONS)}"
+        )
+
+    content_bytes = await file.read()
+
+    if len(content_bytes) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="파일 크기가 10MB를 초과합니다.")
 
     if ext == "pdf":
         parsed = parse_pdf_bytes(content_bytes)

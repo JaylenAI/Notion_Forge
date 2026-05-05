@@ -1,5 +1,10 @@
 # NotionForge
 
+[![CI](https://github.com/JaylenAI/notion_ai_agent/actions/workflows/ci.yml/badge.svg)](https://github.com/JaylenAI/notion_ai_agent/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://docs.docker.com/)
+
 > AI 채팅으로 노션 템플릿을 자동 생성하는 오픈소스 에이전트
 
 ## 프로젝트 개요

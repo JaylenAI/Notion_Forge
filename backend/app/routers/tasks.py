@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.agent.orchestrator import AgentOrchestrator
+from app.core.middleware import sanitize_error
 
 logger = logging.getLogger("notionforge.tasks")
 
@@ -105,9 +106,9 @@ async def _run_generation(task_id: str, prompt: str, notion_token: str, parent_p
             task["completed_at"] = time.time()
 
     except Exception as e:
-        logger.error(f"[Task {task_id}] 생성 실패: {e}")
+        logger.error(f"[Task {task_id}] 생성 실패: {e}", exc_info=True)
         task["status"] = "failed"
-        task["error"] = str(e)
+        task["error"] = sanitize_error(e)
         task["completed_at"] = time.time()
 
 
