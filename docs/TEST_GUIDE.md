@@ -1,31 +1,36 @@
-# 테스트 + QA 가이드 (Test & QA Guide)
+# 테스트 가이드 (Test Guide)
 
-> 단위/통합/E2E 테스트 실행 방법 + 템플릿 품질 검증 체크리스트
+> 최종 업데이트: 2026-05-13
+> 테스트 현황: 1215개 테스트, 82% 커버리지
 
 ---
-
-# Part 1: 테스트
 
 ## 테스트 구조
 
 ```
 backend/tests/
-├── unit/
-│   ├── test_intent_analyzer.py
-│   ├── test_blueprint_generator.py
-│   ├── test_block_builder.py
-│   ├── test_color_theme.py
-│   └── test_rate_limiter.py
-├── integration/
-│   ├── test_notion_client.py
-│   ├── test_claude_agent.py
-│   └── test_template_generation.py
-├── e2e/
-│   └── test_chat_flow.py
-├── fixtures/
-│   ├── sample_blueprints.json
-│   └── mock_notion_responses.json
-└── conftest.py
+├── unit/                          # 단위 테스트 (48 파일)
+│   ├── test_ai_router.py         # AI 라우터 (프로바이더 감지, 모델 변경)
+│   ├── test_agent_tools.py       # Tool Registry 9개 도구
+│   ├── test_block_builder.py     # 블록 JSON 생성 (20종)
+│   ├── test_blueprint_generator.py # Gen-Eval 피드백 루프
+│   ├── test_chat_router.py       # WebSocket 채팅 (인증, 레이트리밋)
+│   ├── test_copilot_client.py    # Copilot SDK 클라이언트
+│   ├── test_database_ops.py      # DB CRUD (폴백 로직 포함)
+│   ├── test_middleware.py        # Rate Limit, Request ID, 에러 정제
+│   ├── test_notion_client.py     # Notion 클라이언트 (Mock + Real)
+│   ├── test_notion_ops.py        # 페이지/블록/뷰 작업
+│   ├── test_oauth_router.py      # OAuth CSRF, 토큰 교환
+│   ├── test_providers.py         # LLM 프로바이더 4종 (OpenAI/Claude/Groq/Gemini)
+│   ├── test_quality_validator.py # 3계층 검증 (Schema/Content/Design)
+│   ├── test_tasks_router.py      # 비동기 작업 관리
+│   ├── test_template_router.py   # 템플릿 생성 라우터
+│   ├── test_workspace_router.py  # 워크스페이스 API
+│   └── ...
+├── integration/                   # 통합 테스트 (3 파일)
+│   ├── test_api_endpoints.py     # REST API 엔드포인트
+│   └── ...
+└── conftest.py                    # 공통 픽스처
 ```
 
 ## 실행 방법
@@ -34,159 +39,131 @@ backend/tests/
 cd backend
 
 # 전체 테스트
-uv run pytest
+uv run pytest tests/ -v
 
 # 단위 테스트만
 uv run pytest tests/unit/ -v
 
-# 통합 테스트 (Notion API 실제 호출, .env 필요)
-uv run pytest tests/integration/ -v --timeout=30
+# 커버리지 측정 (80% 미만 시 실패)
+uv run pytest tests/ --cov=app --cov-fail-under=80
 
-# E2E (Backend + Frontend 실행 상태에서)
-uv run pytest tests/e2e/ -v --timeout=60
-
-# 커버리지 (목표: 80%+)
-uv run pytest --cov=. --cov-report=html
+# HTML 커버리지 리포트
+uv run pytest tests/ --cov=app --cov-report=html
 open htmlcov/index.html
+
+# 특정 모듈 테스트
+uv run pytest tests/unit/test_providers.py -v
+
+# 키워드로 필터링
+uv run pytest tests/ -k "oauth" -v
 ```
 
-## 핵심 테스트 케이스
+## 커버리지 현황 (v8.1.0)
 
-### Intent Analyzer
+| 모듈 | 커버리지 | 비고 |
+|------|---------|------|
+| `routers/ai.py` | 97% | 프로바이더 감지, 모델 변경 |
+| `routers/oauth.py` | 98% | CSRF state 검증 |
+| `routers/workspace.py` | 100% | 검색, 코멘트, 잠금, 아카이브 |
+| `routers/chat.py` | 89% | WebSocket 인증/레이트리밋 |
+| `routers/tasks.py` | 100% | 비동기 작업 관리 |
+| `routers/template.py` | 82% | 파일 업로드 검증 |
+| `core/middleware.py` | 100% | Rate Limit, Request ID |
+| `notion/client.py` | 100% | Mock + Real 경로 |
+| `notion/database_ops.py` | 96% | 폴백 로직 (속성 에러 복구) |
+| `notion/view_ops.py` | 100% | 뷰 6종 CRUD |
+| `agent/quality_validator.py` | 100% | 3계층 검증 |
+| **전체** | **82%** | **fail_under=80%** |
+
+## 테스트 작성 가이드
+
+### 픽스처 패턴
 
 ```python
-def test_create_intent():
-    result = analyze("프로젝트 관리 대시보드 만들어줘")
-    assert result["intent"] == "CREATE"
-    assert result["template_type"] == "dashboard"
-    assert result["confidence"] >= 0.8
+# Mock NotionClient 패턴
+@pytest.fixture
+def real_client():
+    with patch("app.notion.client.settings") as mock_settings:
+        mock_settings.notion_api_key = "ntn_test_token"
+        mock_settings.notion_parent_page_id = "parent-id"
+        with patch("notion_client.AsyncClient"):
+            with patch("httpx.AsyncClient"):
+                client = NotionClient(token="ntn_test_token", parent_page_id="parent-id")
+    client._http_client = AsyncMock()
+    client._http_legacy = AsyncMock()
+    client.rate_limiter = AsyncMock()
+    client.rate_limiter.acquire = AsyncMock()
+    client.mock_mode = False
+    return client
 
-def test_color_theme_korean():
-    result = analyze("하늘색으로 만들어줘")
-    assert result["color_theme"] == "blue"
-
-def test_ambiguous_request():
-    result = analyze("노션 만들어줘")
-    assert result["confidence"] < 0.7
-    assert len(result["missing_info"]) > 0
+# ASGI 클라이언트 패턴 (라우터 테스트)
+@pytest.fixture
+async def client():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        yield c
 ```
 
-### Block Builder
+### Body(embed=True) 엔드포인트 테스트
+
+FastAPI의 `Body(embed=True)` 파라미터는 반드시 `json={"field_name": value}` 형태로 전송해야 합니다.
 
 ```python
-def test_heading_block():
-    block = build_heading("Project", level=1, color="orange_background")
-    assert block["type"] == "heading_1"
-    assert block["heading_1"]["color"] == "orange_background"
+# 올바른 방법
+resp = await client.post("/api/endpoint", json={"api_key": "sk-test"})
 
-def test_column_layout():
-    blocks = build_columns(2, [["블록A"], ["블록B"]])
-    assert blocks[0]["type"] == "column_list"
-    assert len(blocks[0]["column_list"]["children"]) == 2
-
-def test_database_properties():
-    props = build_properties({"이름": "title", "카테고리": {"type": "select", "options": ["A", "B"]}})
-    assert props["이름"]["type"] == "title"
-    assert len(props["카테고리"]["select"]["options"]) == 2
+# 잘못된 방법 (422 에러 발생)
+resp = await client.post("/api/endpoint", json="sk-test")
 ```
 
-### Notion 통합 테스트
+### Rate Limiter 테스트 격리
+
+미들웨어 상태가 테스트 간 공유되므로 초기화가 필요합니다.
 
 ```python
-def test_create_page(cleanup_pages):
-    page = create_page(title="테스트", icon="🧪", cover_url="https://...")
-    cleanup_pages.append(page["id"])  # 테스트 후 자동 archive
-    assert page["id"] is not None
-
-def test_rate_limit_handling():
-    # 빠르게 여러 요청 → 429 → 재시도 → 성공 확인
+def _reset_rate_limiter():
+    current = app.middleware_stack
+    while current:
+        if isinstance(current, RateLimitMiddleware):
+            current._requests.clear()
+            break
+        current = getattr(current, "app", None)
 ```
 
-## 테스트 환경 분리
+## CI 파이프라인
 
+```yaml
+# .github/workflows/ci.yml (테스트 관련 부분)
+- name: Run tests with coverage
+  run: |
+    cd backend
+    uv run pytest tests/ --cov=app --cov-fail-under=80 --cov-report=xml
+- name: Upload coverage
+  uses: actions/upload-artifact@v4
+  with:
+    name: coverage-report
+    path: backend/coverage.xml
 ```
-NOTION_TEST_PAGE_ID=xxxx    # 테스트 전용 부모 페이지
-```
 
-테스트 후 생성된 페이지는 자동 archive 처리.
+## QA 체크리스트
 
----
+### 생성 품질
 
-# Part 2: QA 체크리스트
+| 검증 항목 | 검증 방법 |
+|----------|----------|
+| 페이지 제목/아이콘/커버 | 생성된 Notion 페이지 확인 |
+| DB 속성 타입 정확성 | Notion에서 속성 타입 확인 |
+| 샘플 데이터 3개+ | DB 항목 수 확인 |
+| 뷰 설정 반영 | board/calendar/gallery 설정 확인 |
+| 색상 테마 일관성 | 블록 배경색 확인 |
+| Relation 연결 | DB 간 관계 속성 확인 |
+| 서브페이지 내용 | 빈 페이지 없는지 확인 |
 
-## 기본 생성 품질
+### 에러 복구
 
-### 페이지
-
-| # | 항목 | 상태 |
-|---|------|------|
-| 1 | 페이지 제목 정확 | ❌ |
-| 2 | 아이콘 설정됨 | ❌ |
-| 3 | 커버 이미지 표시 | ❌ |
-| 4 | 부모 페이지 아래 생성 | ❌ |
-
-### 데이터베이스
-
-| # | 항목 | 상태 |
-|---|------|------|
-| 5 | DB 제목 정확 | ❌ |
-| 6 | 요청한 속성 모두 존재 | ❌ |
-| 7 | 속성 타입 정확 | ❌ |
-| 8 | Select 옵션 + 색상 | ❌ |
-| 9 | 샘플 데이터 입력됨 | ❌ |
-
-### 레이아웃 & 디자인
-
-| # | 항목 | 상태 |
-|---|------|------|
-| 10 | 칼럼 레이아웃 정상 | ❌ |
-| 11 | 블록 순서 올바름 | ❌ |
-| 12 | 색상 테마 일관적 | ❌ |
-| 13 | 하위 페이지 링크 정상 | ❌ |
-| 14 | Relation 정상 연결 | ❌ |
-
-## 시나리오별 QA
-
-### A. 대시보드
-
-입력: `"프로젝트 대시보드, 주황색, 하위 페이지 3개"`
-
-| 검증 | 기대값 | 상태 |
-|------|--------|------|
-| 메인 페이지 | 제목 + 아이콘 + 커버 | ❌ |
-| 칼럼 | 2단 (좌30/우70) | ❌ |
-| 갤러리 DB | 속성 + 샘플 | ❌ |
-| 색상 | orange_background | ❌ |
-| 하위 3개 | 각각 독립 구조 | ❌ |
-
-### B. 북마크 사이트
-
-입력: `"북마크 정리, 카테고리별, 즐겨찾기"`
-
-| 검증 | 기대값 | 상태 |
-|------|--------|------|
-| 카테고리 목록 | 좌측 배치 | ❌ |
-| 갤러리 DB | 커버 카드 | ❌ |
-| 즐겨찾기 | checkbox 속성 | ❌ |
-| URL | url 속성 | ❌ |
-
-### C. Tea Note 스타일
-
-입력: `"차 시음 기록, 초록색, 종류별"`
-
-| 검증 | 기대값 | 상태 |
-|------|--------|------|
-| 커버 | 초록색 톤 | ❌ |
-| Quick Action | 좌측 배치 | ❌ |
-| 종류 select | 요청 옵션 포함 | ❌ |
-| 하위 페이지 | 인벤토리, 일기장 | ❌ |
-
-## 에러 케이스 QA
-
-| 입력 | 기대 동작 | 상태 |
-|------|----------|------|
-| 빈 메시지 | 안내 응답 | ❌ |
-| 잘못된 토큰 | 토큰 오류 안내 | ❌ |
-| "버튼 넣어줘" | API 제한 안내 + 대안 | ❌ |
-| 극히 복잡한 요청 | 단계별 분할 제안 | ❌ |
-| Rate limit 초과 | 자동 재시도 + 대기 안내 | ❌ |
+| 시나리오 | 기대 동작 |
+|----------|----------|
+| 잘못된 API 키 | 토큰 오류 안내 메시지 |
+| Rate limit 초과 | 자동 재시도 후 성공 |
+| AI 응답 파싱 실패 | Gen-Eval 재시도 (최대 3회) |
+| Notion API 에러 | 속성 폴백 후 재시도 |
+| WebSocket 끊김 | 자동 재연결 |

@@ -1,6 +1,7 @@
 # AI Agent 설계 (Agent Design)
 
-> NotionForge의 핵심: AI Agent가 사용자 의도를 분석하고 Tool을 선택해 Notion 템플릿을 생성하는 구조
+> 최종 업데이트: 2026-05-13
+> 버전: v8.1.0
 
 ---
 
@@ -9,361 +10,281 @@
 ### 전체 구조
 
 ```
-┌─────────────────────────────────────────────┐
-│              Agent Orchestrator              │
-│                                             │
-│  ┌─────────────┐    ┌──────────────────┐   │
-│  │   Intent     │    │    Blueprint     │   │
-│  │  Analyzer    │───→│   Generator     │   │
-│  │ (의도 분석)   │    │  (구조 설계)     │   │
-│  └─────────────┘    └───────┬──────────┘   │
-│                             │              │
-│                      ┌──────▼──────┐       │
-│                      │ Tool Router │       │
-│                      │ (도구 선택)  │       │
-│                      └──────┬──────┘       │
-│                             │              │
-│              ┌──────────────┼──────────┐   │
-│              ▼              ▼          ▼   │
-│         ┌────────┐   ┌──────────┐ ┌──────┐│
-│         │ Page   │   │ Database │ │Block ││
-│         │ Tools  │   │  Tools   │ │Tools ││
-│         └────────┘   └──────────┘ └──────┘│
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                    Agent Orchestrator                         │
+│                                                              │
+│  ┌──────────────┐   ┌───────────────┐   ┌────────────────┐  │
+│  │   Input       │   │   Intent      │   │    Skill       │  │
+│  │  Guardrail   │──→│  Analyzer     │──→│   Router       │  │
+│  │ (인젝션방어)  │   │ (의도+레이아웃)│   │ (48개 스킬)    │  │
+│  └──────────────┘   └───────────────┘   └───────┬────────┘  │
+│                                                  │           │
+│  ┌───────────────────────────────────────────────▼────────┐  │
+│  │              Blueprint Generator                       │  │
+│  │  PromptAssembler → LLM → QualityValidator → PostProc   │  │
+│  │              (Gen-Eval 루프, 최대 3회)                   │  │
+│  └───────────────────────────────────┬────────────────────┘  │
+│                                      │                       │
+│  ┌──────────────────┐   ┌───────────▼──────────┐            │
+│  │  Approval Gate   │←──│  Creation Executor   │            │
+│  │  (사용자 확인)    │   │  (5-Pass 생성)       │            │
+│  └──────────────────┘   └───────────┬──────────┘            │
+│                                      │                       │
+│              ┌───────────────────────┼───────────────┐       │
+│              ▼           ▼           ▼               ▼       │
+│         ┌────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │
+│         │ Page   │ │ Database │ │  Block   │ │  View    │  │
+│         │ Tools  │ │  Tools   │ │  Tools   │ │  Tools   │  │
+│         └────────┘ └──────────┘ └──────────┘ └──────────┘  │
+│                                                              │
+│  ┌──────────────────────────────────────────────────────┐    │
+│  │  Provider Router (Circuit Breaker + Fallback Chain)   │    │
+│  │  Copilot SDK ↔ Claude ↔ Gemini ↔ Groq ↔ OpenAI      │    │
+│  └──────────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-### 처리 파이프라인
+### 처리 파이프라인 (6단계)
 
 ```
-Step 1: Intent Analysis (의도 분석)
-  └─ 사용자 메시지 → Claude API → 구조화된 의도 (JSON)
+Step 1: Input Guardrail
+  └─ 메시지 검증 (길이, 인젝션 패턴 13종, 스팸 감지)
+  └─ risk_level: none / low / medium / high
 
-Step 2: Blueprint Generation (구조 설계)
-  └─ 의도 + 패턴 라이브러리 → Claude API → Template Blueprint (JSON)
+Step 2: Intent Analysis + Layout Routing
+  └─ 의도 분류: CREATE / MODIFY / QUESTION
+  └─ 레이아웃 감지: 8종 (dashboard, kanban, calendar, gallery, ...)
+  └─ 복잡도 판단: simple / standard / advanced
 
-Step 3: Tool Execution (도구 실행)
-  └─ Blueprint → Tool 순서 결정 → Notion API 호출 → 결과 수집
+Step 3: Skill Routing
+  └─ 키워드 빠른경로 (0ms) + LLM 정밀경로 (필요시)
+  └─ 48개 스킬 중 최적 매칭 (Tier2 우선)
 
-Step 4: Validation (검증)
-  └─ 생성 결과 확인 → 에러 시 재시도 → 완료 URL 반환
+Step 4: Blueprint Generation (Gen-Eval Loop)
+  └─ PromptAssembler: base.md + mode + layout + views_catalog + golden
+  └─ LLM 생성 → QualityValidator 3계층 검증
+  └─ 불합격 시 에러 피드백 주입 → 재생성 (최대 3회)
+  └─ PostProcessor: 13종 자동 수정
+
+Step 5: Approval Gate + Creation
+  └─ 사용자 확인 대기 (60초 타임아웃)
+  └─ 5-Pass 생성:
+      Pass 1: 메인 페이지 (아이콘/커버)
+      Pass 2: 데이터베이스 (속성 + Relation)
+      Pass 3: 블록 (중첩 구조)
+      Pass 4: 뷰 (configuration)
+      Pass 5: 샘플 데이터 + 서브페이지
+
+Step 6: Validation + Rollback
+  └─ 생성 결과 검증 (기대 블록/DB 수 vs 실제)
+  └─ 실패 시 자동 롤백 (생성된 리소스 삭제)
 ```
 
 ---
 
-## 2. Intent Analyzer (의도 분석기)
-
-### Claude API 프롬프트 (System)
+## 2. 에러 복구 — 6계층 방어
 
 ```
-당신은 Notion 템플릿 생성 전문가입니다.
-사용자의 자연어 요청을 분석하여 아래 JSON 형식으로 구조화하세요.
-
-분석 결과:
-{
-  "intent": "CREATE | MODIFY | QUESTION | CONFIRM | REJECT",
-  "template_type": "dashboard | tracker | bookmark | project | note | crm | onboarding | custom",
-  "title": "템플릿 제목 (사용자가 명시하지 않으면 적절히 생성)",
-  "color_theme": "blue | orange | green | red | purple | pink | yellow | gray | default",
-  "layout": "single | two_column | three_column",
-  "databases": [
-    {
-      "name": "DB 이름",
-      "purpose": "DB 용도",
-      "properties": ["속성1: 타입", "속성2: 타입"],
-      "view_type": "gallery | table | board | calendar | list"
-    }
-  ],
-  "sub_pages": ["하위 페이지1", "하위 페이지2"],
-  "special_features": ["즐겨찾기 필터", "칼럼 레이아웃", "샘플 데이터"],
-  "missing_info": ["부족한 정보 (AI가 추가 질문할 내용)"],
-  "confidence": 0.85
-}
-
-규칙:
-- 사용자가 정보를 충분히 제공하지 않으면 missing_info에 질문 목록 추가
-- confidence가 0.7 미만이면 반드시 확인 질문
-- 색상은 한국어도 매핑: "하늘색" → "blue", "주황색" → "orange"
-- 템플릿 타입을 명확히 판단할 수 없으면 "custom"
+Layer 1: Input Guardrail      — 프롬프트 인젝션 차단 (13 regex)
+Layer 2: Gen-Eval Loop         — AI 출력 품질 보장 (3회 재시도 + 전략 변경)
+Layer 3: Circuit Breaker       — AI Provider 장애 대응 (3회 실패 → 차단 → 120초 복구)
+Layer 4: Notion API Retry      — 429/502/503 재시도 (지수 백오프)
+Layer 5: Agent Reflection      — 도구 실행 실패 → AI 반성 → 수정된 인자로 재시도
+Layer 6: Transaction Rollback  — 전체 생성 실패 → 부분 결과 삭제
 ```
-
-### 의도 분류 예시
-
-| 사용자 입력 | intent | template_type | confidence |
-|------------|--------|---------------|-----------|
-| "프로젝트 관리 대시보드 만들어줘" | CREATE | dashboard | 0.95 |
-| "습관 트래커 좀" | CREATE | tracker | 0.90 |
-| "노션 만들어줘" | CREATE | custom | 0.30 (질문 필요) |
-| "DB에 태그 속성 추가해줘" | MODIFY | - | 0.85 |
-| "버튼 넣을 수 있어?" | QUESTION | - | 0.90 |
 
 ---
 
-## 3. Blueprint Generator (구조 설계기)
+## 3. 프롬프트 엔지니어링
 
-### 패턴 라이브러리 활용
+### 모듈화 구조
 
-의도 분석 결과의 `template_type`에 따라 사전 정의된 패턴을 기반으로 Blueprint 생성:
+```
+app/agent/prompts/
+├── base.md                 # 핵심 철학 + 블록 타입 + 디자인 규칙
+├── modes/
+│   ├── simple.md           # 15블록 이하, 1-2 DB
+│   ├── standard.md         # 20-30블록, 2-3 DB, Formula OK
+│   └── advanced.md         # 30-50블록, 3-4 DB, 차트/대시보드
+├── layouts/
+│   ├── kanban_board.md
+│   ├── dashboard_widgets.md
+│   ├── calendar_main.md
+│   ├── gallery_hero.md
+│   └── ...                 # 8종
+├── views_catalog.md        # 뷰 6종 configuration 가이드
+├── relations.md            # Relation/Formula/Rollup 패턴
+├── design_tokens.md        # 색상 팔레트, 간격 규칙
+└── golden/                 # Few-shot 예제 (JSON)
+    ├── simple_tracker.json
+    ├── kanban_board.json
+    ├── dashboard_widgets.json
+    └── ...                 # 8종
+```
+
+### 동적 조립 규칙
 
 ```python
-PATTERN_LIBRARY = {
-    "dashboard": {
-        "layout": "two_column",
-        "left_ratio": 30,
-        "left_components": ["calendar", "nav_links"],
-        "right_components": ["heading", "database_gallery"],
-        "default_db_properties": ["이름", "카테고리:select", "상태:status", "날짜:date"],
-        "sub_pages": True,
-    },
-    "tracker": {
-        "layout": "single",
-        "components": ["heading", "stats_callout", "database_table"],
-        "default_db_properties": ["항목", "완료:checkbox", "날짜:date", "메모:rich_text"],
-        "sub_pages": False,
-    },
-    "bookmark": {
-        "layout": "two_column",
-        "left_ratio": 30,
-        "left_components": ["category_list"],
-        "right_components": ["guide_callout", "database_gallery"],
-        "default_db_properties": ["이름", "URL:url", "카테고리:select", "즐겨찾기:checkbox"],
-        "sub_pages": False,
-    },
-    "note": {
-        "layout": "two_column",
-        "left_ratio": 25,
-        "left_components": ["quick_actions", "menu_links"],
-        "right_components": ["guide_toggle", "database_gallery"],
-        "default_db_properties": ["이름", "종류:select", "평점:number", "즐겨찾기:checkbox", "날짜:date"],
-        "sub_pages": True,
-    },
-    "onboarding": {
-        "layout": "single",
-        "components": ["welcome_callout", "weekly_checklists", "department_columns", "handover_db", "faq_toggles"],
-        "default_db_properties": ["항목", "담당자:people", "상태:status", "기한:date"],
-        "sub_pages": True,
-    },
-}
+prompt = base.md                      # 항상 포함
+prompt += modes/{complexity}.md       # 복잡도별
+prompt += layouts/{layout}.md         # 레이아웃별 (있으면)
+prompt += views_catalog.md            # 뷰 옵션
+prompt += relations.md                # Relation 패턴
+prompt += golden/{layout}.json        # Few-shot 예제
+
+# 프롬프트 크기 > max_chars 시 압축 모드 전환
 ```
 
-### Blueprint JSON 구조
+### 핵심 철학
 
-```json
-{
-  "version": "1.0",
-  "metadata": {
-    "title": "프로젝트 대시보드",
-    "template_type": "dashboard",
-    "color_theme": "orange",
-    "created_by": "NotionForge",
-    "estimated_api_calls": 25
-  },
-  "pages": [
-    {
-      "id": "main",
-      "title": "프로젝트 대시보드",
-      "icon": { "type": "emoji", "emoji": "🏢" },
-      "cover": { "type": "external", "url": "..." },
-      "children": [
-        {
-          "type": "column_list",
-          "columns": [
-            {
-              "ratio": 30,
-              "children": [
-                { "type": "linked_database", "ref": "main_db", "view": "calendar" },
-                { "type": "heading_2", "text": "ETC", "color": "orange_background" },
-                { "type": "page_link", "ref": "sub_etc" }
-              ]
-            },
-            {
-              "ratio": 70,
-              "children": [
-                { "type": "heading_1", "text": "Project", "color": "orange_background" },
-                { "type": "child_database", "ref": "main_db" }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "sub_etc",
-      "title": "ETC",
-      "icon": { "type": "emoji", "emoji": "🎪" },
-      "parent": "main",
-      "children": [ "..." ]
-    }
-  ],
-  "databases": [
-    {
-      "id": "main_db",
-      "title": "Projects",
-      "is_inline": true,
-      "properties": {
-        "이름": { "type": "title" },
-        "카테고리": {
-          "type": "select",
-          "options": [
-            { "name": "LLM", "color": "purple" },
-            { "name": "Web", "color": "blue" },
-            { "name": "Mobile", "color": "green" },
-            { "name": "Data", "color": "orange" }
-          ]
-        },
-        "상태": { "type": "status" },
-        "날짜": { "type": "date" }
-      },
-      "sample_items": [
-        {
-          "이름": "LLM Model Comparison",
-          "카테고리": "LLM",
-          "icon": "🐱",
-          "cover_url": "..."
-        }
-      ]
-    }
-  ]
-}
+```
+"Match the user's intent — no more, no less."
+
+- "물 마신 양 기록" → 1 DB + table 뷰. 과하게 만들지 않는다.
+- "창업 대시보드" → 멀티 DB + 리치 뷰 + 링크드뷰 + 차트.
+- AI의 역할은 적절한 복잡도를 판단하는 것.
 ```
 
 ---
 
-## 4. Tools 정의 (Agent가 사용하는 도구)
+## 4. Tool Registry (9개 도구)
 
-### Tool 목록
+| # | Tool | 설명 | LLM Function Calling 스펙 |
+|---|------|------|--------------------------|
+| 1 | `create_page` | 페이지 생성 (아이콘/커버) | title, icon, cover_url, parent_id |
+| 2 | `create_database` | DB 생성 + 속성 설정 | title, properties, is_inline |
+| 3 | `add_blocks` | 블록 추가 (중첩 지원) | page_id, blocks[] |
+| 4 | `create_view` | 뷰 생성 (6종 + config) | db_id, view_type, config |
+| 5 | `add_sample_data` | DB 샘플 항목 추가 | db_id, items[] |
+| 6 | `create_sub_page` | 서브페이지 생성 | parent_id, title, blocks[] |
+| 7 | `modify_template` | 기존 템플릿 수정 | page_id, modifications |
+| 8 | `link_databases` | DB 간 Relation 설정 | source_db, target_db |
+| 9 | `generate_cover` | 커버 이미지 URL 생성 | category, theme |
 
-| # | Tool | 설명 | 입력 | 출력 |
-|---|------|------|------|------|
-| 1 | `create_page` | 노션 페이지 생성 | title, icon, cover, parent_id | page_id, url |
-| 2 | `create_database` | DB 생성 + 속성 설정 | title, properties, parent_id, is_inline | database_id |
-| 3 | `add_blocks` | 블록 추가 | page_id, blocks[] | block_ids[] |
-| 4 | `create_columns` | 칼럼 레이아웃 생성 | page_id, columns[] | column_ids[] |
-| 5 | `add_database_items` | DB에 샘플 항목 추가 | database_id, items[] | page_ids[] |
-| 6 | `apply_color_theme` | 색상 테마 적용 | page_id, theme | success |
-| 7 | `link_databases` | DB 간 Relation 설정 | source_db, target_db, name | property_id |
-| 8 | `generate_cover` | 커버 이미지 URL 생성 | theme, color, style | image_url |
-
-### Tool 실행 순서 규칙
+### Agent Loop 실행 흐름
 
 ```
-1. create_page (메인) → page_id 획득
-2. create_page (하위) → sub_page_ids 획득 (병렬 가능)
-3. create_database → database_ids 획득 (page_id 필요)
-4. create_columns → 칼럼에 DB 배치 (page_id + database_id 필요)
-5. add_blocks → 추가 블록 배치 (page_id 필요)
-6. add_database_items → 샘플 데이터 (database_id 필요)
-7. apply_color_theme → 마지막에 전체 적용
-```
-
-**의존성 그래프:**
-```
-create_page(main)
-  ├─→ create_page(sub1) ─┐
-  ├─→ create_page(sub2) ─┤ (병렬)
-  ├─→ create_page(sub3) ─┘
-  └─→ create_database ──→ create_columns ──→ add_blocks
-                          └─→ add_database_items
-                                              └─→ apply_color_theme
+AI가 도구 선택 (function calling)
+  → Tool Registry에서 도구 조회
+  → 인자 검증 + 실행
+  → 결과를 AI에 반환
+  → AI가 다음 도구 선택 또는 완료
+  → 실패 시: AI가 에러 분석 → 수정된 인자로 재시도
 ```
 
 ---
 
-## 5. 색상 테마 매핑
+## 5. QualityValidator — 3계층 검증
 
-### Notion API 지원 색상
+### 검증 구조
+
+```
+Layer 1: Schema Validation (가중치 50%)
+  ├─ title 필드 존재
+  ├─ blocks[] 비어있지 않음
+  ├─ databases[] 비어있지 않음
+  ├─ 블록 타입 유효성 (20종)
+  ├─ database_ref에 db_index 존재
+  ├─ db_index 범위 내
+  ├─ column_list 안에 database_ref 없음 (Critical)
+  ├─ DB에 title 속성 존재
+  ├─ 속성 타입 유효성
+  └─ Relation/Formula/Rollup 정합성
+
+Layer 2: Content Validation (가중치 30%)
+  ├─ 샘플 항목 3개 이상
+  ├─ 중복 제목 없음
+  ├─ 제목 길이 적절
+  ├─ Status 값 다양성
+  ├─ 빈 텍스트 블록 비율 제한
+  └─ 서브페이지 제목 존재
+
+Layer 3: Design Validation (가중치 20%)
+  ├─ 첫 블록 = callout (환영 메시지)
+  ├─ heading 블록 존재 (섹션 구조)
+  ├─ 색상 일관성 (배경색 테마)
+  ├─ 연속 동일 블록 없음
+  ├─ 서브페이지 아이콘 존재
+  └─ database_ref가 첫 3블록에 없음
+
+합격 기준: total_score >= 60 AND critical_issues == 0
+```
+
+### PostProcessor 자동 수정 (13종)
+
+```
+1.  welcome callout 보장 (없으면 추가)
+2.  guide toggle 보장 (하단)
+3.  column_list 안 database_ref → 페이지 레벨로 이동
+4.  섹션 간 spacing paragraph 삽입
+5.  database_ref 참조 유효성 검증
+6.  Status 값 한글화
+7.  샘플 항목 최소 3개 보장
+8.  샘플 아이콘 추가
+9.  cover_category 보장
+10. 서브페이지 아이콘 추가
+11. table_of_contents 라벨링
+12. 뷰 속성 검증
+13. 디자인 다양성 강화
+```
+
+---
+
+## 6. Provider Strategy Pattern
+
+### 아키텍처
+
+```
+ProviderRouter
+  ├─ CircuitBreaker (provider별 상태 관리)
+  │    ├─ threshold: 3회 연속 실패 → 회로 개방
+  │    ├─ reset: 120초 후 half-open
+  │    └─ 상태: closed → open → half-open → closed
+  │
+  └─ Fallback Chain
+       ├─ 1순위: Copilot SDK (기본)
+       ├─ 2순위: Claude (높은 품질)
+       ├─ 3순위: Gemini (대용량)
+       ├─ 4순위: Groq (빠른 응답)
+       └─ 5순위: OpenAI (범용)
+```
+
+### Provider 인터페이스
 
 ```python
-COLOR_THEMES = {
-    "blue": {
-        "background": "blue_background",
-        "text": "blue",
-        "cover_keywords": "sky, ocean, blue gradient",
-        "korean": ["하늘색", "파란색", "블루"],
-    },
-    "orange": {
-        "background": "orange_background",
-        "text": "orange",
-        "cover_keywords": "sunset, warm, orange gradient",
-        "korean": ["주황색", "오렌지"],
-    },
-    "green": {
-        "background": "green_background",
-        "text": "green",
-        "cover_keywords": "nature, forest, green gradient",
-        "korean": ["초록색", "연두색", "그린"],
-    },
-    "red": {
-        "background": "red_background",
-        "text": "red",
-        "cover_keywords": "warm red, coral",
-        "korean": ["빨간색", "레드", "코랄"],
-    },
-    "purple": {
-        "background": "purple_background",
-        "text": "purple",
-        "cover_keywords": "lavender, purple gradient",
-        "korean": ["보라색", "퍼플", "라벤더"],
-    },
-    "pink": {
-        "background": "pink_background",
-        "text": "pink",
-        "cover_keywords": "pink, cherry blossom",
-        "korean": ["핑크", "분홍색"],
-    },
-    "yellow": {
-        "background": "yellow_background",
-        "text": "yellow",
-        "cover_keywords": "sunshine, yellow gradient",
-        "korean": ["노란색", "옐로우"],
-    },
-    "gray": {
-        "background": "gray_background",
-        "text": "gray",
-        "cover_keywords": "minimal, monochrome",
-        "korean": ["회색", "그레이", "모노"],
-    },
-}
+class BaseProvider:
+    name: str
+    supports_json_mode: bool
+    supports_function_calling: bool
+
+    async def call(system_prompt, user_message, model) -> dict | None
+    async def call_with_tools(system_prompt, user_message, tools, model) -> dict | None
+    def extract_json(text) -> dict | None
 ```
 
 ---
 
-## 6. 프롬프트 엔지니어링
+## 7. Notion API 커버리지
 
-### System Prompt (Agent 기본 성격)
-
-```
-당신은 NotionForge AI Agent입니다. 사용자의 요청을 받아 Notion 템플릿을 자동 생성합니다.
-
-역할:
-1. 사용자의 자연어 요청을 분석하여 의도를 파악합니다
-2. 부족한 정보가 있으면 친절하게 질문합니다
-3. 확인된 정보로 Template Blueprint를 생성합니다
-4. Tool을 순서대로 호출하여 실제 Notion 페이지를 생성합니다
-
-대화 스타일:
-- 한국어로 대화합니다
-- 친절하지만 간결하게 답합니다
-- 구조를 제안할 때는 트리 형태로 보여줍니다
-- 생성 전에 반드시 사용자 확인을 받습니다
-- 불가능한 기능은 솔직히 말하고 대안을 제시합니다
-
-제약사항:
-- Notion API로 생성할 수 없는 요소: button 블록, synced 블록, 복잡한 formula
-- DB 뷰는 기본 뷰만 생성 가능, 추가 뷰 설정은 사용자에게 안내
-- Rate limit: 3 req/s, 블록 100개씩 배치 처리
-```
-
-### 확인 질문 전략
+### 블록 타입 (20종)
 
 ```
-필수 질문 (confidence < 0.7):
-- "어떤 용도의 템플릿인가요?"
+heading_1, heading_2, heading_3, paragraph, callout, quote,
+toggle, bulleted_list_item, numbered_list_item, to_do,
+divider, table_of_contents, column_list, database_ref,
+linked_view, image, bookmark, embed, code, tab
+```
 
-선택 질문 (정보 보충):
-- "색상 톤 선호가 있나요?" (미지정 시 기본 gray)
-- "카테고리/태그 옵션을 알려주세요" (DB 포함 시)
-- "하위 페이지도 필요한가요?" (복잡한 구조 시)
-- "샘플 데이터를 몇 개 넣을까요?" (기본 5개)
+### 뷰 타입 (6종 + 실험적 1종)
 
-질문은 최대 3개까지만. 너무 많이 물으면 UX 저하.
+```
+table, board, calendar, gallery, list, timeline, chart(실험적)
+```
+
+### 속성 타입 (17종)
+
+```
+title, rich_text, number, select, multi_select, status, date,
+people, files, checkbox, url, email, phone_number,
+formula, relation, rollup, created_time, last_edited_time
 ```

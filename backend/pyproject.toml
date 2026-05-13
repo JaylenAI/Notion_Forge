@@ -1,8 +1,18 @@
 [project]
 name = "notionforge-backend"
-version = "0.1.0"
+version = "8.1.0"
 description = "NotionForge - AI 기반 노션 템플릿 자동 생성 에이전트"
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11"
+authors = [{ name = "NotionForge Contributors" }]
+keywords = ["notion", "ai-agent", "template", "fastapi", "llm"]
+
+[project.urls]
+Homepage = "https://github.com/JaylenAI/notion_ai_agent"
+Repository = "https://github.com/JaylenAI/notion_ai_agent"
+Documentation = "https://github.com/JaylenAI/notion_ai_agent/tree/main/docs"
+Issues = "https://github.com/JaylenAI/notion_ai_agent/issues"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",

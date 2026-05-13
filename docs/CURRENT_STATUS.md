@@ -1,290 +1,156 @@
 # 진행 현황 (Current Status)
 
-> 최종 업데이트: 2026-04-24
+> 최종 업데이트: 2026-05-13
 > 현재 브랜치: dev
-> 버전: v8.0.0 (엔터프라이즈급 AI Agent 아키텍처)
+> 버전: v8.1.0 (오픈소스 배포 준비 + 보안 강화)
 
 ---
 
 ## 전체 진행률
 
 ```
-Notion API 74개 기능       [██████████] 100%
-AI 자유 설계 시스템         [██████████] 100%
-AI 프로 디자인 시스템       [██████████] 100%
-스킬 시스템 48개           [██████████] 100%
-프론트엔드 UI 5페이지      [██████████] 100%
-NotionRenderer 14블록     [██████████] 100%
-Library 수동 저장          [██████████] 100%
-테스트 39/39              [██████████] 100%
-프론트엔드 UI/UX 고도화    [██████████] 100%
-페이지 전체 너비           [██████████] 100%
-링크드 DB 뷰              [██████████] 100%
-블록 position 제어        [██████████] 100%
-미리보기=실제 일치         [██████████] 100%
-DB 고도화 (desc/icon)     [██████████] 100%
-뷰 고도화 (group_by등)    [██████████] 100%
-코멘트 강화               [██████████] 100%
-페이지 이동/마크다운       [██████████] 100%
-복잡도 스케일링           [██████████] 100%
-링크드 DB뷰+필터          [██████████] 100%
-── v6.0.0 신규 ──
-Relation/Rollup/Formula   [██████████] 100%
-서브페이지 AI 패스스루     [██████████] 100%
-혼합 리치텍스트            [██████████] 100%
-디자인 토큰 시스템         [██████████] 100%
-멀티턴 대화형 수정         [██████████] 100%
-복잡도/언어 선택 UI        [██████████] 100%
-Blueprint Export/Import   [██████████] 100%
-커뮤니티 레시피 갤러리     [██████████] 100%
-다국어 지원 (한/영/일)     [██████████] 100%
-멀티 에이전트 파이프라인   [██████████] 100%
-Document-to-Notion        [██████████] 100%
-OAuth 연동                [██████████] 100%
-배포 준비                 [██████████] 100%
-── v6.1.0 Copilot SDK ──
-Copilot SDK 연동 (7모델)   [██████████] 100%
-Views API configuration    [██████████] 100%
-CRUD API 완전 구현          [██████████] 100%
-── v7.0.0 하네스 엔지니어링 ──
-프롬프트 모듈화 (.md 13개)  [██████████] 100%
-Intent Router (8 레이아웃)  [██████████] 100%
-레이아웃 프롬프트 8종        [██████████] 100%
-Post-processor 검증 (7규칙) [██████████] 100%
-Gen-Eval 피드백 루프 (3회)  [██████████] 100%
-Compact 프롬프트 (Copilot)  [██████████] 100%
-Copilot 모델 선택 UI        [██████████] 100%
-Observability 로깅          [██████████] 100%
-.env.example + README 정리  [██████████] 100%
-── v7.1.0 하네스 고도화 ──
-Nesting 패턴 (children)     [██████████] 100%
-레이아웃 JSON 예시 8종       [██████████] 100%
-스킬 핵심 패턴 추출          [██████████] 100%
-link_to_page 동적 주입       [██████████] 100%
-DB 배치 전략 (서브페이지)     [██████████] 100%
-2-Stage 파이프라인 (auto)    [██████████] 100%
-Model Escalation (3단계)     [██████████] 100%
-테스트 71/71                [██████████] 100%
-── v7.2.0 프로 템플릿 + 스킬 확장 ──
-골든 블루프린트 8종 (Few-Shot) [██████████] 100%
-스킬 세분화 37개 (12→37)     [██████████] 100%
-스킬 자동 매칭 (Tier2 우선)   [██████████] 100%
-Post-Creation Validation    [██████████] 100%
-── v7.3.0 안전성 + 관측성 ──
-Input Guardrail (인젝션방어) [██████████] 100%
-Approval Gate (생성 전 확인)  [██████████] 100%
-Rollback (실패시 자동삭제)    [██████████] 100%
-Structured JSON Logging      [██████████] 100%
-Metrics + History 저장        [██████████] 100%
-스킬 48개 확장 (37→48)        [██████████] 100%
-AI 대화 히스토리 전달          [██████████] 100%
-실패시 전략 변경 (간소화)      [██████████] 100%
-Approval Gate UI (확인/취소)   [██████████] 100%
-모델 퀵 디스플레이 (채팅하단)  [██████████] 100%
-CONTRIBUTING.md               [██████████] 100%
-Docker 볼륨 (이력 영속)       [██████████] 100%
-── v7.4.0 코드 품질 + 테스트 강화 ──
-God Object 분해 (4모듈)       [██████████] 100%
-Provider Strategy 패턴        [██████████] 100%
-Pydantic 스키마 정비           [██████████] 100%
-테스트 246개 (71→246)         [██████████] 100%
-Path traversal 방어            [██████████] 100%
-DB property key 호환 수정      [██████████] 100%
-REST Approval auto-approve    [██████████] 100%
-── v7.5.0 스킬 확장 + 품질 마무리 ──
-48개 스킬 (11개 Tier2 추가)    [██████████] 100%
-커버 이미지 75개 (25cat×3)    [██████████] 100%
-print→logger 전환 (11개소)    [██████████] 100%
-OAuth FRONTEND_URL 환경변수    [██████████] 100%
-docker-compose.dev 포트수정    [██████████] 100%
-보안 강화 (에러상세 제거)       [██████████] 100%
-NotionClient.close() 추가     [██████████] 100%
-blueprint_generator 분할       [██████████] 100%
-creation 로직 통합             [██████████] 100%
-modify_handler 디스패치        [██████████] 100%
-라우터 분할 (3개 라우터)        [██████████] 100%
-chatStore 분할 (3개 스토어)    [██████████] 100%
-WebSocket 자동 재연결          [██████████] 100%
+AI Agent 아키텍처            [██████████] 100%  Plan-Execute-Reflect + Tool Registry
+AI Provider 5종              [██████████] 100%  Copilot/Claude/Gemini/Groq/OpenAI
+스킬 시스템 48개             [██████████] 100%  12 Tier1 + 36 Tier2
+Notion API 74+ 기능          [██████████] 100%  블록 20종, 뷰 6종, Relation/Formula/Rollup
+프론트엔드 UI 5페이지        [██████████] 100%  다크/라이트, 반응형, 키보드 단축키
+프롬프트 엔지니어링           [██████████] 100%  모듈화 .md 13개 + 골든 예제 8종
+3계층 품질 검증              [██████████] 100%  Schema/Content/Design + 자동 수정
+보안 미들웨어                [██████████] 100%  Rate Limit, CSRF, 에러 정제, 업로드 검증
+CI/CD 파이프라인             [██████████] 100%  lint→test→typecheck→docker→security
+테스트 1215개 (82% 커버리지)  [██████████] 100%  unit + integration, fail_under=80
+문서화                       [██████████] 100%  README, API, ARCHITECTURE, SECURITY 등
+Docker 배포                  [██████████] 100%  Multi-stage, health check, 리소스 제한
 ```
 
 ---
 
-## 완료 기능
+## 버전별 주요 변경사항
 
-### AI Agent
-- ✅ AI 자유 설계 (blocks[] + databases[] 모두 AI가 결정)
-- ✅ 48개 스킬 (12 Tier1 + 36 Tier2 도메인 특화)
-- ✅ 5개 AI 프로바이더 (Copilot SDK / Claude / Gemini / Groq / OpenAI)
-- ✅ Provider Strategy 패턴 (agent/providers/ 디렉토리)
-- ✅ 동적 모델 선택 (API로 모델 목록 조회)
-- ✅ 스마트 폴백 6개 (AI 실패 시 키워드 기반)
-- ✅ 실시간 스트리밍 (매 단계 WebSocket + 실시간 progress 로그)
-- ✅ Input Guardrail (프롬프트 인젝션 방어)
-- ✅ Approval Gate (생성 전 사용자 확인/취소)
-- ✅ Rollback (생성 실패 시 자동 삭제)
-- ✅ Metrics + History (토큰, 시간, 재시도 기록)
+### v8.1.0 (2026-05-13) — 오픈소스 배포 준비
+- Rate Limiting 미들웨어 (IP 기반 슬라이딩 윈도우)
+- OAuth CSRF state 파라미터 + 5분 TTL
+- WebSocket 보안 (10초 init, 토큰 검증, 20 msg/min)
+- 에러 메시지 정제 (`sanitize_error()`)
+- 파일 업로드 검증 (10MB, 확장자 화이트리스트)
+- GitHub Actions CI (lint → test 80% → typecheck → docker → security)
+- 테스트 1215개 (82% 커버리지)
+- SECURITY.md, DEPLOYMENT.md, RELEASE_CHECKLIST.md 신규
 
-### AI 프로 디자인 시스템 (v5.1.0+)
-- ✅ 시스템 프롬프트 전면 재작성 (Thomas Frank/Easlo 수준 디자인 규칙 50+개)
-- ✅ 색상 팔레트 2-3색 제한 규칙 (스킬별 추천 팔레트 7종)
-- ✅ 대시보드 컬럼 레이아웃 30/70 분할
-- ✅ 정보 계층 구조 강제 (callout→spacing→columns→DB→toggle)
-- ✅ 아마추어 안티패턴 11가지 방지 규칙
-- ✅ DB 뷰-속성 자동 매칭 규칙 (status→board, date→calendar 등)
-- ✅ 커버 이미지 75개 (25 카테고리 x 3장)
-- ✅ 48개 스킬 전체에 Pro Design Guide 섹션
-- ✅ 블록 다양성 강제 (quote/to_do/numbered_list 최소 3개)
-- ✅ 서브페이지 내용 자동 생성 (빈 페이지 방지)
-- ✅ **미리보기=실제 노션 일치** (column 안 database_ref 금지 규칙)
+### v8.0.0 (2026-04-24) — 엔터프라이즈급 Agent
+- Plan-Execute-Reflect Agent Loop
+- Tool Registry 9개 도구
+- Provider Strategy 패턴 (6종 + Mock)
+- Episodic Memory (성공/실패 학습)
+- QualityValidator 3계층 검증
+- God Object 분할 (4모듈)
+- 테스트 246개
 
-### Notion API (74개 + 확장)
-- ✅ 블록 30+ 종, 인라인 서식 전체, 미디어 전체
-- ✅ DB 뷰 10종 (Views API + data_source_id)
-- ✅ 샘플 데이터 자동 삽입 (5개+, status 한→영 매핑 50+패턴)
-- ✅ TYPE_ALIASES 17개, Legacy API 호환
-- ✅ 컬럼 width_ratio 지원 (30/70 대시보드 분할)
-- ✅ 페이지 전체 너비 자동 설정 (Internal API, token_v2)
-- ✅ 링크드 DB 뷰 생성 (Views API create_database)
-- ✅ **블록 position 제어** (after_block, page_end)
-- ✅ **서브페이지 하단 배치** (position: page_end)
-- ✅ DB title 속성 자동 보장
-- ✅ 이모지 유효성 자동 폴백
-- ✅ **DB description/icon/cover** 지원
-- ✅ **뷰 group_by/sub_group_by/quick_filters/properties/position** 지원
-- ✅ **블록 레벨 코멘트 + 답글 스레드** (discussion_id)
-- ✅ **페이지 이동 API** (move_page — 부모 변경)
-- ✅ **마크다운 콘텐츠 교체** (update_page_content_markdown)
-- ✅ **링크드 DB뷰 + 필터** (같은 DB를 다른 필터로 다른 위치에 표시)
-- ✅ **복잡도 스케일링** (simple 10-15 / medium 15-25 / complex 25-40 블록)
-- ✅ **3컬럼 대시보드 레이아웃** (위젯 그리드 + toggle 네비게이션)
-- ✅ **NotionClient.close()** 리소스 정리
+### v7.x (2026-03~04) — 하네스 엔지니어링
+- 프롬프트 모듈화 (.md 13개 + 골든 JSON 8종)
+- 스킬 48개 (12→48)
+- Input Guardrail + Approval Gate + Rollback
+- Gen-Eval 피드백 루프 (최대 3회)
+- 복잡도 스케일링 (simple/standard/advanced)
 
-### 프론트엔드 (기본)
-- ✅ 다크 테마 5페이지 (Dashboard/Library/Integrations/Profile/Support)
-- ✅ 프롬프트 스타터 카드 6개 (원클릭 생성)
-- ✅ NotionRenderer: 14개 블록 + 4개 DB 뷰 (Table/Board/Calendar/Gallery)
-- ✅ Library 수동 저장 (Save to Library 버튼, 중복 방지)
-- ✅ 완료 후 액션 버튼 (Open in Notion + Save to Library + Copy URL + Create Another)
-- ✅ 에러 상태 UI + ErrorBoundary 복구 버튼
-- ✅ UI 영어 통일
-- ✅ Mock 데이터 완전 제거 → 실제 데이터 연동
-
-### 프론트엔드 UI/UX 고도화 (v5.0.0+)
-- ✅ 채팅 메시지 마크다운 렌더링 (react-markdown + remark-gfm)
-- ✅ 메시지 타임스탬프 표시 (hover 시 "3분 전" 상대시간)
-- ✅ 채팅 히스토리 세션 관리 (자동저장/복원, 최대 50개)
-- ✅ 다크/라이트 모드 토글 (CSS 변수 기반 테마 시스템)
-- ✅ 모바일 반응형 (768px 이하 탭 전환, 오버레이 사이드바)
-- ✅ 키보드 단축키 (Cmd+N 새 템플릿, Cmd+K 커맨드 팔레트)
-- ✅ 생성 중 취소 버튼 (AbortController + WebSocket cancel)
-- ✅ 토스트 알림 (react-hot-toast — 저장/연결/에러 피드백)
-- ✅ 미리보기 줌 인/아웃 (50%~150%, 5단계)
-- ✅ Notion URL 복사 버튼 (클립보드 + 토스트 확인)
-- ✅ 프롬프트 템플릿 라이브러리 (4개 카테고리 x 18개 프롬프트)
-- ✅ 커스텀 리사이저블 패널 (라이브러리 의존 제거, 순수 구현)
-- ✅ 실시간 progress 로그 스트림 (생성 과정 실시간 표시)
-- ✅ PRO PLAN 제거, Support를 nav 항목으로 이동
-- ✅ 한글 IME 입력 수정 (isComposing 체크)
-- ✅ chatStore 분할 (chatStore + connectionStore + settingsStore)
-- ✅ WebSocket 자동 재연결
-
-### 테스트
-- ✅ 246개 통과 (unit + integration)
-- ✅ 실제 Notion 생성 QA 8건 전부 성공
-- ✅ E2E 테스트 L1~L3 전부 성공 (샘플 15/15)
-
-### v6.0.0 신규 기능 (2026-04-08)
-
-#### Phase A: 템플릿 품질 프로화
-- ✅ Relation + Rollup + Formula 자동 생성 (DB 간 연결, 수식, 집계)
-- ✅ 서브페이지 AI 블록 패스스루 (하드코딩 덮어쓰기 버그 수정)
-- ✅ 혼합 리치텍스트 포맷팅 (bold+color, rich_text 배열 지원)
-- ✅ 디자인 토큰 시스템 (카테고리별 이모지/색상/스타일 통일)
-
-#### Phase B: 멀티턴 대화형 수정
-- ✅ 속성 추가/삭제/변경 (select, date, number, text, checkbox 등)
-- ✅ 뷰 추가/변경 (board, calendar, gallery, timeline, table, list)
-- ✅ DB 추가 (AI 기반 새 DB 자동 설계 + 생성)
-- ✅ Relation 연결 ("프로젝트랑 태스크 연결해줘")
-- ✅ Formula 추가 (D-Day, 진행률, 총액, 상태 이모지 등)
-- ✅ 서브페이지 추가 ("새 하위 페이지 추가해줘")
-- ✅ 블록 추가 (FAQ, 섹션, 텍스트)
-
-#### Phase C: 사용자 경험 + 레시피
-- ✅ 복잡도 선택 UI (Simple/Standard/Advanced) + 백엔드 연동
-- ✅ 다국어 선택 UI (KR/EN/JP) + AI 응답 언어 매칭
-- ✅ Blueprint JSON Export/Import (LivePreview 툴바)
-- ✅ 커뮤니티 레시피 갤러리 (recipes/ + API + 프론트엔드 UI)
-- ✅ i18n 시스템 (한/영/일 번역 키)
-
-#### Phase D: AI 고도화 + 배포 준비
-- ✅ 멀티 에이전트 파이프라인 (Architect→Designer→Content→Validator)
-- ✅ Document-to-Notion (CSV/MD/TXT/PDF → 자동 템플릿 생성)
-- ✅ OAuth 연동 (Notion OAuth 플로우 — 토큰 복붙 제거)
-- ✅ 배포 준비 (.env.example 정리, Docker 최적화, 버전 6.0.0)
-
-#### 커스텀 스킬 시스템 (v6.0.0)
-- ✅ 커스텀 스킬 CRUD API (/api/skills — 생성/조회/수정/삭제)
-- ✅ custom_skills/ 디렉토리 자동 로딩 (내장 12개 + 유저 커스텀)
-- ✅ 커스텀 스킬 우선 로딩 (같은 이름이면 커스텀 우선)
-- ✅ Integrations 페이지에 Custom Skills 관리 UI
-- ✅ AI 프롬프트에 커스텀 스킬 자동 주입
+### v6.x (2026-04) — 풀스택 완성
+- Relation/Rollup/Formula 자동 생성
+- 멀티턴 대화형 수정
+- Views API configuration 완전 구현
+- OAuth 연동 + Document-to-Notion
+- 커뮤니티 레시피 갤러리
 
 ---
 
-## v6.1.0 변경사항 (2026-04-10 — API 파이프라인 완성 + 프롬프트 전환)
+## 아키텍처 개요
 
-### Views API configuration 파이프라인 완성
-- ✅ `create_view()`에 `configuration` 파라미터 추가 — AI blueprint의 뷰 설정이 실제로 반영됨
-- ✅ `_build_view_configuration()` 메서드 — 10개 뷰 타입 전체 config 빌드 (board cover, gallery card, chart x/y축, timeline arrows 등)
-- ✅ `create_linked_view()`에도 `group_by`, `configuration` 파라미터 추가
-- ✅ modify 흐름에서도 board/gallery 뷰 추가 시 cover 자동 설정
-- ✅ configuration 에러 시 자동 폴백 (config 제거 후 재시도)
-
-### 블록/뷰/페이지 CRUD API 완전 구현
-- ✅ `update_view()` — 뷰 설정 수정
-- ✅ `delete_view()` — 뷰 삭제
-- ✅ `list_views()` — DB 뷰 목록 조회
-- ✅ `get_view()` — 뷰 상세 조회
-- ✅ `get_block()`, `get_block_children()` — 블록 조회 (페이지네이션 자동)
-- ✅ `update_block()` — 블록 내용 수정
-- ✅ `delete_block()` — 블록 삭제
-- ✅ `query_database()` — DB 항목 필터/정렬 쿼리
-- ✅ `get_page()`, `update_page()`, `delete_page()` — 페이지 CRUD
-
-### 멀티턴 수정 기능 확장
-- ✅ 뷰 삭제 ("캘린더 뷰 삭제해줘") — list_views → delete_view 활용
-- ✅ 블록 삭제 ("'FAQ' 블록 삭제해줘") — get_block_children → delete_block 활용
-
-### 프롬프트 "규칙" → "메뉴판" 전환
-- ✅ 하드코딩 강제 규칙 제거 ("ALWAYS include", "MUST have 3 views" 등)
-- ✅ View Catalog 섹션 추가 — 10개 뷰 타입별 configuration 예시 + 사용 가이드라인
-- ✅ 핵심 철학 전환: "Match the user's intent — no more, no less"
-- ✅ tab 블록 프롬프트에 사용법 추가
-
-### 기존 테스트 버그 수정
-- ✅ `test_build_database_properties_select` — title 속성 누락 문제 수정
+```
+User Input
+  → InputGuardrail (프롬프트 인젝션 방어)
+  → IntentAnalyzer (의도 분석 + 레이아웃 라우팅)
+  → SkillRouter (키워드 빠른경로 + LLM 정밀경로)
+  → BlueprintGenerator (Gen-Eval 피드백 루프, 최대 3회)
+      → PromptAssembler (base.md + mode + layout + views_catalog)
+      → QualityValidator (Schema 50% + Content 30% + Design 20%)
+      → PostProcessor (13종 자동 수정)
+  → ApprovalGate (사용자 확인/취소)
+  → CreationExecutor (5-Pass 생성)
+      Pass 1: 메인 페이지 + 아이콘/커버
+      Pass 2: 데이터베이스 (속성 + Relation)
+      Pass 3: 블록 (중첩 구조 포함)
+      Pass 4: 뷰 (configuration 포함)
+      Pass 5: 샘플 데이터 + 서브페이지
+  → Rollback (실패 시 자동 삭제)
+```
 
 ---
 
-## v8.0.0 변경사항 (2026-04-24 — 엔터프라이즈급 AI Agent)
+## 기술 스택
 
-### Phase 1: Foundation
-- ✅ Provider Strategy 패턴 통합 (6개 프로바이더 + MockProvider)
-- ✅ God Object 분할 — client.py(896줄→5파일), NotionRenderer.tsx(845줄→5파일)
-- ✅ 보안 취약점 5건 수정 (Path Traversal, OAuth 토큰 노출, 입력 검증, ID UUID 검증)
+| 영역 | 기술 | 버전 |
+|------|------|------|
+| Backend | Python / FastAPI / uv | 3.11+ / 0.115+ |
+| Frontend | React / TypeScript / Vite | 19 / 5.7 / 7 |
+| 상태관리 | Zustand | 5 |
+| 스타일 | TailwindCSS | 4 |
+| AI | Copilot SDK / Claude / Gemini / Groq / OpenAI | Strategy Pattern |
+| Notion | notion-client + httpx (Views API 2025-09-03) | 2.x |
+| 테스트 | pytest / pytest-asyncio / pytest-cov | 80% 커버리지 |
+| CI/CD | GitHub Actions | lint + test + typecheck + docker + security |
+| 배포 | Docker Compose (Multi-stage) | dev/prod |
+| 보안 | Rate Limit / CSRF / gitleaks / bandit | |
 
-### Phase 2: Agent Core Architecture
-- ✅ Tool Registry — 9개 도구 자동 등록 + LLM function calling 스펙 생성
-- ✅ Plan-Execute-Reflect Agent Loop — AI가 도구 직접 선택·실행·검증
-- ✅ 하이브리드 SkillRouter — 키워드 매칭(빠른 경로) + LLM 분류(정밀 경로)
-- ✅ Episodic Memory — 성공/실패 패턴 학습, 유저 선호도 기억, AI 컨텍스트 주입
+---
 
-### Phase 4: Template Quality
-- ✅ 버튼 블록 지원 (Notion 자동화 트리거)
-- ✅ CreateView 도구 — Agent Loop에서 뷰 프로그래밍 생성
+## 테스트 현황
 
-### Phase 5: Testing + Open Source
-- ✅ 246개 테스트 전체 통과 (151→246, +95 신규)
-- ✅ MIT LICENSE 추가
-- ✅ 문서 업데이트
+```
+테스트 총 수:     1215개
+커버리지:         82% (fail_under=80%)
+테스트 파일:      51개
+카테고리:         unit (48) + integration (3)
+```
+
+### 주요 커버리지
+
+| 모듈 | 커버리지 | 테스트 수 |
+|------|---------|----------|
+| routers/ (7개) | 82~100% | ~200 |
+| agent/providers/ (5개) | 23~100% | ~60 |
+| notion/ (6개) | 86~100% | ~180 |
+| agent/ (핵심) | 85~100% | ~400 |
+| core/ (미들웨어 등) | 93~100% | ~50 |
+
+---
+
+## 프로젝트 구조
+
+```
+NotionForge/
+├── backend/
+│   ├── app/
+│   │   ├── agent/              # AI Agent 핵심
+│   │   │   ├── orchestrator.py # 오케스트레이터 (메인 루프)
+│   │   │   ├── agent_loop.py   # Plan-Execute-Reflect
+│   │   │   ├── pipeline.py     # 멀티 에이전트 파이프라인
+│   │   │   ├── providers/      # LLM Provider Strategy Pattern
+│   │   │   ├── tools/          # Tool Registry (9개 도구)
+│   │   │   ├── prompts/        # 모듈화 프롬프트 (.md 13개)
+│   │   │   └── ...
+│   │   ├── skills/             # 48개 도메인 스킬
+│   │   ├── notion/             # Notion API 클라이언트
+│   │   ├── routers/            # FastAPI 라우터 (7개)
+│   │   ├── core/               # 미들웨어, 로깅, 메트릭스
+│   │   └── schemas/            # Pydantic 모델
+│   └── tests/                  # 1215개 테스트
+├── frontend/
+│   └── src/
+│       ├── components/         # React 컴포넌트
+│       ├── stores/             # Zustand 상태관리 (3개)
+│       ├── hooks/              # 커스텀 훅
+│       └── types/              # TypeScript 타입
+├── docs/                       # 문서 (16개 파일)
+├── .github/                    # CI/CD, 이슈 템플릿
+├── docker-compose.yml          # 배포 설정
+└── CLAUDE.md                   # 프로젝트 규칙
+```

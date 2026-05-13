@@ -22,7 +22,7 @@
 ```json
 {
   "status": "ok",
-  "version": "8.0.0",
+  "version": "8.1.0",
   "ai_provider": "copilot",
   "notion_ready": true,
   "copilot": { "available": true, "started": true },

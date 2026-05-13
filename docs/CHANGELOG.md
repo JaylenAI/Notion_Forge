@@ -6,6 +6,40 @@
 
 # Part 1: 변경 이력
 
+## [8.1.0] - 2026-05-13
+
+### Added (오픈소스 배포 준비 + 보안 강화)
+- **Rate Limiting 미들웨어**: IP 기반 슬라이딩 윈도우 (기본 60 req/min, `RATE_LIMIT_RPM` 환경변수)
+- **Request ID 추적**: `X-Request-ID` 헤더 자동 주입/전파 (디버깅 용도)
+- **OAuth CSRF 방어**: `secrets.token_urlsafe` 기반 state 파라미터 + 5분 TTL
+- **WebSocket 보안 강화**: 10초 init 타임아웃, 토큰 검증, 20 msg/min 레이트리밋
+- **에러 메시지 정제**: 프로덕션 환경 스택트레이스 은닉 (`sanitize_error()`)
+- **파일 업로드 검증**: 10MB 제한 + 확장자 화이트리스트 (txt/md/csv/pdf)
+- **GitHub Actions CI**: ruff lint → pytest 80% → TypeScript → Docker → gitleaks + bandit
+- **보안 문서**: SECURITY.md, DEPLOYMENT.md, RELEASE_CHECKLIST.md
+- **프론트엔드 문서**: frontend/README.md (기술 스택, 빠른 시작, 프로젝트 구조)
+- **테스트 대폭 확장**: 1215개 테스트, 82% 커버리지 달성
+  - 신규: providers, database_ops, middleware, oauth, workspace, ai_router,
+    chat_router, template_router, copilot_client, notion_ops, agent_tools 등 14개 파일
+
+### Changed
+- **AI 라우터**: 글로벌 설정 변경 → 세션 스코프 모델 관리로 전환
+- **Coverage 기준**: `fail_under` 60% → 80%으로 상향
+- **README**: CI/License/Python/Docker 뱃지 추가
+
+### Fixed
+- **post_processor**: view가 문자열인 경우 `view.get()` 호출 시 AttributeError
+- **WebSocket**: 동시성 버그 수정 (Approval Gate)
+- **DB 속성 키 호환**: REST API Approval Gate 자동승인
+
+### Security
+- OAuth 콜백 state 검증 (CSRF 방어)
+- 프로덕션 에러 응답에서 민감 정보 제거
+- WebSocket 인증 강화 (최소 5자 토큰)
+- gitleaks + bandit 자동 보안 스캔 CI 통합
+
+---
+
 ## [8.0.0] - 2026-04-24
 
 ### Added (엔터프라이즈급 AI Agent)
