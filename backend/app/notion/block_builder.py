@@ -225,11 +225,22 @@ def bulleted_list(text: str, color: str = "default", children: list[dict] | None
     return block
 
 
-def numbered_list(text: str, color: str = "default", children: list[dict] | None = None) -> dict[str, Any]:
+def numbered_list(
+    text: str,
+    color: str = "default",
+    children: list[dict] | None = None,
+    list_format: str = "",
+    list_start_index: int | None = None,
+) -> dict[str, Any]:
+    item: dict[str, Any] = {"rich_text": rich_text(text), "color": _safe_color(color)}
+    if list_format and list_format in ("numbers", "letters", "roman"):
+        item["list_format"] = list_format
+    if list_start_index is not None:
+        item["list_start_index"] = list_start_index
     block: dict[str, Any] = {
         "object": "block",
         "type": "numbered_list_item",
-        "numbered_list_item": {"rich_text": rich_text(text), "color": _safe_color(color)},
+        "numbered_list_item": item,
     }
     if children:
         block["numbered_list_item"]["children"] = children

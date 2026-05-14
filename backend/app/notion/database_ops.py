@@ -140,6 +140,7 @@ class DatabaseOpsMixin:
         properties: dict[str, Any],
         icon: str | None = None,
         cover_url: str | None = None,
+        template_id: str = "",
     ) -> dict[str, Any]:
         if self.mock_mode:
             return self._mock_db_item(database_id, properties, icon)
@@ -152,6 +153,8 @@ class DatabaseOpsMixin:
             page_data["icon"] = {"type": "emoji", "emoji": icon}
         if cover_url:
             page_data["cover"] = {"type": "external", "external": {"url": cover_url}}
+        if template_id:
+            page_data["template"] = {"type": "template_id", "template_id": template_id}
 
         await self.rate_limiter.acquire()
         try:
@@ -203,6 +206,7 @@ class DatabaseOpsMixin:
         filters: dict | None = None,
         sorts: list[dict] | None = None,
         page_size: int = 100,
+        filter_properties: list[str] | None = None,
     ) -> list[dict]:
         if self.mock_mode:
             return []
@@ -211,6 +215,8 @@ class DatabaseOpsMixin:
             body["filter"] = filters
         if sorts:
             body["sorts"] = sorts
+        if filter_properties:
+            body["filter_properties"] = filter_properties
 
         data_source_id = await self.get_data_source_id(database_id)
         await self.rate_limiter.acquire()
@@ -219,7 +225,11 @@ class DatabaseOpsMixin:
             if resp.status_code >= 400:
                 logger.warning(f"[query_database 에러 {resp.status_code}] {resp.text[:200]}")
                 return []
-            return resp.json().get("results", [])
+            data = resp.json()
+            request_status = data.get("request_status", {})
+            if request_status.get("type") == "incomplete":
+                logger.info(f"[query 부분 결과] reason: {request_status.get('incomplete_reason', 'unknown')}")
+            return data.get("results", [])
         except Exception as e:
             logger.warning(f"[query_database 에러] {str(e)[:100]}")
             return []

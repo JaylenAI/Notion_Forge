@@ -15,6 +15,7 @@ class PageOpsMixin:
         cover_url: str | None = None,
         children: list[dict] | None = None,
         position: str = "",
+        template_id: str = "",
     ) -> dict[str, Any]:
         if self.mock_mode:
             return self._mock_page(parent_id, title, icon, cover_url)
@@ -31,6 +32,8 @@ class PageOpsMixin:
             body["children"] = children[:100]
         if position:
             body["position"] = {"type": position}
+        if template_id:
+            body["template"] = {"type": "template_id", "template_id": template_id}
 
         await self.rate_limiter.acquire()
         try:
