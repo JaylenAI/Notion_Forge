@@ -1,5 +1,5 @@
 # ===== 개발용 스테이지 =====
-FROM node:18-slim AS dev
+FROM node:20-slim AS dev
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host"]
 
 # ===== 프로덕션 스테이지 =====
-FROM node:18-slim AS build
+FROM node:20-slim AS build
 
 WORKDIR /app
 
