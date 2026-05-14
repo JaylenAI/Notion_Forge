@@ -414,9 +414,9 @@ class TestPageOpsReal:
         assert result is False
 
     async def test_move_page_success(self, real_client):
-        """페이지 이동 성공"""
+        """페이지 이동 성공 (POST /pages/:id/move)"""
         mock_resp = _mock_response(200, {"id": "page-123", "parent": {"page_id": "new-parent"}})
-        real_client._http_client.patch = AsyncMock(return_value=mock_resp)
+        real_client._http_client.post = AsyncMock(return_value=mock_resp)
 
         result = await real_client.move_page("page-123", "new-parent")
 
@@ -425,7 +425,7 @@ class TestPageOpsReal:
     async def test_move_page_api_error(self, real_client):
         """페이지 이동 API 에러"""
         mock_resp = _mock_response(400, text="Cannot move page")
-        real_client._http_client.patch = AsyncMock(return_value=mock_resp)
+        real_client._http_client.post = AsyncMock(return_value=mock_resp)
 
         result = await real_client.move_page("page-123", "invalid-parent")
 

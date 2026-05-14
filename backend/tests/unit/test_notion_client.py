@@ -29,7 +29,6 @@ def real_client():
                 client = NotionClient(token="ntn_real_token_abc", parent_page_id="parent-id-real")
 
     client._http_client = AsyncMock()
-    client._http_legacy = AsyncMock()
     client.rate_limiter = AsyncMock()
     client.rate_limiter.acquire = AsyncMock()
     client.rate_limiter.call_with_retry = AsyncMock()
@@ -311,39 +310,73 @@ class TestSearchRealMode:
 
 
 class TestCommentsRealMode:
-    """Comments API 실제 경로 테스트"""
+    """Comments API 실제 경로 테스트 (httpx 기반)"""
 
     async def test_add_comment_with_page_id(self, real_client):
-        """page_id로 코멘트 추가"""
-        real_client.rate_limiter.call_with_retry = AsyncMock(
-            return_value={"id": "comment-1", "parent": {"page_id": "page-123"}}
-        )
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"id": "comment-1", "parent": {"page_id": "page-123"}}
+        real_client._http_client.post = AsyncMock(return_value=mock_resp)
 
         with patch("app.notion.block_builder.rich_text", return_value=[{"text": {"content": "댓글"}}]):
-            result = await real_client.add_comment("댓글 내용", page_id="page-123")
+            result = await real_client.add_comment(text="댓글 내용", page_id="page-123")
 
         assert result["id"] == "comment-1"
 
+    async def test_add_comment_with_markdown(self, real_client):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"id": "comment-md"}
+        real_client._http_client.post = AsyncMock(return_value=mock_resp)
+
+        result = await real_client.add_comment(markdown="**볼드** 댓글", page_id="page-123")
+
+        assert result["id"] == "comment-md"
+        call_args = real_client._http_client.post.call_args
+        assert call_args.kwargs["json"]["markdown"] == "**볼드** 댓글"
+
     async def test_add_comment_with_block_id(self, real_client):
-        """block_id로 코멘트 추가"""
-        real_client.rate_limiter.call_with_retry = AsyncMock(return_value={"id": "comment-2"})
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"id": "comment-2"}
+        real_client._http_client.post = AsyncMock(return_value=mock_resp)
 
         with patch("app.notion.block_builder.rich_text", return_value=[{"text": {"content": "블록 댓글"}}]):
-            result = await real_client.add_comment("블록 댓글", block_id="block-123")
+            result = await real_client.add_comment(text="블록 댓글", block_id="block-123")
 
         assert result["id"] == "comment-2"
 
     async def test_add_comment_with_discussion_id(self, real_client):
-        """discussion_id로 코멘트 추가"""
-        real_client.rate_limiter.call_with_retry = AsyncMock(return_value={"id": "comment-3"})
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"id": "comment-3"}
+        real_client._http_client.post = AsyncMock(return_value=mock_resp)
 
         with patch("app.notion.block_builder.rich_text", return_value=[{"text": {"content": "스레드"}}]):
-            result = await real_client.add_comment("스레드 댓글", discussion_id="disc-123")
+            result = await real_client.add_comment(text="스레드 댓글", discussion_id="disc-123")
 
         assert result["id"] == "comment-3"
 
+    async def test_update_comment(self, real_client):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"id": "comment-1"}
+        real_client._http_client.patch = AsyncMock(return_value=mock_resp)
+
+        result = await real_client.update_comment("comment-1", markdown="수정된 내용")
+
+        assert result["id"] == "comment-1"
+
+    async def test_delete_comment(self, real_client):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        real_client._http_client.delete = AsyncMock(return_value=mock_resp)
+
+        result = await real_client.delete_comment("comment-1")
+
+        assert result is True
+
     async def test_get_comments(self, real_client):
-        """코멘트 조회"""
         real_client.rate_limiter.call_with_retry = AsyncMock(return_value={"results": [{"id": "c1"}, {"id": "c2"}]})
 
         result = await real_client.get_comments("block-123")
@@ -417,18 +450,13 @@ class TestClientClose:
         """http 클라이언트 정리"""
         real_client._http_client = AsyncMock()
         real_client._http_client.aclose = AsyncMock()
-        real_client._http_legacy = AsyncMock()
-        real_client._http_legacy.aclose = AsyncMock()
 
         await real_client.close()
 
         real_client._http_client.aclose.assert_called_once()
-        real_client._http_legacy.aclose.assert_called_once()
 
     async def test_close_without_http_client(self, mock_client):
         """mock_mode에서는 http_client가 없어도 안전하게 종료"""
         mock_client._http_client = None
-        mock_client._http_legacy = None
 
-        # 예외 없이 완료되어야 함
         await mock_client.close()

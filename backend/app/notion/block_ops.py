@@ -1,4 +1,4 @@
-"""Block CRUD 작업"""
+"""Block CRUD 작업 (API 2026-03-11: position 객체 — start/end/after_block)"""
 
 import logging
 from typing import Any
@@ -12,6 +12,7 @@ class BlockOpsMixin:
         page_id: str,
         blocks: list[dict],
         after_block_id: str = "",
+        position_type: str = "",
     ) -> list[dict]:
         if self.mock_mode:
             return self._mock_blocks(page_id, blocks)
@@ -23,6 +24,8 @@ class BlockOpsMixin:
                 body: dict[str, Any] = {"children": chunk}
                 if after_block_id:
                     body["position"] = {"type": "after_block", "after_block": {"id": after_block_id}}
+                elif position_type in ("start", "end"):
+                    body["position"] = {"type": position_type}
 
                 await self.rate_limiter.acquire()
                 resp = await self._http_client.patch(

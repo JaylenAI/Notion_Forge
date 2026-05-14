@@ -1,4 +1,11 @@
-"""Database CRUD + query + items 작업"""
+"""Database CRUD + query + items 작업 (API 2026-03-11)
+
+변경사항:
+- 단일 API 클라이언트 (_http_client) 사용 — 레거시 2022-06-28 제거
+- DB 생성 시 initial_data_source 구조 지원
+- DB 아이템은 data_source_id 기반 parent 사용
+- 쿼리는 data_sources/:id/query 엔드포인트 사용
+"""
 
 import logging
 from typing import Any
@@ -34,7 +41,7 @@ class DatabaseOpsMixin:
             db_data["cover"] = {"type": "external", "external": {"url": cover_url}}
         await self.rate_limiter.acquire()
         try:
-            resp = await self._http_legacy.post("/databases", json=db_data)
+            resp = await self._http_client.post("/databases", json=db_data)
             if resp.status_code >= 400:
                 error_text = resp.text[:500]
                 logger.warning(f"[DB 생성 에러 상세] {error_text}")
@@ -42,7 +49,7 @@ class DatabaseOpsMixin:
                     logger.info("[DB 생성] 속성 문제 → 기본 속성(title만)으로 재시도")
                     db_data["properties"] = {"이름": {"title": {}}}
                     await self.rate_limiter.acquire()
-                    resp2 = await self._http_legacy.post("/databases", json=db_data)
+                    resp2 = await self._http_client.post("/databases", json=db_data)
                     if resp2.status_code < 400:
                         logger.info("[DB 생성] 기본 속성으로 재시도 성공")
                         return resp2.json()
@@ -57,19 +64,14 @@ class DatabaseOpsMixin:
         if self.mock_mode:
             return {"id": database_id, "properties": {}, "data_sources": [{"id": database_id}]}
         await self.rate_limiter.acquire()
-        resp = await self._http_legacy.get(f"/databases/{database_id}")
-        if resp.status_code >= 400:
-            return {"id": database_id, "properties": {}}
-        legacy_data = resp.json()
         try:
-            await self.rate_limiter.acquire()
-            new_resp = await self._http_client.get(f"/databases/{database_id}")
-            if new_resp.status_code == 200:
-                new_data = new_resp.json()
-                legacy_data["data_sources"] = new_data.get("data_sources", [])
-        except Exception:
-            pass
-        return legacy_data
+            resp = await self._http_client.get(f"/databases/{database_id}")
+            if resp.status_code >= 400:
+                return {"id": database_id, "properties": {}}
+            return resp.json()
+        except Exception as e:
+            logger.warning(f"[get_database 에러] {str(e)[:100]}")
+            return {"id": database_id, "properties": {}}
 
     async def get_data_source_id(self, database_id: str) -> str:
         db_info = await self.get_database(database_id)
@@ -77,6 +79,46 @@ class DatabaseOpsMixin:
         if data_sources:
             return data_sources[0]["id"]
         return database_id
+
+    async def get_data_source(self, data_source_id: str) -> dict[str, Any]:
+        if self.mock_mode:
+            return {"id": data_source_id, "properties": {}}
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.get(f"/data_sources/{data_source_id}")
+            if resp.status_code >= 400:
+                return {"id": data_source_id, "properties": {}}
+            return resp.json()
+        except Exception as e:
+            logger.warning(f"[get_data_source 에러] {str(e)[:100]}")
+            return {"id": data_source_id, "properties": {}}
+
+    async def update_data_source(self, data_source_id: str, updates: dict[str, Any]) -> dict[str, Any]:
+        if self.mock_mode:
+            return {"id": data_source_id, **updates}
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.patch(f"/data_sources/{data_source_id}", json=updates)
+            if resp.status_code >= 400:
+                logger.warning(f"[update_data_source 에러 {resp.status_code}] {resp.text[:200]}")
+                return {"id": data_source_id, "fallback": True}
+            return resp.json()
+        except Exception as e:
+            logger.warning(f"[update_data_source 에러] {str(e)[:100]}")
+            return {"id": data_source_id, "fallback": True}
+
+    async def list_data_source_templates(self, data_source_id: str) -> list[dict]:
+        if self.mock_mode:
+            return []
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client.get(f"/data_sources/{data_source_id}/templates")
+            if resp.status_code >= 400:
+                return []
+            return resp.json().get("results", [])
+        except Exception as e:
+            logger.warning(f"[list_templates 에러] {str(e)[:100]}")
+            return []
 
     async def update_database(self, database_id: str, updates: dict[str, Any]) -> dict[str, Any]:
         if self.mock_mode:
@@ -113,7 +155,7 @@ class DatabaseOpsMixin:
 
         await self.rate_limiter.acquire()
         try:
-            resp = await self._http_legacy.post("/pages", json=page_data)
+            resp = await self._http_client.post("/pages", json=page_data)
             if resp.status_code >= 400:
                 error_text = resp.text[:500]
                 logger.warning(f"[DB Item 에러 상세] {error_text}")
@@ -122,7 +164,7 @@ class DatabaseOpsMixin:
                     logger.warning(f"[DB Item Icon 폴백] 잘못된 이모지 '{icon}' → 아이콘 없이 재시도")
                     page_data.pop("icon", None)
                     await self.rate_limiter.acquire()
-                    resp = await self._http_legacy.post("/pages", json=page_data)
+                    resp = await self._http_client.post("/pages", json=page_data)
                     if resp.status_code >= 400:
                         raise RuntimeError(f"DB 항목 추가 API 에러: {resp.text[:300]}")
                 elif "validation" in error_text.lower() or "property" in error_text.lower():
@@ -144,7 +186,7 @@ class DatabaseOpsMixin:
                     page_data["properties"] = retry_props
                     page_data.pop("icon", None)
                     await self.rate_limiter.acquire()
-                    resp = await self._http_legacy.post("/pages", json=page_data)
+                    resp = await self._http_client.post("/pages", json=page_data)
                     if resp.status_code >= 400:
                         raise RuntimeError(f"DB 항목 추가 API 에러 (폴백): {resp.text[:300]}")
                 else:
@@ -169,9 +211,11 @@ class DatabaseOpsMixin:
             body["filter"] = filters
         if sorts:
             body["sorts"] = sorts
+
+        data_source_id = await self.get_data_source_id(database_id)
         await self.rate_limiter.acquire()
         try:
-            resp = await self._http_legacy.post(f"/databases/{database_id}/query", json=body)
+            resp = await self._http_client.post(f"/data_sources/{data_source_id}/query", json=body)
             if resp.status_code >= 400:
                 logger.warning(f"[query_database 에러 {resp.status_code}] {resp.text[:200]}")
                 return []

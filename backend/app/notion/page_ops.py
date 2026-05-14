@@ -93,16 +93,29 @@ class PageOpsMixin:
             logger.warning(f"[delete_page 에러] {str(e)[:100]}")
             return False
 
-    async def move_page(self, page_id: str, new_parent_id: str) -> dict:
+    async def move_page(self, page_id: str, new_parent_id: str, parent_type: str = "page_id") -> dict:
         if self.mock_mode:
-            return {"id": page_id, "parent": {"page_id": new_parent_id}}
+            return {"id": page_id, "parent": {parent_type: new_parent_id}}
         await self.rate_limiter.acquire()
-        resp = await self._http_client.patch(
-            f"/pages/{page_id}",
-            json={"parent": {"type": "page_id", "page_id": new_parent_id}},
+        resp = await self._http_client.post(
+            f"/pages/{page_id}/move",
+            json={"parent": {"type": parent_type, parent_type: new_parent_id}},
         )
         if resp.status_code >= 400:
             logger.warning(f"[페이지 이동 에러] {resp.text[:200]}")
+            return {"id": page_id}
+        return resp.json()
+
+    async def erase_page_content(self, page_id: str) -> dict:
+        if self.mock_mode:
+            return {"id": page_id}
+        await self.rate_limiter.acquire()
+        resp = await self._http_client.patch(
+            f"/pages/{page_id}",
+            json={"erase_content": True},
+        )
+        if resp.status_code >= 400:
+            logger.warning(f"[erase_content 에러] {resp.text[:200]}")
             return {"id": page_id}
         return resp.json()
 
