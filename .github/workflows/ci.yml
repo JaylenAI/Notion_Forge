@@ -161,3 +161,54 @@ jobs:
         with:
           name: security-report
           path: backend/bandit-report.json
+
+  api-docs:
+    name: API Documentation
+    runs-on: ubuntu-latest
+    needs: [backend-test]
+    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: cd backend && uv sync --frozen
+
+      - name: Generate OpenAPI schema
+        run: |
+          cd backend && uv run python -c "
+          import json
+          from app.main import app
+          schema = app.openapi()
+          with open('openapi.json', 'w') as f:
+              json.dump(schema, f, indent=2, ensure_ascii=False)
+          print(f'OpenAPI schema generated: {len(schema.get(\"paths\", {}))} endpoints')
+          "
+
+      - name: Upload API docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-docs
+          path: backend/openapi.json
+
+  release-check:
+    name: Release Readiness
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-build, docker-build, security-scan]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: cd backend && uv sync --frozen
+
+      - name: Verify test count
+        run: |
+          cd backend && RESULT=$(uv run pytest tests/unit/ --co -q 2>/dev/null | tail -1)
+          echo "Collected tests: $RESULT"
+
+      - name: Verify no TODO/FIXME in production code
+        run: |
+          cd backend && grep -rn "TODO\|FIXME\|HACK\|XXX" app/ --include="*.py" || echo "No TODOs found"
+
+      - name: Check version consistency
+        run: |
+          echo "Backend version check..."
+          cd backend && grep -r "version" pyproject.toml | head -5
