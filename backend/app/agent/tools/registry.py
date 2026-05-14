@@ -22,8 +22,10 @@ class ToolRegistry:
         from app.agent.tools.create_database import CreateDatabaseTool
         from app.agent.tools.create_page import CreatePageTool
         from app.agent.tools.create_view import CreateViewTool
+        from app.agent.tools.create_worker import CreateWorkerTool
         from app.agent.tools.generate_cover import GenerateCoverTool
         from app.agent.tools.link_databases import LinkDatabasesTool
+        from app.agent.tools.register_agent import RegisterAgentTool
 
         for tool in [
             CreatePageTool(client),
@@ -33,6 +35,8 @@ class ToolRegistry:
             CreateColumnsTool(client),
             LinkDatabasesTool(client),
             CreateViewTool(client),
+            CreateWorkerTool(client),
+            RegisterAgentTool(client),
             ApplyColorThemeTool(),
             GenerateCoverTool(),
         ]:

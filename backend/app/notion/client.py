@@ -6,6 +6,7 @@ API Version: 2026-03-11 (최신)
 - Views API (10종: table, board, gallery, calendar, timeline, list, chart, form, map, dashboard)
 - Markdown Content API (생성/읽기/수정)
 - File Upload / Comments / Custom Emoji / Search / Users
+- Workers API (Sync/Tool/Webhook) + External Agents API
 """
 
 import logging
@@ -20,6 +21,7 @@ from app.notion.database_ops import DatabaseOpsMixin
 from app.notion.page_ops import PageOpsMixin
 from app.notion.rate_limiter import RateLimiter
 from app.notion.view_ops import ViewOpsMixin
+from app.notion.workers import WorkerOpsMixin
 
 logger = logging.getLogger("notionforge.notion_client")
 
@@ -27,7 +29,7 @@ NOTION_API_BASE = "https://api.notion.com/v1"
 NOTION_VERSION = "2026-03-11"
 
 
-class NotionClient(PageOpsMixin, DatabaseOpsMixin, BlockOpsMixin, ViewOpsMixin):
+class NotionClient(PageOpsMixin, DatabaseOpsMixin, BlockOpsMixin, ViewOpsMixin, WorkerOpsMixin):
     def __init__(self, token: str = "", parent_page_id: str = ""):
         self.token = token or settings.notion_api_key
         self.parent_page_id = parent_page_id or settings.notion_parent_page_id
