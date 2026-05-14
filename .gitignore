@@ -48,3 +48,7 @@ htmlcov/
 *.tsbuildinfo
 claude-code-notion-plugin/
 .vite/
+
+# 발표자료 (비공개)
+docs/PRESENTATION.md
+output/
