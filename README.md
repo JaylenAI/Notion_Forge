@@ -9,8 +9,8 @@
 # NotionForge
 
 <p align="center">
-  <a href="https://github.com/hanseungheon/NotionForge/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/hanseungheon/NotionForge/ci.yml?branch=dev&style=for-the-badge&label=CI" alt="CI"></a>
-  <a href="https://github.com/hanseungheon/NotionForge/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://github.com/JaylenAI/notion_ai_agent/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/JaylenAI/notion_ai_agent/ci.yml?branch=dev&style=for-the-badge&label=CI" alt="CI"></a>
+  <a href="https://github.com/JaylenAI/notion_ai_agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+"></a>
   <a href="https://notion.so"><img src="https://img.shields.io/badge/Notion_API-2026--03--11-000000?style=for-the-badge&logo=notion&logoColor=white" alt="Notion API"></a>
   <a href="https://docs.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"></a>
@@ -60,8 +60,8 @@
 ### 1. 클론 & 환경 설정
 
 ```bash
-git clone https://github.com/hanseungheon/NotionForge.git
-cd NotionForge
+git clone https://github.com/JaylenAI/notion_ai_agent.git
+cd notion_ai_agent
 cp .env.example .env
 ```
 
@@ -343,8 +343,8 @@ NotionForge/
 
 ```bash
 # 개발 환경 셋업
-git clone https://github.com/hanseungheon/NotionForge.git
-cd NotionForge
+git clone https://github.com/JaylenAI/notion_ai_agent.git
+cd notion_ai_agent
 
 # Backend
 cd backend && uv sync

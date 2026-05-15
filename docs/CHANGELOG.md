@@ -43,7 +43,7 @@
 - README 전면 개편: Hermes Agent 수준 오픈소스 문서 구조
 - CONTRIBUTING.md: 확장 가이드 (프로바이더/도구/스킬/뷰) 추가
 - SECURITY.md: GitHub URL 업데이트
-- GitHub 리포지토리 URL: `hanseungheon/NotionForge`로 통일
+- GitHub 리포지토리 URL: `JaylenAI/notion_ai_agent`로 통일
 - 머지 완료된 feature 브랜치 26개 정리 (→ main + dev만 유지)
 
 ---

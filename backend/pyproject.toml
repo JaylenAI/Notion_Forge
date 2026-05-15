@@ -21,10 +21,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/hanseungheon/NotionForge"
-Repository = "https://github.com/hanseungheon/NotionForge"
-Documentation = "https://github.com/hanseungheon/NotionForge/tree/main/docs"
-Issues = "https://github.com/hanseungheon/NotionForge/issues"
+Homepage = "https://github.com/JaylenAI/notion_ai_agent"
+Repository = "https://github.com/JaylenAI/notion_ai_agent"
+Documentation = "https://github.com/JaylenAI/notion_ai_agent/tree/main/docs"
+Issues = "https://github.com/JaylenAI/notion_ai_agent/issues"
 
 [dependency-groups]
 dev = [
@@ -33,6 +33,7 @@ dev = [
     "pytest-cov>=6.0.0",
     "httpx>=0.28.0",
     "ruff>=0.8.0",
+    "python-pptx>=1.0.2",
 ]
 
 [build-system]

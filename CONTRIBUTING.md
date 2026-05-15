@@ -29,8 +29,8 @@ NotionForge에 기여해주셔서 감사합니다! 이 문서는 기여 과정�
 ### 설치
 
 ```bash
-git clone https://github.com/hanseungheon/NotionForge.git
-cd NotionForge
+git clone https://github.com/JaylenAI/notion_ai_agent.git
+cd notion_ai_agent
 
 # Backend
 cd backend
@@ -276,5 +276,5 @@ class MyTool(BaseTool):
 
 ## 질문이 있으면
 
-- [Issues](https://github.com/hanseungheon/NotionForge/issues)에서 질문해주세요
+- [Issues](https://github.com/JaylenAI/notion_ai_agent/issues)에서 질문해주세요
 - 버그 리포트는 Issue 템플릿을 사용해주세요

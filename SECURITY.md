@@ -13,7 +13,7 @@
 
 Instead, use one of the following methods:
 
-1. **GitHub Security Advisories** (preferred): [Report a vulnerability](https://github.com/hanseungheon/NotionForge/security/advisories/new)
+1. **GitHub Security Advisories** (preferred): [Report a vulnerability](https://github.com/JaylenAI/notion_ai_agent/security/advisories/new)
 2. **Email**: Create a private security advisory on the repository
 
 ### What to include
