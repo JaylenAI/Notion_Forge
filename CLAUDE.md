@@ -8,7 +8,7 @@ AI 기반 Notion 템플릿 자동 생성 에이전트. 자연어 입력 → 전�
 - **Backend**: Python 3.11+ / FastAPI / uv
 - **Frontend**: React 19 / TypeScript 5.7 / Vite 7 / Zustand 5 / TailwindCSS 4
 - **AI Providers**: Copilot SDK, Claude, Gemini, Groq, OpenAI (Strategy Pattern)
-- **Notion**: notion-client 2.x + httpx (Views API 2025-09-03)
+- **Notion**: notion-client 2.x + httpx (API 2026-03-11)
 
 ## Git Branch Strategy (Git Flow 변형)
 
@@ -63,36 +63,33 @@ cd frontend && npm run lint
 docker compose up --build
 ```
 
-## Architecture (v8.0 목표)
+## Architecture (v8.2.0)
 ```
 User Input
   → InputGuardrail (프롬프트 인젝션 방어)
   → IntentAnalyzer (의도 분석)
-  → SkillRouter (LLM function calling 기반 스킬 선택)
-  → PlannerAgent (Plan-Execute 패턴)
-      → Tool Registry (LLM이 도구 선택)
-          ├─ create_database
-          ├─ add_blocks
-          ├─ create_view
-          ├─ add_sample_data
-          ├─ create_sub_page
-          └─ modify_template
-      → ReflectorAgent (결과 자가 평가)
-      → 만족? → Done / 불만족? → Re-plan (최대 3회)
+  → SkillRouter (키워드 빠른경로 + LLM 정밀 분류)
+  → Agent Loop (Plan-Execute-Reflect)
+      → Tool Registry 11개 도구
+          ├─ create_page / create_database / add_blocks
+          ├─ create_columns / add_database_items / link_databases
+          ├─ create_view / apply_color_theme / generate_cover
+          ├─ create_worker / register_external_agent
+      → Reflect (결과 자가 평가, 최대 3회 Re-plan)
   → QualityValidator (3계층 검증)
-  → NotionExecutor (5-Pass 생성 + 롤백)
+  → 5-Pass Creation (페이지→서브페이지→DB→뷰→블록 + 롤백)
 ```
 
 ## Key Directories
 ```
 backend/
   app/
-    agent/           # AI Agent 핵심 (orchestrator, planner, reflector)
-    agent/providers/  # LLM Provider Strategy Pattern
-    agent/tools/      # Tool Registry (BaseTool 인터페이스)
+    agent/           # AI Agent 핵심 (orchestrator, agent_loop, creation_executor)
+    agent/providers/  # LLM Provider Strategy Pattern (5종)
+    agent/tools/      # Tool Registry 11개 도구 (BaseTool 인터페이스)
     agent/prompts/    # 모듈화된 프롬프트 (.md)
-    skills/           # 48+ 도메인 스킬 (SKILL.md)
-    notion/           # Notion API 클라이언트
+    skills/           # 48개 도메인 스킬 (SKILL.md)
+    notion/           # Notion API 클라이언트 (Mixin 패턴, API 2026-03-11)
     routers/          # FastAPI 라우터
     core/             # 유틸리티 (logging, metrics, history)
     schemas/          # Pydantic 모델

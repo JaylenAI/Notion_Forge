@@ -1,10 +1,52 @@
-# 변경 이력 + 회고 (Changelog & Retrospective)
+# 변경 이력 (Changelog)
 
-> 주요 변경사항 + 주차별 회고 (가짜연구소 발표용)
+> 주요 변경사항 기록. [Keep a Changelog](https://keepachangelog.com) 형식 준수.
 
 ---
 
-# Part 1: 변경 이력
+## [8.2.0] - 2026-05-15
+
+### Added (Notion API 2026-03-11 전면 업그레이드 + Workers 통합)
+
+**Phase 1: API 최신화**
+- Notion API 버전 2026-03-11로 업그레이드 (최신)
+- Comments API: 생성/조회/수정/삭제 + 스레드 댓글
+- File Upload API: 서버→Notion 직접 파일 업로드
+- Data Sources API: 외부 데이터소스 연동 인프라
+- 레거시 호환 코드 제거
+
+**Phase 2: 13개 기능 확장**
+- 고급 필터 빌더 (`filter_builder.py`): 상대 날짜, multi-value, "me" 필터, AND/OR 복합 조건
+- 위젯 빌더 (`widget_builder.py`): 차트/숫자/리스트/필터뷰 위젯 + 대시보드 배치
+- Dashboard 뷰 생성 (`create_dashboard_view`): 위젯 기반 대시보드
+- Form 뷰 생성 (`create_form_view`): 제출 권한 설정 (disabled/anyone/workspace)
+- View Query API (`create_view_query`): 뷰에 필터/정렬 쿼리 바인딩
+- 번호 리스트 확장: 숫자/알파벳/로마자 포맷 + 시작 인덱스
+- DB 쿼리 강화: `filter_properties` 지원 + 불완전 결과 처리
+- 페이지 생성 시 `template_id` 파라미터 지원
+
+**Phase 3: Notion Workers 통합**
+- Workers API 클라이언트 (`workers.py`): Sync/Tool/Webhook 워커 CRUD + 로그 조회
+- External Agents API (`workers.py`): AI 에이전트 Notion 네이티브 등록/관리
+- TypeScript scaffold 빌더 (`worker_builder.py`): 실행 가능한 TS 코드 + 프로젝트 구조 자동 생성
+- `CreateWorkerTool`: Agent Loop에서 워커 생성 도구
+- `RegisterAgentTool`: Agent Loop에서 에이전트 등록 도구
+- Tool Registry 9→11개 확장
+
+**Phase 4: 오픈소스 배포 준비**
+- Notion CLI 래퍼 (`cli.py`): `ntn` CLI를 Python에서 비동기 실행
+- CI `api-docs` 잡: dev/main 푸시 시 OpenAPI 스키마 자동 생성
+- CI `release-check` 잡: main 전용 — 테스트 수, TODO/FIXME, 버전 일관성 검증
+- 테스트 1,309개 (1,215 → 1,309, +94)
+
+### Changed
+- README 전면 개편: Hermes Agent 수준 오픈소스 문서 구조
+- CONTRIBUTING.md: 확장 가이드 (프로바이더/도구/스킬/뷰) 추가
+- SECURITY.md: GitHub URL 업데이트
+- GitHub 리포지토리 URL: `hanseungheon/NotionForge`로 통일
+- 머지 완료된 feature 브랜치 26개 정리 (→ main + dev만 유지)
+
+---
 
 ## [8.1.0] - 2026-05-13
 
