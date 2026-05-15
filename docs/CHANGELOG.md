@@ -4,7 +4,7 @@
 
 ---
 
-## [8.2.0] - 2026-05-15
+## [0.1.0] - 2026-05-15 (첫 오픈소스 공개 릴리스)
 
 ### Added (Notion API 2026-03-11 전면 업그레이드 + Workers 통합)
 
@@ -45,6 +45,12 @@
 - SECURITY.md: GitHub URL 업데이트
 - GitHub 리포지토리 URL: `JaylenAI/notion_ai_agent`로 통일
 - 머지 완료된 feature 브랜치 26개 정리 (→ main + dev만 유지)
+
+---
+
+# Pre-release 개발 이력
+
+> 아래는 오픈소스 공개 전 내부 개발 과정의 기록입니다.
 
 ---
 

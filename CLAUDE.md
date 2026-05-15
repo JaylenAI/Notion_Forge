@@ -63,7 +63,7 @@ cd frontend && npm run lint
 docker compose up --build
 ```
 
-## Architecture (v8.2.0)
+## Architecture (v0.1.0)
 ```
 User Input
   → InputGuardrail (프롬프트 인젝션 방어)

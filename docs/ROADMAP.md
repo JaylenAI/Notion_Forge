@@ -69,10 +69,4 @@
 
 | 버전 | 날짜 | 주요 성과 |
 |------|------|----------|
-| v8.2.0 | 2026-05-15 | Notion API 2026-03-11 업그레이드, Workers 통합, 오픈소스 문서 |
-| v8.1.0 | 2026-05-13 | 오픈소스 배포 준비, 보안 강화, 테스트 82% |
-| v8.0.0 | 2026-04-24 | Plan-Execute-Reflect Agent, Tool Registry, 246 테스트 |
-| v7.5.0 | 2026-04-24 | 스킬 48개, God Object 분할, Provider Strategy |
-| v7.0.0 | 2026-04-18 | 프롬프트 모듈화, Gen-Eval 루프, Input Guardrail |
-| v6.1.0 | 2026-04-10 | Views API, CRUD 완전 구현, 프롬프트 전환 |
-| v6.0.0 | 2026-04-08 | Relation/Formula, 멀티턴 수정, OAuth, 레시피 |
+| v0.1.0 | 2026-05-15 | 첫 오픈소스 공개 릴리스 — Notion API 2026-03-11, Workers, 48 Skills, 1,309 Tests |
