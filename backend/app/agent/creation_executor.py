@@ -87,27 +87,36 @@ class CreationExecutor:
         await self._localize_status_options(db_id, filtered_props)
 
         # 샘플 데이터 추가 (relation/rollup/formula 속성은 제거 — DB에 아직 없으므로)
-        if "sample_items" in db_spec and db_spec["sample_items"]:
-            try:
-                clean_items = []
-                for item in db_spec["sample_items"]:
-                    if not isinstance(item, dict):
-                        continue
-                    clean_item = {k: v for k, v in item.items() if k not in deferred_prop_names}
-                    clean_items.append(clean_item)
-                sample_result = await self.add_items_tool.execute(
-                    database_id=db_id,
-                    items=clean_items,
-                    db_properties=filtered_props,
-                )
-                inserted = sample_result.get("item_count", 0)
-                total = len(db_spec["sample_items"])
-                if inserted < total:
-                    logger.info(f"[샘플 데이터] {inserted}/{total}개만 성공")
-                else:
-                    logger.info(f"[샘플 데이터] {inserted}개 전부 성공")
-            except Exception as e:
-                logger.info(f"[샘플 데이터 실패] {str(e)[:120]}")
+        sample_items = db_spec.get("sample_items") or []
+        if sample_items:
+            clean_items = []
+            for item in sample_items:
+                if not isinstance(item, dict):
+                    continue
+                clean_item = {k: v for k, v in item.items() if k not in deferred_prop_names}
+                clean_items.append(clean_item)
+
+            if clean_items:
+                try:
+                    sample_result = await self.add_items_tool.execute(
+                        database_id=db_id,
+                        items=clean_items,
+                        db_properties=filtered_props,
+                    )
+                    inserted = sample_result.get("item_count", 0)
+                    total = len(clean_items)
+                    if inserted == 0:
+                        logger.warning(
+                            f"[샘플 데이터] {db_spec.get('title', 'DB')} — 0/{total}개 성공. "
+                            f"blueprint 속성: {list(filtered_props.keys())}, "
+                            f"샘플 키: {list(clean_items[0].keys()) if clean_items else []}"
+                        )
+                    elif inserted < total:
+                        logger.info(f"[샘플 데이터] {inserted}/{total}개만 성공")
+                    else:
+                        logger.info(f"[샘플 데이터] {inserted}개 전부 성공")
+                except Exception as e:
+                    logger.warning(f"[샘플 데이터 실패] {db_spec.get('title', 'DB')}: {str(e)[:200]}")
 
         # 뷰 자동 생성 (Views API — group_by, quick_filters, configuration 포함)
         # property name → ID 매핑 (calendar/timeline의 date_property_id 변환에 필요)

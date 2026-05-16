@@ -37,14 +37,14 @@ class PageOpsMixin:
 
         await self.rate_limiter.acquire()
         try:
-            resp = await self._http_client.post("/pages", json=body)
+            resp = await self._http_client_legacy.post("/pages", json=body)
             if resp.status_code >= 400:
                 error_text = resp.text[:300]
                 if "icon.emoji" in error_text and icon:
                     logger.warning(f"[Icon 폴백] 잘못된 이모지 '{icon}' → 아이콘 없이 재시도")
                     body.pop("icon", None)
                     await self.rate_limiter.acquire()
-                    resp = await self._http_client.post("/pages", json=body)
+                    resp = await self._http_client_legacy.post("/pages", json=body)
                     if resp.status_code >= 400:
                         raise RuntimeError(f"페이지 '{title}' 생성 실패: {resp.text[:200]}")
                 else:

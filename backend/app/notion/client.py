@@ -27,6 +27,7 @@ logger = logging.getLogger("notionforge.notion_client")
 
 NOTION_API_BASE = "https://api.notion.com/v1"
 NOTION_VERSION = "2026-03-11"
+NOTION_VERSION_LEGACY = "2022-06-28"
 
 
 class NotionClient(PageOpsMixin, DatabaseOpsMixin, BlockOpsMixin, ViewOpsMixin, WorkerOpsMixin):
@@ -37,6 +38,7 @@ class NotionClient(PageOpsMixin, DatabaseOpsMixin, BlockOpsMixin, ViewOpsMixin, 
         self.rate_limiter = RateLimiter(max_per_second=3)
         self._real_client = None
         self._http_client: httpx.AsyncClient | None = None
+        self._http_client_legacy: httpx.AsyncClient | None = None
 
         if not self.mock_mode:
             from notion_client import AsyncClient
@@ -51,10 +53,22 @@ class NotionClient(PageOpsMixin, DatabaseOpsMixin, BlockOpsMixin, ViewOpsMixin, 
                 },
                 timeout=30.0,
             )
+            # DB 생성/수정/아이템 추가는 2022-06-28에서만 속성이 정상 동작
+            self._http_client_legacy = httpx.AsyncClient(
+                base_url=NOTION_API_BASE,
+                headers={
+                    "Authorization": f"Bearer {self.token}",
+                    "Notion-Version": NOTION_VERSION_LEGACY,
+                    "Content-Type": "application/json",
+                },
+                timeout=30.0,
+            )
 
     async def close(self):
         if self._http_client:
             await self._http_client.aclose()
+        if self._http_client_legacy:
+            await self._http_client_legacy.aclose()
 
     # ========================================
     # Search API

@@ -1,10 +1,7 @@
-"""Database CRUD + query + items 작업 (API 2026-03-11)
+"""Database CRUD + query + items 작업
 
-변경사항:
-- 단일 API 클라이언트 (_http_client) 사용 — 레거시 2022-06-28 제거
-- DB 생성 시 initial_data_source 구조 지원
-- DB 아이템은 data_source_id 기반 parent 사용
-- 쿼리는 data_sources/:id/query 엔드포인트 사용
+DB 생성/수정/아이템 추가: legacy API (2022-06-28) — 속성 정상 처리
+DB 쿼리/data_sources/views: 최신 API (2026-03-11)
 """
 
 import logging
@@ -39,22 +36,59 @@ class DatabaseOpsMixin:
             db_data["icon"] = {"type": "emoji", "emoji": icon}
         if cover_url:
             db_data["cover"] = {"type": "external", "external": {"url": cover_url}}
+
+        logger.info(f"[DB 생성] '{title}' 속성: {list(properties.keys())}")
+
         await self.rate_limiter.acquire()
         try:
-            resp = await self._http_client.post("/databases", json=db_data)
-            if resp.status_code >= 400:
-                error_text = resp.text[:500]
-                logger.warning(f"[DB 생성 에러 상세] {error_text}")
-                if "validation" in error_text.lower() or "property" in error_text.lower():
-                    logger.info("[DB 생성] 속성 문제 → 기본 속성(title만)으로 재시도")
-                    db_data["properties"] = {"이름": {"title": {}}}
-                    await self.rate_limiter.acquire()
-                    resp2 = await self._http_client.post("/databases", json=db_data)
-                    if resp2.status_code < 400:
-                        logger.info("[DB 생성] 기본 속성으로 재시도 성공")
-                        return resp2.json()
-                raise RuntimeError(f"DB 생성 API 에러 ({resp.status_code}): {error_text[:200]}")
-            return resp.json()
+            resp = await self._http_client_legacy.post("/databases", json=db_data)
+            if resp.status_code < 400:
+                return resp.json()
+
+            error_text = resp.text[:500]
+            logger.warning(f"[DB 생성 에러] '{title}' ({resp.status_code}): {error_text}")
+
+            if "validation" in error_text.lower() or "property" in error_text.lower():
+                title_prop = {}
+                other_props = {}
+                for pname, pconfig in properties.items():
+                    if isinstance(pconfig, dict) and "title" in pconfig:
+                        title_prop[pname] = pconfig
+                    else:
+                        other_props[pname] = pconfig
+
+                if not title_prop:
+                    title_prop = {"이름": {"title": {}}}
+
+                db_data["properties"] = title_prop
+                await self.rate_limiter.acquire()
+                resp2 = await self._http_client_legacy.post("/databases", json=db_data)
+                if resp2.status_code >= 400:
+                    raise RuntimeError(f"DB 생성 API 에러 ({resp2.status_code}): {resp2.text[:200]}")
+
+                db = resp2.json()
+                db_id = db["id"]
+                logger.info(f"[DB 생성] '{title}' title만 생성 성공, 나머지 {len(other_props)}개 속성 개별 추가 시도")
+
+                added = 0
+                for pname, pconfig in other_props.items():
+                    try:
+                        await self.rate_limiter.acquire()
+                        patch_resp = await self._http_client_legacy.patch(
+                            f"/databases/{db_id}",
+                            json={"properties": {pname: pconfig}},
+                        )
+                        if patch_resp.status_code < 400:
+                            added += 1
+                        else:
+                            logger.warning(f"[DB 속성 추가 실패] {pname}: {patch_resp.text[:100]}")
+                    except Exception as e:
+                        logger.warning(f"[DB 속성 추가 실패] {pname}: {str(e)[:80]}")
+
+                logger.info(f"[DB 생성] '{title}' 속성 개별 추가: {added}/{len(other_props)}개 성공")
+                return await self.get_database(db_id)
+
+            raise RuntimeError(f"DB 생성 API 에러 ({resp.status_code}): {error_text[:200]}")
         except RuntimeError:
             raise
         except Exception as e:
@@ -123,15 +157,22 @@ class DatabaseOpsMixin:
     async def update_database(self, database_id: str, updates: dict[str, Any]) -> dict[str, Any]:
         if self.mock_mode:
             return {"id": database_id, **updates}
-        return await self.rate_limiter.call_with_retry(
-            self._real_client.databases.update, database_id=database_id, **updates
-        )
+        await self.rate_limiter.acquire()
+        try:
+            resp = await self._http_client_legacy.patch(f"/databases/{database_id}", json=updates)
+            if resp.status_code >= 400:
+                logger.warning(f"[update_database 에러 {resp.status_code}] {resp.text[:200]}")
+                return {"id": database_id, "fallback": True}
+            return resp.json()
+        except Exception as e:
+            logger.warning(f"[update_database 에러] {str(e)[:100]}")
+            return {"id": database_id, "fallback": True}
 
     async def lock_database(self, database_id: str, locked: bool = True) -> dict:
         if self.mock_mode:
             return {"id": database_id, "is_locked": locked}
         await self.rate_limiter.acquire()
-        resp = await self._http_client.patch(f"/databases/{database_id}", json={"is_locked": locked})
+        resp = await self._http_client_legacy.patch(f"/databases/{database_id}", json={"is_locked": locked})
         return resp.json()
 
     async def add_database_item(
@@ -158,7 +199,7 @@ class DatabaseOpsMixin:
 
         await self.rate_limiter.acquire()
         try:
-            resp = await self._http_client.post("/pages", json=page_data)
+            resp = await self._http_client_legacy.post("/pages", json=page_data)
             if resp.status_code >= 400:
                 error_text = resp.text[:500]
                 logger.warning(f"[DB Item 에러 상세] {error_text}")
@@ -167,7 +208,7 @@ class DatabaseOpsMixin:
                     logger.warning(f"[DB Item Icon 폴백] 잘못된 이모지 '{icon}' → 아이콘 없이 재시도")
                     page_data.pop("icon", None)
                     await self.rate_limiter.acquire()
-                    resp = await self._http_client.post("/pages", json=page_data)
+                    resp = await self._http_client_legacy.post("/pages", json=page_data)
                     if resp.status_code >= 400:
                         raise RuntimeError(f"DB 항목 추가 API 에러: {resp.text[:300]}")
                 elif "validation" in error_text.lower() or "property" in error_text.lower():
@@ -189,7 +230,7 @@ class DatabaseOpsMixin:
                     page_data["properties"] = retry_props
                     page_data.pop("icon", None)
                     await self.rate_limiter.acquire()
-                    resp = await self._http_client.post("/pages", json=page_data)
+                    resp = await self._http_client_legacy.post("/pages", json=page_data)
                     if resp.status_code >= 400:
                         raise RuntimeError(f"DB 항목 추가 API 에러 (폴백): {resp.text[:300]}")
                 else:
@@ -223,8 +264,15 @@ class DatabaseOpsMixin:
         try:
             resp = await self._http_client.post(f"/data_sources/{data_source_id}/query", json=body)
             if resp.status_code >= 400:
-                logger.warning(f"[query_database 에러 {resp.status_code}] {resp.text[:200]}")
-                return []
+                # 새 API 실패 시 레거시 쿼리 엔드포인트로 폴백
+                logger.info(f"[query_database] 2026-03-11 실패, 레거시 폴백 시도")
+                await self.rate_limiter.acquire()
+                resp = await self._http_client_legacy.post(
+                    f"/databases/{database_id}/query", json=body
+                )
+                if resp.status_code >= 400:
+                    logger.warning(f"[query_database 에러 {resp.status_code}] {resp.text[:200]}")
+                    return []
             data = resp.json()
             request_status = data.get("request_status", {})
             if request_status.get("type") == "incomplete":

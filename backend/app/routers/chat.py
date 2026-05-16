@@ -72,14 +72,16 @@ async def websocket_chat(websocket: WebSocket):
                 await websocket.send_json({"type": "error", "content": "init 메시지가 필요합니다."})
                 await websocket.close(code=4001)
                 return
-            notion_token = init_data.get("notion_token", "")
+            from app.config import settings
+            notion_token = init_data.get("notion_token", "") or settings.notion_api_key
+            parent_page_id = init_data.get("parent_page_id", "") or settings.notion_parent_page_id
             if not notion_token or len(notion_token) < 5:
                 await websocket.send_json({"type": "error", "content": "유효한 Notion 토큰이 필요합니다."})
                 await websocket.close(code=4002)
                 return
             agent = AgentOrchestrator(
                 notion_token=notion_token,
-                parent_page_id=init_data.get("parent_page_id", ""),
+                parent_page_id=parent_page_id,
                 ai_key=init_data.get("ai_key", ""),
                 ai_model=init_data.get("ai_model", ""),
             )

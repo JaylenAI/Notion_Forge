@@ -25,6 +25,7 @@ class BlueprintValidator:
 
     def validate_and_fix(self, content: dict[str, Any]) -> dict[str, Any]:
         """전체 검증 파이프라인 실행. 보정된 content 반환."""
+        content = self._normalize_fields(content)
         content = self._ensure_welcome_callout(content)
         content = self._ensure_guide_toggle(content)
         content = self._fix_db_ref_in_columns(content)
@@ -38,6 +39,29 @@ class BlueprintValidator:
         content = self._label_table_of_contents(content)
         content = self._validate_view_properties(content)
         content = self._enhance_design_diversity(content)
+        return content
+
+    def _normalize_fields(self, content: dict[str, Any]) -> dict[str, Any]:
+        """AI 응답의 필드 타입을 정규화 (list→str 등)"""
+        title = content.get("title", "")
+        if isinstance(title, list):
+            content["title"] = " ".join(str(t) for t in title) if title else "My Template"
+        elif not title:
+            content["title"] = "My Template"
+
+        for block in content.get("blocks", []):
+            if isinstance(block, dict):
+                text = block.get("text")
+                if isinstance(text, list):
+                    block["text"] = " ".join(str(t) for t in text) if text else ""
+
+        for sub in content.get("sub_pages", []):
+            if isinstance(sub, dict):
+                for key in ("title", "name"):
+                    val = sub.get(key)
+                    if isinstance(val, list):
+                        sub[key] = " ".join(str(v) for v in val) if val else ""
+
         return content
 
     def _ensure_welcome_callout(self, content: dict[str, Any]) -> dict[str, Any]:
@@ -329,7 +353,10 @@ class BlueprintValidator:
 
                 if vtype == "board":
                     group_by = view.get("group_by")
-                    if group_by and group_by not in prop_names:
+                    if isinstance(group_by, dict):
+                        group_by = group_by.get("property", group_by.get("name", ""))
+                        view["group_by"] = group_by
+                    if group_by and isinstance(group_by, str) and group_by not in prop_names:
                         fallback = status_props[0] if status_props else (select_props[0] if select_props else None)
                         view["group_by"] = fallback
                         if view["group_by"]:
@@ -339,7 +366,10 @@ class BlueprintValidator:
 
                 elif vtype in ("calendar", "timeline"):
                     date_prop = view.get("date_property") or view.get("date_property_id")
-                    if date_prop and date_prop not in prop_names:
+                    if isinstance(date_prop, dict):
+                        date_prop = date_prop.get("property", date_prop.get("name", ""))
+                        view["date_property"] = date_prop
+                    if date_prop and isinstance(date_prop, str) and date_prop not in prop_names:
                         view["date_property"] = date_props[0] if date_props else None
                         if view["date_property"]:
                             logger.info(f"[ViewFix] {vtype} date_property '{date_prop}' → '{view['date_property']}'")

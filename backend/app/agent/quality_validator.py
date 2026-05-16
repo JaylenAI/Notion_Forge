@@ -407,8 +407,8 @@ class QualityValidator:
         text_blocks = [
             b for b in blocks if isinstance(b, dict) and b.get("type") in ("paragraph", "callout", "quote", "toggle")
         ]
-        empty_text_count = sum(1 for b in text_blocks if not b.get("text", "").strip())
-        content_text_count = sum(1 for b in text_blocks if b.get("text", "").strip())
+        empty_text_count = sum(1 for b in text_blocks if not str(b.get("text", "")).strip())
+        content_text_count = sum(1 for b in text_blocks if str(b.get("text", "")).strip())
         if content_text_count > 0 and empty_text_count > content_text_count:
             issues.append(
                 ValidationIssue(
