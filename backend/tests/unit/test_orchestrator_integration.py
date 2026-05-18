@@ -118,42 +118,42 @@ class TestBlueprintFlow:
         events = []
         async for e in orchestrator.process("프로젝트 관리 템플릿 만들어줘"):
             events.append(e)
-            if e.get("type") == "approval_request":
+            if e.get("step") == "approved":
                 break
 
         assert any(e["type"] == "progress" and "의도 파악" in e.get("message", "") for e in events)
         assert any(e["type"] == "blueprint_preview" for e in events)
-        assert any(e["type"] == "approval_request" for e in events)
+        assert any(e.get("step") == "approved" for e in events)
 
     @patch("app.agent.orchestrator.analyze_intent")
     @patch("app.agent.orchestrator.generate_blueprint")
-    async def test_quality_score_in_approval(self, mock_gen, mock_analyze, orchestrator):
+    async def test_auto_approval_after_blueprint(self, mock_gen, mock_analyze, orchestrator):
+        """블루프린트 생성 후 자동승인 이벤트가 발생하는지 확인"""
         mock_analyze.return_value = _make_intent()
         mock_gen.return_value = _make_blueprint()
 
         events = []
         async for e in orchestrator.process("프로젝트 관리 템플릿 만들어줘"):
             events.append(e)
-            if e.get("type") == "approval_request":
+            if e.get("step") == "approved":
                 break
 
-        approval = next(e for e in events if e["type"] == "approval_request")
-        assert "quality_score" in approval
-        assert "quality_issues" in approval
+        approved_event = next(e for e in events if e.get("step") == "approved")
+        assert "설계 완료" in approved_event["message"]
 
     @patch("app.agent.orchestrator.analyze_intent")
     @patch("app.agent.orchestrator.generate_blueprint")
-    async def test_quality_check_progress_event(self, mock_gen, mock_analyze, orchestrator):
+    async def test_design_done_progress_event(self, mock_gen, mock_analyze, orchestrator):
         mock_analyze.return_value = _make_intent()
         mock_gen.return_value = _make_blueprint()
 
         events = []
         async for e in orchestrator.process("프로젝트 관리 템플릿 만들어줘"):
             events.append(e)
-            if e.get("type") == "approval_request":
+            if e.get("step") == "approved":
                 break
 
-        assert any(e.get("step") == "quality_check" for e in events)
+        assert any(e.get("step") == "design_done" for e in events)
 
 
 class TestApprovalGate:

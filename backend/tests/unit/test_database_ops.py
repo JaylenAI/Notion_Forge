@@ -18,6 +18,7 @@ def real_client():
                 client = NotionClient(token="ntn_real_token", parent_page_id="parent-page-id")
 
     client._http_client = AsyncMock()
+    client._http_client_legacy = AsyncMock()
     client.rate_limiter = AsyncMock()
     client.rate_limiter.acquire = AsyncMock()
     client.rate_limiter.call_with_retry = AsyncMock()
@@ -31,7 +32,7 @@ class TestCreateDatabaseReal:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {"id": "db-new", "object": "database"}
-        real_client._http_client.post = AsyncMock(return_value=mock_resp)
+        real_client._http_client_legacy.post = AsyncMock(return_value=mock_resp)
 
         result = await real_client.create_database(
             parent_id="parent-1",
@@ -45,7 +46,7 @@ class TestCreateDatabaseReal:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {"id": "db-full"}
-        real_client._http_client.post = AsyncMock(return_value=mock_resp)
+        real_client._http_client_legacy.post = AsyncMock(return_value=mock_resp)
 
         result = await real_client.create_database(
             parent_id="parent-1",
@@ -57,7 +58,7 @@ class TestCreateDatabaseReal:
         )
 
         assert result["id"] == "db-full"
-        call_args = real_client._http_client.post.call_args
+        call_args = real_client._http_client_legacy.post.call_args
         json_data = call_args.kwargs["json"]
         assert json_data["icon"]["emoji"] == "📊"
         assert json_data["cover"]["external"]["url"] == "https://img.com/cover.jpg"
@@ -72,7 +73,7 @@ class TestCreateDatabaseReal:
         retry_resp.status_code = 200
         retry_resp.json.return_value = {"id": "db-fallback"}
 
-        real_client._http_client.post = AsyncMock(side_effect=[error_resp, retry_resp])
+        real_client._http_client_legacy.post = AsyncMock(side_effect=[error_resp, retry_resp])
 
         result = await real_client.create_database(
             parent_id="parent-1",
@@ -86,7 +87,7 @@ class TestCreateDatabaseReal:
         error_resp = MagicMock()
         error_resp.status_code = 500
         error_resp.text = "internal server error"
-        real_client._http_client.post = AsyncMock(return_value=error_resp)
+        real_client._http_client_legacy.post = AsyncMock(return_value=error_resp)
 
         with pytest.raises(RuntimeError, match="DB 생성 API 에러"):
             await real_client.create_database(
@@ -96,7 +97,7 @@ class TestCreateDatabaseReal:
             )
 
     async def test_create_network_exception(self, real_client):
-        real_client._http_client.post = AsyncMock(side_effect=Exception("connection timeout"))
+        real_client._http_client_legacy.post = AsyncMock(side_effect=Exception("connection timeout"))
 
         with pytest.raises(RuntimeError, match="생성 실패"):
             await real_client.create_database(
@@ -176,7 +177,7 @@ class TestLockDatabaseReal:
     async def test_lock(self, real_client):
         mock_resp = MagicMock()
         mock_resp.json.return_value = {"id": "db-1", "is_locked": True}
-        real_client._http_client.patch = AsyncMock(return_value=mock_resp)
+        real_client._http_client_legacy.patch = AsyncMock(return_value=mock_resp)
 
         result = await real_client.lock_database("db-1", locked=True)
 
@@ -185,7 +186,7 @@ class TestLockDatabaseReal:
     async def test_unlock(self, real_client):
         mock_resp = MagicMock()
         mock_resp.json.return_value = {"id": "db-1", "is_locked": False}
-        real_client._http_client.patch = AsyncMock(return_value=mock_resp)
+        real_client._http_client_legacy.patch = AsyncMock(return_value=mock_resp)
 
         result = await real_client.lock_database("db-1", locked=False)
 
@@ -197,7 +198,7 @@ class TestAddDatabaseItemReal:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {"id": "item-1", "object": "page"}
-        real_client._http_client.post = AsyncMock(return_value=mock_resp)
+        real_client._http_client_legacy.post = AsyncMock(return_value=mock_resp)
 
         result = await real_client.add_database_item(
             database_id="db-1",
@@ -216,7 +217,7 @@ class TestAddDatabaseItemReal:
         retry_resp.status_code = 200
         retry_resp.json.return_value = {"id": "item-noicon"}
 
-        real_client._http_client.post = AsyncMock(side_effect=[error_resp, retry_resp])
+        real_client._http_client_legacy.post = AsyncMock(side_effect=[error_resp, retry_resp])
 
         result = await real_client.add_database_item(
             database_id="db-1",
@@ -235,7 +236,7 @@ class TestAddDatabaseItemReal:
         retry_resp.status_code = 200
         retry_resp.json.return_value = {"id": "item-nostatus"}
 
-        real_client._http_client.post = AsyncMock(side_effect=[error_resp, retry_resp])
+        real_client._http_client_legacy.post = AsyncMock(side_effect=[error_resp, retry_resp])
 
         result = await real_client.add_database_item(
             database_id="db-1",
@@ -256,7 +257,7 @@ class TestAddDatabaseItemReal:
         retry_resp.status_code = 200
         retry_resp.json.return_value = {"id": "item-noselect"}
 
-        real_client._http_client.post = AsyncMock(side_effect=[error_resp, retry_resp])
+        real_client._http_client_legacy.post = AsyncMock(side_effect=[error_resp, retry_resp])
 
         result = await real_client.add_database_item(
             database_id="db-1",
@@ -277,7 +278,7 @@ class TestAddDatabaseItemReal:
         retry_resp.status_code = 200
         retry_resp.json.return_value = {"id": "item-titleonly"}
 
-        real_client._http_client.post = AsyncMock(side_effect=[error_resp, retry_resp])
+        real_client._http_client_legacy.post = AsyncMock(side_effect=[error_resp, retry_resp])
 
         result = await real_client.add_database_item(
             database_id="db-1",
@@ -293,7 +294,7 @@ class TestAddDatabaseItemReal:
         error_resp = MagicMock()
         error_resp.status_code = 500
         error_resp.text = "internal server error"
-        real_client._http_client.post = AsyncMock(return_value=error_resp)
+        real_client._http_client_legacy.post = AsyncMock(return_value=error_resp)
 
         with pytest.raises(RuntimeError, match="DB 항목 추가 API 에러"):
             await real_client.add_database_item(
@@ -302,7 +303,7 @@ class TestAddDatabaseItemReal:
             )
 
     async def test_add_item_network_exception(self, real_client):
-        real_client._http_client.post = AsyncMock(side_effect=Exception("timeout"))
+        real_client._http_client_legacy.post = AsyncMock(side_effect=Exception("timeout"))
 
         with pytest.raises(RuntimeError, match="DB 아이템 추가 실패"):
             await real_client.add_database_item(

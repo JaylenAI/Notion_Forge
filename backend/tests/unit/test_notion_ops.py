@@ -24,7 +24,7 @@ def real_client():
 
     # httpx 클라이언트 모킹
     client._http_client = AsyncMock()
-    client._http_legacy = AsyncMock()
+    client._http_client_legacy = AsyncMock()
     client.rate_limiter = AsyncMock()
     client.rate_limiter.acquire = AsyncMock()
     client.rate_limiter.call_with_retry = AsyncMock()
@@ -259,7 +259,7 @@ class TestPageOpsReal:
                 "url": "https://notion.so/new-page",
             },
         )
-        real_client._http_client.post = AsyncMock(return_value=mock_resp)
+        real_client._http_client_legacy.post = AsyncMock(return_value=mock_resp)
 
         result = await real_client.create_page(
             parent_id="parent-123",
@@ -274,7 +274,7 @@ class TestPageOpsReal:
     async def test_create_page_with_children(self, real_client):
         """children 포함 페이지 생성"""
         mock_resp = _mock_response(200, {"id": "page-with-children"})
-        real_client._http_client.post = AsyncMock(return_value=mock_resp)
+        real_client._http_client_legacy.post = AsyncMock(return_value=mock_resp)
 
         children = [{"type": "paragraph", "paragraph": {"rich_text": []}}]
         result = await real_client.create_page(
@@ -283,7 +283,7 @@ class TestPageOpsReal:
             children=children,
         )
 
-        call_kwargs = real_client._http_client.post.call_args
+        call_kwargs = real_client._http_client_legacy.post.call_args
         body = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
         assert "children" in body
         assert result["id"] == "page-with-children"
@@ -292,7 +292,7 @@ class TestPageOpsReal:
         """잘못된 아이콘 시 아이콘 없이 재시도"""
         error_resp = _mock_response(400, text="icon.emoji is not a valid emoji")
         success_resp = _mock_response(200, {"id": "page-no-icon"})
-        real_client._http_client.post = AsyncMock(side_effect=[error_resp, success_resp])
+        real_client._http_client_legacy.post = AsyncMock(side_effect=[error_resp, success_resp])
 
         result = await real_client.create_page(
             parent_id="parent-123",
@@ -301,13 +301,13 @@ class TestPageOpsReal:
         )
 
         assert result["id"] == "page-no-icon"
-        assert real_client._http_client.post.call_count == 2
+        assert real_client._http_client_legacy.post.call_count == 2
 
     async def test_create_page_icon_fallback_also_fails(self, real_client):
         """아이콘 폴백도 실패하면 RuntimeError"""
         error_resp1 = _mock_response(400, text="icon.emoji is not valid")
         error_resp2 = _mock_response(400, text="Other error after retry")
-        real_client._http_client.post = AsyncMock(side_effect=[error_resp1, error_resp2])
+        real_client._http_client_legacy.post = AsyncMock(side_effect=[error_resp1, error_resp2])
 
         with pytest.raises(RuntimeError, match="생성 실패"):
             await real_client.create_page(
@@ -319,7 +319,7 @@ class TestPageOpsReal:
     async def test_create_page_non_icon_error(self, real_client):
         """아이콘 관련이 아닌 에러는 바로 RuntimeError"""
         error_resp = _mock_response(403, text="Insufficient permissions for parent page")
-        real_client._http_client.post = AsyncMock(return_value=error_resp)
+        real_client._http_client_legacy.post = AsyncMock(return_value=error_resp)
 
         with pytest.raises(RuntimeError, match="생성 실패"):
             await real_client.create_page(
@@ -329,7 +329,7 @@ class TestPageOpsReal:
 
     async def test_create_page_network_exception(self, real_client):
         """네트워크 예외 시 RuntimeError"""
-        real_client._http_client.post = AsyncMock(side_effect=ConnectionError("DNS resolution failed"))
+        real_client._http_client_legacy.post = AsyncMock(side_effect=ConnectionError("DNS resolution failed"))
 
         with pytest.raises(RuntimeError, match="생성 실패"):
             await real_client.create_page(parent_id="parent-123", title="네트워크 에러")

@@ -434,6 +434,7 @@ def _make_page_mock_client():
     http = MagicMock()
     http.post = AsyncMock(return_value=mock_resp)
     client._http_client = http
+    client._http_client_legacy = http
 
     rl = MagicMock()
     rl.acquire = AsyncMock()
@@ -455,6 +456,7 @@ def _make_dbitem_mock_client():
     http = MagicMock()
     http.post = AsyncMock(return_value=mock_resp)
     client._http_client = http
+    client._http_client_legacy = http
 
     rl = MagicMock()
     rl.acquire = AsyncMock()

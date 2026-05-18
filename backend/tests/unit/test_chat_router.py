@@ -719,10 +719,13 @@ class TestEdgeCases:
             }
         )
 
-        with client.websocket_connect("/ws/chat") as ws:
-            ws.send_text(init_msg)
-            response = ws.receive_json()
-            assert response["type"] == "system"
+        with patch("app.config.settings") as mock_settings:
+            mock_settings.notion_api_key = ""
+            mock_settings.notion_parent_page_id = ""
+            with client.websocket_connect("/ws/chat") as ws:
+                ws.send_text(init_msg)
+                response = ws.receive_json()
+                assert response["type"] == "system"
 
         mock_orchestrator_class.assert_called_once_with(
             notion_token="ntn_minimal_token",

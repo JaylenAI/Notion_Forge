@@ -29,6 +29,7 @@ def real_client():
                 client = NotionClient(token="ntn_real_token_abc", parent_page_id="parent-id-real")
 
     client._http_client = AsyncMock()
+    client._http_client_legacy = AsyncMock()
     client.rate_limiter = AsyncMock()
     client.rate_limiter.acquire = AsyncMock()
     client.rate_limiter.call_with_retry = AsyncMock()
@@ -450,10 +451,13 @@ class TestClientClose:
         """http 클라이언트 정리"""
         real_client._http_client = AsyncMock()
         real_client._http_client.aclose = AsyncMock()
+        real_client._http_client_legacy = AsyncMock()
+        real_client._http_client_legacy.aclose = AsyncMock()
 
         await real_client.close()
 
         real_client._http_client.aclose.assert_called_once()
+        real_client._http_client_legacy.aclose.assert_called_once()
 
     async def test_close_without_http_client(self, mock_client):
         """mock_mode에서는 http_client가 없어도 안전하게 종료"""
