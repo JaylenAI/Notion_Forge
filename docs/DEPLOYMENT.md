@@ -255,7 +255,7 @@ stringData:
 
 | 엔드포인트 | 용도 | 응답 예시 |
 |-----------|------|----------|
-| `GET /health` | 전체 상태 + 통계 | `{"status":"ok","version":"8.0.0",...}` |
+| `GET /health` | 전체 상태 + 통계 | `{"status":"ok","version":"0.1.6",...}` |
 | `GET /health/ready` | K8s readiness probe | `{"ready":true,"checks":{...}}` |
 | `GET /health/live` | K8s liveness probe | `{"alive":true}` |
 

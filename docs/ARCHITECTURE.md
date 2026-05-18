@@ -244,7 +244,7 @@ AI가 생성하는 중간 구조 (JSON):
 
 | 블록 | 대안 |
 |------|------|
-| `button` | ✅ 지원 (v8.0.0) — 자동화 트리거 |
+| `button` | ✅ 지원 (v0.1.0) — 자동화 트리거 |
 | `link_preview` | bookmark으로 대체 |
 
 ### Views API (2026-03-19 신규) — 10개 뷰 전부 동작 확인
@@ -429,6 +429,7 @@ NotionForge/
 │   │   ├── template.py            # REST API
 │   │   ├── ai.py                  # AI 모델/프로바이더 API
 │   │   ├── workspace.py           # 워크스페이스 + Memory API
+│   │   ├── tasks.py               # 비동기 작업 관리 API
 │   │   ├── recipes.py             # 커뮤니티 레시피 API
 │   │   ├── oauth.py               # Notion OAuth 연동
 │   │   └── skills.py              # 커스텀 스킬 CRUD

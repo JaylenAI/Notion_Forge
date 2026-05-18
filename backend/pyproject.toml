@@ -1,6 +1,6 @@
 [project]
 name = "notionforge-backend"
-version = "0.1.4"
+version = "0.1.6"
 description = "NotionForge - AI 기반 노션 템플릿 자동 생성 에이전트"
 license = "MIT"
 requires-python = ">=3.11"

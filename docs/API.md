@@ -22,7 +22,7 @@
 ```json
 {
   "status": "ok",
-  "version": "8.1.0",
+  "version": "0.1.6",
   "ai_provider": "copilot",
   "notion_ready": true,
   "copilot": { "available": true, "started": true },
@@ -370,9 +370,27 @@ Copilot 모델 변경 (세션 단위).
 
 Notion OAuth 인증 시작. 브라우저를 Notion 인증 페이지로 리디렉트.
 
-### `GET /api/oauth/callback?code=xxx`
+### `GET /api/oauth/callback?code=xxx&state=xxx`
 
-OAuth 콜백. 토큰 교환 후 프론트엔드로 리디렉트.
+OAuth 콜백. CSRF state 검증 후 일회용 교환 코드 발급, 프론트엔드로 리디렉트 (`?oauth_callback=true&code=xxx`).
+
+### `POST /api/oauth/exchange?code=xxx`
+
+일회용 코드를 OAuth 토큰으로 교환. 토큰이 URL에 노출되지 않도록 보호.
+
+```json
+{
+  "oauth_token": "ntn_xxxxx",
+  "workspace_name": "My Workspace",
+  "workspace_id": "xxxxx"
+}
+```
+
+| 상태 | 의미 |
+|------|------|
+| 200 | 성공 |
+| 400 | 유효하지 않은 코드 |
+| 410 | 만료된 코드 (60초 TTL) |
 
 ### `GET /api/oauth/status`
 

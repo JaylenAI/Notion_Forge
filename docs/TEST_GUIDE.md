@@ -1,7 +1,7 @@
 # 테스트 가이드 (Test Guide)
 
-> 최종 업데이트: 2026-05-13
-> 테스트 현황: 1215개 테스트, 82% 커버리지
+> 최종 업데이트: 2026-05-18
+> 테스트 현황: 1,374개 테스트, 80%+ 커버리지
 
 ---
 
@@ -11,7 +11,7 @@
 backend/tests/
 ├── unit/                          # 단위 테스트 (48 파일)
 │   ├── test_ai_router.py         # AI 라우터 (프로바이더 감지, 모델 변경)
-│   ├── test_agent_tools.py       # Tool Registry 9개 도구
+│   ├── test_agent_tools.py       # Tool Registry 11개 도구
 │   ├── test_block_builder.py     # 블록 JSON 생성 (20종)
 │   ├── test_blueprint_generator.py # Gen-Eval 피드백 루프
 │   ├── test_chat_router.py       # WebSocket 채팅 (인증, 레이트리밋)
@@ -58,7 +58,7 @@ uv run pytest tests/unit/test_providers.py -v
 uv run pytest tests/ -k "oauth" -v
 ```
 
-## 커버리지 현황 (v8.1.0)
+## 커버리지 현황 (v0.1.6)
 
 | 모듈 | 커버리지 | 비고 |
 |------|---------|------|

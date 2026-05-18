@@ -2,7 +2,7 @@
 
 > 최종 업데이트: 2026-05-18
 > 현재 브랜치: dev
-> 버전: v0.1.4
+> 버전: v0.1.6
 
 ---
 
@@ -18,7 +18,7 @@ Notion API 듀얼 버전          [██████████] 100%  쓰기 
 블루프린트 자동 수정          [██████████] 100%  PostProcessor 13종 + 구조 검증
 보안 미들웨어                [██████████] 100%  Rate Limit, CSRF, 에러 정제, 업로드 검증
 CI/CD 파이프라인             [██████████] 100%  lint→test→typecheck→docker→security→api-docs
-테스트 1,359개 (80%+ 커버리지) [██████████] 100%  unit 51개 파일, fail_under=80
+테스트 1,374개 (80%+ 커버리지) [██████████] 100%  unit 51개 파일, fail_under=80
 문서화                       [██████████] 100%  README, CONTRIBUTING, SECURITY, API, ARCHITECTURE
 Docker 배포                  [██████████] 100%  Multi-stage, health check, 리소스 제한
 오픈소스 배포 준비            [██████████] 100%  MIT, 배너, 이슈 템플릿, Dependabot
@@ -97,8 +97,8 @@ User Input
 ## 테스트 현황
 
 ```
-테스트 총 수:     1,359개
-커버리지:         80.30% (fail_under=80%)
+테스트 총 수:     1,374개
+커버리지:         80%+ (fail_under=80%)
 테스트 파일:      51개+
 카테고리:         unit (48+) + integration (3)
 ```

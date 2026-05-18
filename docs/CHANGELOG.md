@@ -4,6 +4,17 @@
 
 ---
 
+## [0.1.6] - 2026-05-18
+
+### Changed
+- 영문 README.md 신규 작성 — 기존 한국어 README는 README.ko.md로 분리
+- 전체 버전 통합 — frontend(8.1.0), backend(0.1.4), 문서(v8.x) → v0.1.6으로 일원화
+- 문서 전면 최신화 — ARCHITECTURE, API, DEPLOYMENT, TEST_GUIDE, SKILL_GUIDE, BLOCK_SUPPORT, CURRENT_STATUS, AGENT_DESIGN, ROADMAP, SECURITY
+- 테스트 수 1,359 → 1,374개 반영, 라우터 수 7 → 8개 반영
+- `.env.example`에 누락 변수 5개 추가 (RATE_LIMIT_RPM, CORS_ORIGINS, INPUT_MIN/MAX_LENGTH, APPROVAL_TIMEOUT_SECONDS, GEN_EVAL_MAX_RETRIES)
+
+---
+
 ## [0.1.4] - 2026-05-18
 
 ### Security
