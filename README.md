@@ -1,9 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/banner-light.svg">
-    <img src="docs/assets/banner-light.svg" alt="NotionForge" width="100%">
-  </picture>
+  <img src="docs/assets/banner.png" alt="NotionForge" width="100%">
 </p>
 
 # NotionForge
