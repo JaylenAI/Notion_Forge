@@ -73,6 +73,7 @@ async def websocket_chat(websocket: WebSocket):
                 await websocket.close(code=4001)
                 return
             from app.config import settings
+
             notion_token = init_data.get("notion_token", "") or settings.notion_api_key
             parent_page_id = init_data.get("parent_page_id", "") or settings.notion_parent_page_id
             if not notion_token or len(notion_token) < 5:

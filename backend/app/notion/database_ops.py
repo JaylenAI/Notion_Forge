@@ -267,9 +267,7 @@ class DatabaseOpsMixin:
                 # 새 API 실패 시 레거시 쿼리 엔드포인트로 폴백
                 logger.info("[query_database] 2026-03-11 실패, 레거시 폴백 시도")
                 await self.rate_limiter.acquire()
-                resp = await self._http_client_legacy.post(
-                    f"/databases/{database_id}/query", json=body
-                )
+                resp = await self._http_client_legacy.post(f"/databases/{database_id}/query", json=body)
                 if resp.status_code >= 400:
                     logger.warning(f"[query_database 에러 {resp.status_code}] {resp.text[:200]}")
                     return []
