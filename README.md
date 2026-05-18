@@ -247,7 +247,7 @@ User Input
 | **AI** | Copilot SDK (GPT-4.1) / Claude / Gemini / Groq / OpenAI — Strategy Pattern |
 | **Notion** | notion-client 2.x + httpx (듀얼 API: 쓰기 2022-06-28 / 읽기·뷰 2026-03-11) |
 | **Frontend** | React 19 / TypeScript 5.7 / Vite 7 / Zustand 5 / TailwindCSS 4 |
-| **테스트** | pytest (1,320개 테스트, 80%+ 커버리지) |
+| **테스트** | pytest (1,359개 테스트, 80%+ 커버리지) |
 | **CI/CD** | GitHub Actions (lint → test → typecheck → docker → security scan) |
 | **배포** | Docker Compose (Multi-stage build) |
 
@@ -283,7 +283,7 @@ NotionForge/
 │   │   ├── routers/                  # FastAPI 라우터 (7개)
 │   │   ├── core/                     # 미들웨어, 로깅, 메트릭스
 │   │   └── schemas/                  # Pydantic 모델
-│   └── tests/                        # 1,320개 테스트
+│   └── tests/                        # 1,359개 테스트
 │       └── unit/                     # 단위 테스트 (51개 파일)
 ├── frontend/
 │   └── src/

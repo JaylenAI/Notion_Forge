@@ -1,6 +1,6 @@
 [project]
 name = "notionforge-backend"
-version = "0.1.0"
+version = "0.1.2"
 description = "NotionForge - AI 기반 노션 템플릿 자동 생성 에이전트"
 license = "MIT"
 requires-python = ">=3.11"
@@ -21,10 +21,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/JaylenAI/notion_ai_agent"
-Repository = "https://github.com/JaylenAI/notion_ai_agent"
-Documentation = "https://github.com/JaylenAI/notion_ai_agent/tree/main/docs"
-Issues = "https://github.com/JaylenAI/notion_ai_agent/issues"
+Homepage = "https://github.com/JaylenAI/Notion_Forge"
+Repository = "https://github.com/JaylenAI/Notion_Forge"
+Documentation = "https://github.com/JaylenAI/Notion_Forge/tree/main/docs"
+Issues = "https://github.com/JaylenAI/Notion_Forge/issues"
 
 [dependency-groups]
 dev = [

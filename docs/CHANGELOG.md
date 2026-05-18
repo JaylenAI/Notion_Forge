@@ -4,6 +4,29 @@
 
 ---
 
+## [0.1.2] - 2026-05-18
+
+### Fixed
+- FOUC(Flash of Unstyled Content) 수정 — 새로고침 시 Material Symbols 아이콘 텍스트 노출 방지
+  - `index.html`에 critical CSS 인라인 (`#root { opacity: 0 }`)
+  - Material Symbols `font-display: block` 적용
+  - `document.fonts.ready` 기반 앱 reveal (최대 3초 타임아웃)
+- ruff 린트 오류 2건 수정 (N806, F541)
+- ruff format 3개 파일 포매팅 적용
+
+### Changed
+- 레포명 `notion_ai_agent` → `Notion_Forge` 전체 반영 (17개 파일)
+- 문서 최신화: ARCHITECTURE, AGENT_DESIGN, CURRENT_STATUS, CHANGELOG, DEPLOYMENT, README, CLAUDE.md
+- 듀얼 API 전략 문서화 (쓰기: 2022-06-28 / 읽기·뷰: 2026-03-11)
+- PostProcessor 13종 자동 수정 반영 (QualityValidator 3계층 → Gen-Eval + PostProcessor)
+
+### Added
+- widget_builder 테스트 12개
+- workers ops (Workers + External Agents API) 테스트 38개
+- 테스트 총 1,359개 (커버리지 80.30%)
+
+---
+
 ## [0.1.0] - 2026-05-18 (첫 오픈소스 공개 릴리스)
 
 ### Added (Notion API 듀얼 버전 + Workers 통합)

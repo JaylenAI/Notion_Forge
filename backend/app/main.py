@@ -60,7 +60,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="NotionForge API",
         description="AI 기반 노션 템플릿 자동 생성 에이전트",
-        version="0.1.0",
+        version="0.1.2",
         docs_url="/docs",
         redoc_url="/redoc",
         lifespan=lifespan,
@@ -121,7 +121,7 @@ def create_app() -> FastAPI:
 
         return {
             "status": "ok",
-            "version": "0.1.0",
+            "version": "0.1.2",
             "ai_provider": settings.ai_provider,
             "notion_ready": settings.notion_ready,
             "copilot": copilot_status,
