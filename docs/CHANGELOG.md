@@ -4,6 +4,18 @@
 
 ---
 
+## [0.1.4] - 2026-05-18
+
+### Security
+- OAuth 토큰 전달 방식 변경 — URL fragment 노출 제거, 일회용 교환 코드 방식으로 전환
+- SecurityHeadersMiddleware 추가 (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy)
+- `.gitignore` 보강 — `*.pem`, `*.key`, `*.p12`, `credentials.json`, `service-account*.json` 추가
+- `_pending_states` DoS 방어 — 최대 1,000개 제한 추가
+- SSE 스트리밍 에러에 `sanitize_error()` 적용 — 내부 정보 노출 방지
+- README에 "로컬 전용 서버" 보안 경고 추가
+
+---
+
 ## [0.1.3] - 2026-05-18
 
 ### Fixed

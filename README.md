@@ -99,6 +99,8 @@ cd frontend && npm install && npm run dev
 | API 문서 (Swagger) | http://localhost:9500/docs |
 | Backend API | http://localhost:9500 |
 
+> **보안 주의**: NotionForge는 **로컬 환경 전용** 셀프호스트 도구입니다. API에 별도 인증이 없으므로, 외부 인터넷에 직접 노출하지 마세요. 외부 접근이 필요한 경우 리버스 프록시(nginx 등)에 인증 레이어를 추가하세요.
+
 ---
 
 <h2 id="features">주요 기능</h2>

@@ -8,7 +8,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.core.middleware import RateLimitMiddleware
 from app.main import app
-from app.routers.oauth import STATE_TTL, _pending_states
+from app.routers.oauth import STATE_TTL, _exchange_codes, _pending_states
 
 
 def _reset_rate_limiter():
@@ -34,10 +34,12 @@ async def client():
 
 @pytest.fixture(autouse=True)
 def clear_states():
-    """각 테스트 전후로 state 저장소 초기화"""
+    """각 테스트 전후로 state/exchange 저장소 초기화"""
     _pending_states.clear()
+    _exchange_codes.clear()
     yield
     _pending_states.clear()
+    _exchange_codes.clear()
 
 
 class TestAuthorizeEndpoint:
@@ -150,7 +152,7 @@ class TestCallbackEndpoint:
         assert "oauth_error=access_denied" in location
 
     async def test_callback_success_token_exchange(self, client):
-        """정상 콜백: state 검증 + 토큰 교환 + 프론트엔드 리다이렉트"""
+        """정상 콜백: state 검증 + 토큰 교환 + 일회용 코드로 리다이렉트"""
         valid_state = "valid-state-for-exchange"
         _pending_states[valid_state] = time.time()
 
@@ -179,11 +181,11 @@ class TestCallbackEndpoint:
 
         assert resp.status_code == 307
         location = resp.headers["location"]
-        assert "oauth_token=ntn_real_access_token_xyz" in location
-        assert "workspace_name=My" in location
-        assert "workspace_id=ws-123" in location
-        # state가 소비됨
+        assert "oauth_callback=true" in location
+        assert "code=" in location
+        assert "oauth_token" not in location
         assert valid_state not in _pending_states
+        assert len(_exchange_codes) == 1
 
     async def test_callback_token_exchange_failure_returns_502(self, client):
         """토큰 교환 실패 시 502"""
@@ -261,6 +263,58 @@ class TestCallbackEndpoint:
                 # 두 번째 사용: 실패 (state 이미 소비됨)
                 resp2 = await client.get(f"/api/oauth/callback?code=code2&state={valid_state}")
                 assert resp2.status_code == 403
+
+
+class TestExchangeEndpoint:
+    """POST /api/oauth/exchange"""
+
+    async def test_exchange_valid_code(self, client):
+        """유효한 교환 코드로 토큰 수신"""
+        _exchange_codes["valid-code"] = {
+            "access_token": "ntn_token_abc",
+            "workspace_name": "Test WS",
+            "workspace_id": "ws-001",
+            "created": time.time(),
+        }
+
+        resp = await client.post("/api/oauth/exchange", params={"code": "valid-code"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["oauth_token"] == "ntn_token_abc"
+        assert data["workspace_name"] == "Test WS"
+        assert "valid-code" not in _exchange_codes
+
+    async def test_exchange_invalid_code(self, client):
+        """존재하지 않는 코드는 400"""
+        resp = await client.post("/api/oauth/exchange", params={"code": "nonexistent"})
+        assert resp.status_code == 400
+
+    async def test_exchange_expired_code(self, client):
+        """만료된 교환 코드는 410"""
+        _exchange_codes["expired-code"] = {
+            "access_token": "ntn_old",
+            "workspace_name": "WS",
+            "workspace_id": "id",
+            "created": time.time() - 120,
+        }
+
+        resp = await client.post("/api/oauth/exchange", params={"code": "expired-code"})
+        assert resp.status_code == 410
+
+    async def test_exchange_code_consumed_once(self, client):
+        """교환 코드는 1회만 사용 가능"""
+        _exchange_codes["one-time"] = {
+            "access_token": "ntn_once",
+            "workspace_name": "WS",
+            "workspace_id": "id",
+            "created": time.time(),
+        }
+
+        resp1 = await client.post("/api/oauth/exchange", params={"code": "one-time"})
+        assert resp1.status_code == 200
+
+        resp2 = await client.post("/api/oauth/exchange", params={"code": "one-time"})
+        assert resp2.status_code == 400
 
 
 class TestStatusEndpoint:

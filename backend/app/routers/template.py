@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 
 from app.agent.blueprint_generator import generate_blueprint
 from app.agent.orchestrator import AgentOrchestrator
+from app.core.middleware import sanitize_error
 from app.schemas.template import (
     TemplateGenerateRequest,
     TemplateGenerateResponse,
@@ -107,7 +108,7 @@ async def generate_template_stream(req: TemplateGenerateRequest):
             yield f"data: {json.dumps({'type': 'error', 'message': '생성 시간 초과'}, ensure_ascii=False)}\n\n"
         except Exception as e:
             logger.error(f"[stream] 오류: {e}")
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'message': sanitize_error(e)}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(
         event_generator(),

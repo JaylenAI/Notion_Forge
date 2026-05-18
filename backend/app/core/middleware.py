@@ -83,6 +83,19 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """보안 응답 헤더 자동 설정"""
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        return response
+
+
 def sanitize_error(error: Exception, include_details: bool = False) -> str:
     """에러 메시지 Sanitization — 프로덕션에서 내부 정보 숨김"""
     error_str = str(error)

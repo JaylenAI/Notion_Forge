@@ -26,7 +26,11 @@ NOTION_AUTH_URL = "https://api.notion.com/v1/oauth/authorize"
 NOTION_TOKEN_URL = "https://api.notion.com/v1/oauth/token"
 
 STATE_TTL = 300
+MAX_PENDING_STATES = 1000
 _pending_states: dict[str, float] = {}
+
+EXCHANGE_CODE_TTL = 60
+_exchange_codes: dict[str, dict] = {}
 
 
 def _cleanup_expired_states() -> None:
@@ -34,6 +38,9 @@ def _cleanup_expired_states() -> None:
     expired = [s for s, ts in _pending_states.items() if now - ts > STATE_TTL]
     for s in expired:
         del _pending_states[s]
+    expired_codes = [c for c, d in _exchange_codes.items() if now - d["created"] > EXCHANGE_CODE_TTL]
+    for c in expired_codes:
+        del _exchange_codes[c]
 
 
 @router.get("/authorize")
@@ -46,6 +53,9 @@ async def authorize():
         return {"error": "NOTION_OAUTH_CLIENT_ID가 설정되지 않았습니다. .env 파일을 확인하세요."}
 
     _cleanup_expired_states()
+
+    if len(_pending_states) >= MAX_PENDING_STATES:
+        return {"error": "인증 요청이 너무 많습니다. 잠시 후 다시 시도해주세요."}
 
     state = secrets.token_urlsafe(32)
     _pending_states[state] = time.time()
@@ -112,14 +122,36 @@ async def callback(code: str = "", error: str = "", state: str = ""):
     workspace_name = token_data.get("workspace_name", "")
     workspace_id = token_data.get("workspace_id", "")
 
-    params = urlencode(
-        {
-            "oauth_token": access_token,
-            "workspace_name": workspace_name,
-            "workspace_id": workspace_id,
-        }
-    )
-    return RedirectResponse(url=f"{frontend_url}#{params}")
+    exchange_code = secrets.token_urlsafe(48)
+    _exchange_codes[exchange_code] = {
+        "access_token": access_token,
+        "workspace_name": workspace_name,
+        "workspace_id": workspace_id,
+        "created": time.time(),
+    }
+
+    params = urlencode({"code": exchange_code})
+    return RedirectResponse(url=f"{frontend_url}?oauth_callback=true&{params}")
+
+
+@router.post("/exchange")
+async def exchange_code(code: str = ""):
+    """일회용 코드 → OAuth 토큰 교환 (토큰이 URL에 노출되지 않도록 보호)"""
+    if not code or code not in _exchange_codes:
+        _cleanup_expired_states()
+        raise HTTPException(status_code=400, detail="유효하지 않거나 만료된 인증 코드입니다.")
+
+    data = _exchange_codes.pop(code)
+    _cleanup_expired_states()
+
+    if time.time() - data["created"] > EXCHANGE_CODE_TTL:
+        raise HTTPException(status_code=410, detail="인증 코드가 만료되었습니다. 다시 시도해주세요.")
+
+    return {
+        "oauth_token": data["access_token"],
+        "workspace_name": data["workspace_name"],
+        "workspace_id": data["workspace_id"],
+    }
 
 
 @router.get("/status")

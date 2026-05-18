@@ -18,9 +18,17 @@ dist/
 
 # Environment
 .env
-.env.dev
-.env.local
-.env.production
+.env.*
+!.env.example
+backend/.env
+
+# Secrets & Certificates
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
 
 # IDE
 .vscode/

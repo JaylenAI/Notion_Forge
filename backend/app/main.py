@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.core.logging_config import setup_logging
-from app.core.middleware import RateLimitMiddleware, RequestIdMiddleware
+from app.core.middleware import RateLimitMiddleware, RequestIdMiddleware, SecurityHeadersMiddleware
 from app.routers import ai, chat, oauth, recipes, skills, tasks, template, workspace
 
 setup_logging(settings.log_level)
@@ -60,7 +60,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="NotionForge API",
         description="AI 기반 노션 템플릿 자동 생성 에이전트",
-        version="0.1.3",
+        version="0.1.4",
         docs_url="/docs",
         redoc_url="/redoc",
         lifespan=lifespan,
@@ -77,6 +77,7 @@ def create_app() -> FastAPI:
     rate_limit_rpm = int(os.environ.get("RATE_LIMIT_RPM", "60"))
     app.add_middleware(RateLimitMiddleware, rpm=rate_limit_rpm)
     app.add_middleware(RequestIdMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
 
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
@@ -121,7 +122,7 @@ def create_app() -> FastAPI:
 
         return {
             "status": "ok",
-            "version": "0.1.3",
+            "version": "0.1.4",
             "ai_provider": settings.ai_provider,
             "notion_ready": settings.notion_ready,
             "copilot": copilot_status,
