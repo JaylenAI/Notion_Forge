@@ -4,6 +4,14 @@
 
 ---
 
+## [0.1.3] - 2026-05-18
+
+### Fixed
+- Docker 이미지 태그 소문자 변환 — GHCR push 시 `repository name must be lowercase` 에러 수정
+- README 배너를 커스텀 PNG 이미지로 교체
+
+---
+
 ## [0.1.2] - 2026-05-18
 
 ### Fixed
