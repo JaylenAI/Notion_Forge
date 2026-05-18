@@ -213,7 +213,7 @@ def _build_sample_key_direct_map(
             result[skey] = skey
             used_real.add(skey)
 
-    _TITLE_HINTS = {
+    title_hints = {
         "이름", "name", "제목", "title", "태스크", "태스크명",
         "항목", "항목명", "작업", "작업명", "자료명", "문서명",
         "프로젝트명", "프로젝트", "일정", "일정명", "회의명",
@@ -222,7 +222,7 @@ def _build_sample_key_direct_map(
         for skey in sample_keys:
             if skey in existing_map or skey in result:
                 continue
-            if skey.lower() in _TITLE_HINTS or any(h in skey.lower() for h in ("이름", "name", "제목", "title")):
+            if skey.lower() in title_hints or any(h in skey.lower() for h in ("이름", "name", "제목", "title")):
                 result[skey] = real_title_key
                 used_real.add(real_title_key)
                 break

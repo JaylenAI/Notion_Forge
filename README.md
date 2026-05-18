@@ -9,8 +9,8 @@
 # NotionForge
 
 <p align="center">
-  <a href="https://github.com/JaylenAI/notion_ai_agent/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/JaylenAI/notion_ai_agent/ci.yml?branch=dev&style=for-the-badge&label=CI" alt="CI"></a>
-  <a href="https://github.com/JaylenAI/notion_ai_agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://github.com/JaylenAI/Notion_Forge/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/JaylenAI/Notion_Forge/ci.yml?branch=dev&style=for-the-badge&label=CI" alt="CI"></a>
+  <a href="https://github.com/JaylenAI/Notion_Forge/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+"></a>
   <a href="https://notion.so"><img src="https://img.shields.io/badge/Notion_API-2026--03--11-000000?style=for-the-badge&logo=notion&logoColor=white" alt="Notion API"></a>
   <a href="https://docs.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"></a>
@@ -40,7 +40,7 @@
 <tr><td><b>뷰 10종 + 대시보드</b></td><td>Table, Board, Calendar, Timeline, Gallery, List, Chart, Form, Dashboard, Pivot — 위젯 자동 배치, 필터/정렬 바인딩.</td></tr>
 <tr><td><b>Notion Workers 통합</b></td><td>Sync/Tool/Webhook TypeScript 워커 자동 생성 + 배포. External Agents API로 AI를 Notion에 네이티브 등록.</td></tr>
 <tr><td><b>실시간 채팅 UI</b></td><td>React 19 + WebSocket 실시간 스트리밍. 생성 과정을 단계별로 표시. 멀티턴 대화로 수정 가능.</td></tr>
-<tr><td><b>3계층 품질 검증</b></td><td>Schema → Content → Design 자동 검증 + Gen-Eval 피드백 루프 (최대 3회). 실패 시 자동 롤백.</td></tr>
+<tr><td><b>블루프린트 자동 보정</b></td><td>Gen-Eval 구조 검증 (최대 3회) + PostProcessor 13종 자동 수정. 실패 시 자동 롤백.</td></tr>
 <tr><td><b>보안 내장</b></td><td>Input Guardrail (프롬프트 인젝션 방어), Rate Limiting, CSRF 방어, OAuth 연동, 에러 정제.</td></tr>
 </table>
 
@@ -60,8 +60,8 @@
 ### 1. 클론 & 환경 설정
 
 ```bash
-git clone https://github.com/JaylenAI/notion_ai_agent.git
-cd notion_ai_agent
+git clone https://github.com/JaylenAI/Notion_Forge.git
+cd Notion_Forge
 cp .env.example .env
 ```
 
@@ -172,13 +172,13 @@ User Input
   │
   ├─ [7] Gen-Eval Loop ───── 구조적 검증 → 실패 시 AI 피드백 → 재생성 (최대 3회)
   │
-  ├─ [8] Post-Processor ──── 13종 자동 보정 (callout, status, spacing 등)
+  ├─ [8] Post-Processor ──── 13종 자동 보정 (callout, status, spacing, 한국어 매핑 등)
   │
   ├─ [9] Approval Gate ───── 사용자 확인/취소
   │
   ├─ [10] Agent Loop ──────── Plan-Execute-Reflect (Tool Registry 11개 도구)
   │
-  ├─ [11] 5-Pass Creation ── 페이지 → 서브페이지 → DB → 뷰 → 블록
+  ├─ [11] 5-Pass Creation ── 페이지 → 서브페이지 → DB(레거시) → 뷰(최신) → 샘플 데이터
   │
   └─ [12] Rollback ────────── 실패 시 자동 삭제
 ```
@@ -245,9 +245,9 @@ User Input
 |--------|------|
 | **Backend** | Python 3.11+ / FastAPI / uv |
 | **AI** | Copilot SDK (GPT-4.1) / Claude / Gemini / Groq / OpenAI — Strategy Pattern |
-| **Notion** | notion-client 2.x + httpx (API 2026-03-11) |
+| **Notion** | notion-client 2.x + httpx (듀얼 API: 쓰기 2022-06-28 / 읽기·뷰 2026-03-11) |
 | **Frontend** | React 19 / TypeScript 5.7 / Vite 7 / Zustand 5 / TailwindCSS 4 |
-| **테스트** | pytest (1,300+ 테스트, 80%+ 커버리지) |
+| **테스트** | pytest (1,320개 테스트, 80%+ 커버리지) |
 | **CI/CD** | GitHub Actions (lint → test → typecheck → docker → security scan) |
 | **배포** | Docker Compose (Multi-stage build) |
 
@@ -283,7 +283,7 @@ NotionForge/
 │   │   ├── routers/                  # FastAPI 라우터 (7개)
 │   │   ├── core/                     # 미들웨어, 로깅, 메트릭스
 │   │   └── schemas/                  # Pydantic 모델
-│   └── tests/                        # 1,300+ 테스트
+│   └── tests/                        # 1,320개 테스트
 │       └── unit/                     # 단위 테스트 (51개 파일)
 ├── frontend/
 │   └── src/
@@ -343,8 +343,8 @@ NotionForge/
 
 ```bash
 # 개발 환경 셋업
-git clone https://github.com/JaylenAI/notion_ai_agent.git
-cd notion_ai_agent
+git clone https://github.com/JaylenAI/Notion_Forge.git
+cd Notion_Forge
 
 # Backend
 cd backend && uv sync

@@ -4,16 +4,16 @@
 
 ---
 
-## [0.1.0] - 2026-05-15 (첫 오픈소스 공개 릴리스)
+## [0.1.0] - 2026-05-18 (첫 오픈소스 공개 릴리스)
 
-### Added (Notion API 2026-03-11 전면 업그레이드 + Workers 통합)
+### Added (Notion API 듀얼 버전 + Workers 통합)
 
-**Phase 1: API 최신화**
-- Notion API 버전 2026-03-11로 업그레이드 (최신)
+**Phase 1: API 최신화 + 듀얼 버전 전략**
+- Notion API 듀얼 버전: 쓰기(2022-06-28) + 읽기/뷰/Workers(2026-03-11)
+- 2026-03-11이 DB 생성 시 속성을 무시하는 문제 발견 → legacy 클라이언트 병행으로 해결
 - Comments API: 생성/조회/수정/삭제 + 스레드 댓글
 - File Upload API: 서버→Notion 직접 파일 업로드
 - Data Sources API: 외부 데이터소스 연동 인프라
-- 레거시 호환 코드 제거
 
 **Phase 2: 13개 기능 확장**
 - 고급 필터 빌더 (`filter_builder.py`): 상대 날짜, multi-value, "me" 필터, AND/OR 복합 조건
@@ -37,13 +37,20 @@
 - Notion CLI 래퍼 (`cli.py`): `ntn` CLI를 Python에서 비동기 실행
 - CI `api-docs` 잡: dev/main 푸시 시 OpenAPI 스키마 자동 생성
 - CI `release-check` 잡: main 전용 — 테스트 수, TODO/FIXME, 버전 일관성 검증
-- 테스트 1,309개 (1,215 → 1,309, +94)
+- 테스트 1,320개 (1,215 → 1,320, +105)
+
+**Phase 5: 안정화 — DB 속성/샘플 데이터 정상화**
+- `_http_client_legacy` (2022-06-28) 추가: DB/페이지 생성 시 속성 정상 처리
+- 한국어 동의어 매핑 30+ 패턴: 블루프린트 키 → 실제 DB 속성 자동 매칭
+- QualityValidator 파이프라인 분리: 불필요한 재생성 방지
+- PostProcessor 13종 자동 수정으로 블루프린트 품질 보장
+- DB 생성 시 속성 개별 추가 폴백: validation 에러 시 title만 생성 → PATCH로 속성 추가
 
 ### Changed
 - README 전면 개편: Hermes Agent 수준 오픈소스 문서 구조
 - CONTRIBUTING.md: 확장 가이드 (프로바이더/도구/스킬/뷰) 추가
 - SECURITY.md: GitHub URL 업데이트
-- GitHub 리포지토리 URL: `JaylenAI/notion_ai_agent`로 통일
+- GitHub 리포지토리 URL: `JaylenAI/Notion_Forge`로 통일
 - 머지 완료된 feature 브랜치 26개 정리 (→ main + dev만 유지)
 
 ---

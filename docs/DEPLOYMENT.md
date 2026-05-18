@@ -26,8 +26,8 @@ NotionForge 프로덕션 배포 가이드.
 
 ```bash
 # 1. 클론
-git clone https://github.com/JaylenAI/notion_ai_agent.git
-cd notion_ai_agent
+git clone https://github.com/JaylenAI/Notion_Forge.git
+cd Notion_Forge
 
 # 2. 환경변수 설정
 cp .env.example .env

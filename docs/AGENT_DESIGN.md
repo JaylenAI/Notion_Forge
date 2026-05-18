@@ -1,7 +1,7 @@
 # AI Agent 설계 (Agent Design)
 
-> 최종 업데이트: 2026-05-13
-> 버전: v8.1.0
+> 최종 업데이트: 2026-05-18
+> 버전: v0.1.0
 
 ---
 
@@ -21,7 +21,7 @@
 │                                                  │           │
 │  ┌───────────────────────────────────────────────▼────────┐  │
 │  │              Blueprint Generator                       │  │
-│  │  PromptAssembler → LLM → QualityValidator → PostProc   │  │
+│  │  PromptAssembler → LLM → 구조 검증 → PostProcessor     │  │
 │  │              (Gen-Eval 루프, 최대 3회)                   │  │
 │  └───────────────────────────────────┬────────────────────┘  │
 │                                      │                       │
@@ -62,18 +62,16 @@ Step 3: Skill Routing
 
 Step 4: Blueprint Generation (Gen-Eval Loop)
   └─ PromptAssembler: base.md + mode + layout + views_catalog + golden
-  └─ LLM 생성 → QualityValidator 3계층 검증
+  └─ LLM 생성 → 구조 검증 (필수 필드, 블록 타입, 속성 타입)
   └─ 불합격 시 에러 피드백 주입 → 재생성 (최대 3회)
-  └─ PostProcessor: 13종 자동 수정
+  └─ PostProcessor: 13종 자동 수정 (callout, status 한글화, 샘플 보충 등)
 
-Step 5: Approval Gate + Creation
-  └─ 사용자 확인 대기 (60초 타임아웃)
-  └─ 5-Pass 생성:
-      Pass 1: 메인 페이지 (아이콘/커버)
-      Pass 2: 데이터베이스 (속성 + Relation)
-      Pass 3: 블록 (중첩 구조)
-      Pass 4: 뷰 (configuration)
-      Pass 5: 샘플 데이터 + 서브페이지
+Step 5: 5-Pass Creation (Notion 듀얼 API)
+  └─ Pass 1: 메인 페이지 (아이콘/커버) — legacy API
+  └─ Pass 2: 서브페이지 — legacy API
+  └─ Pass 3: 데이터베이스 (속성 + Relation) — legacy API (2022-06-28)
+  └─ Pass 4: 뷰 (configuration) — 최신 API (2026-03-11)
+  └─ Pass 5: 샘플 데이터 (한국어 동의어 매핑) — legacy API
 
 Step 6: Validation + Rollback
   └─ 생성 결과 검증 (기대 블록/DB 수 vs 실제)
@@ -147,19 +145,21 @@ prompt += golden/{layout}.json        # Few-shot 예제
 
 ---
 
-## 4. Tool Registry (9개 도구)
+## 4. Tool Registry (11개 도구)
 
 | # | Tool | 설명 | LLM Function Calling 스펙 |
 |---|------|------|--------------------------|
 | 1 | `create_page` | 페이지 생성 (아이콘/커버) | title, icon, cover_url, parent_id |
 | 2 | `create_database` | DB 생성 + 속성 설정 | title, properties, is_inline |
 | 3 | `add_blocks` | 블록 추가 (중첩 지원) | page_id, blocks[] |
-| 4 | `create_view` | 뷰 생성 (6종 + config) | db_id, view_type, config |
-| 5 | `add_sample_data` | DB 샘플 항목 추가 | db_id, items[] |
-| 6 | `create_sub_page` | 서브페이지 생성 | parent_id, title, blocks[] |
-| 7 | `modify_template` | 기존 템플릿 수정 | page_id, modifications |
-| 8 | `link_databases` | DB 간 Relation 설정 | source_db, target_db |
-| 9 | `generate_cover` | 커버 이미지 URL 생성 | category, theme |
+| 4 | `create_view` | 뷰 생성 (10종 + config) | db_id, view_type, config |
+| 5 | `add_database_items` | DB 샘플 항목 추가 (한국어 동의어 매핑) | db_id, items[] |
+| 6 | `create_columns` | 칼럼 레이아웃 (2단/3단) | page_id, columns[] |
+| 7 | `link_databases` | DB 간 Relation 설정 | source_db, target_db |
+| 8 | `generate_cover` | 커버 이미지 URL 생성 | category, theme |
+| 9 | `apply_color_theme` | 색상 테마 일괄 적용 | page_id, theme |
+| 10 | `create_worker` | Notion Workers (Sync/Tool/Webhook) | type, config |
+| 11 | `register_agent` | External Agent Notion 등록 | name, capabilities |
 
 ### Agent Loop 실행 흐름
 
@@ -174,43 +174,26 @@ AI가 도구 선택 (function calling)
 
 ---
 
-## 5. QualityValidator — 3계층 검증
+## 5. 블루프린트 검증 + 자동 수정
 
-### 검증 구조
+### 구조 검증 (Gen-Eval Loop)
+
+블루프린트 생성 후 필수 구조를 검증하고, 실패 시 AI에 피드백을 주입하여 재생성합니다 (최대 3회).
 
 ```
-Layer 1: Schema Validation (가중치 50%)
+검증 항목:
   ├─ title 필드 존재
   ├─ blocks[] 비어있지 않음
   ├─ databases[] 비어있지 않음
   ├─ 블록 타입 유효성 (20종)
   ├─ database_ref에 db_index 존재
-  ├─ db_index 범위 내
-  ├─ column_list 안에 database_ref 없음 (Critical)
   ├─ DB에 title 속성 존재
-  ├─ 속성 타입 유효성
-  └─ Relation/Formula/Rollup 정합성
-
-Layer 2: Content Validation (가중치 30%)
-  ├─ 샘플 항목 3개 이상
-  ├─ 중복 제목 없음
-  ├─ 제목 길이 적절
-  ├─ Status 값 다양성
-  ├─ 빈 텍스트 블록 비율 제한
-  └─ 서브페이지 제목 존재
-
-Layer 3: Design Validation (가중치 20%)
-  ├─ 첫 블록 = callout (환영 메시지)
-  ├─ heading 블록 존재 (섹션 구조)
-  ├─ 색상 일관성 (배경색 테마)
-  ├─ 연속 동일 블록 없음
-  ├─ 서브페이지 아이콘 존재
-  └─ database_ref가 첫 3블록에 없음
-
-합격 기준: total_score >= 60 AND critical_issues == 0
+  └─ 속성 타입 유효성
 ```
 
 ### PostProcessor 자동 수정 (13종)
+
+검증 통과 후 PostProcessor가 블루프린트를 자동 보정합니다:
 
 ```
 1.  welcome callout 보장 (없으면 추가)
@@ -226,6 +209,15 @@ Layer 3: Design Validation (가중치 20%)
 11. table_of_contents 라벨링
 12. 뷰 속성 검증
 13. 디자인 다양성 강화
+```
+
+### 샘플 데이터 매핑 (한국어 동의어)
+
+블루프린트의 샘플 키가 실제 DB 속성명과 다른 경우를 자동 매핑:
+
+```
+"이름" → "태스크명", "날짜" → "마감일", "담당" → "담당자"
+30+ 한국어 동의어 패턴으로 90%+ 매칭률 달성
 ```
 
 ---
@@ -275,10 +267,10 @@ divider, table_of_contents, column_list, database_ref,
 linked_view, image, bookmark, embed, code, tab
 ```
 
-### 뷰 타입 (6종 + 실험적 1종)
+### 뷰 타입 (10종)
 
 ```
-table, board, calendar, gallery, list, timeline, chart(실험적)
+table, board, calendar, gallery, list, timeline, chart, form, map, dashboard
 ```
 
 ### 속성 타입 (17종)

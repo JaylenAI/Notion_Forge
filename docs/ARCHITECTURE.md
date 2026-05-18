@@ -47,13 +47,13 @@
 | 기술 | 버전 | 용도 |
 |------|------|------|
 | **Python** | 3.11+ | 메인 언어 |
-| **FastAPI** | 0.110+ | API 서버, WebSocket 지원 |
-| **Claude API** | claude-sonnet-4-6 | AI 의도 분석, 구조 설계 |
+| **FastAPI** | 0.115+ | API 서버, WebSocket 지원 |
+| **AI Providers** | 5종 | Copilot SDK / Claude / Gemini / Groq / OpenAI (Strategy Pattern) |
 | **notion-client** | 2.x | Notion API Python SDK |
+| **httpx** | 0.28+ | 비동기 HTTP 클라이언트 (듀얼 버전 API) |
 | **Pydantic** | 2.x | 데이터 검증, 스키마 정의 |
-| **uvicorn** | 0.30+ | ASGI 서버 |
-| **httpx** | 0.27+ | 비동기 HTTP 클라이언트 |
-| **uv** | 최신 | 패키지 관리 (Poetry 대체) |
+| **uvicorn** | 0.32+ | ASGI 서버 |
+| **uv** | 최신 | 패키지 관리 |
 
 ### Frontend
 
@@ -92,20 +92,22 @@
    → 과거 성공/실패 패턴 + 유저 선호도 → AI 컨텍스트 주입
 
 5. 구조 설계 (JSON Blueprint) + Gen-Eval Loop (최대 3회)
-   → 페이지 계층, DB 스키마, 블록 구성 생성 → 검증 → 피드백 → 재생성
+   → 페이지 계층, DB 스키마, 블록 구성 생성 → 구조 검증 → 피드백 → 재생성
+   → PostProcessor: 13종 자동 수정 (callout 보장, status 한글화, 샘플 보충 등)
 
-6. Approval Gate — "DB 3개 생성합니다. 진행할까요?" 사용자 확인
+6. 5-Pass Creation — Notion에 직접 생성
+   → Pass 1: 메인 페이지 (아이콘/커버)
+   → Pass 2: 서브페이지
+   → Pass 3: 데이터베이스 (속성 + Relation) — legacy API 2022-06-28
+   → Pass 4: 뷰 (10종 configuration) — 최신 API 2026-03-11
+   → Pass 5: 샘플 데이터 (한국어 동의어 매핑)
 
-7. Plan-Execute-Reflect Agent Loop
-   → Plan: AI가 실행 계획 생성 (도구 순서)
-   → Execute: Tool Registry (9개 도구) → Notion API 호출
-   → Reflect: 결과 검증 → 불만족 시 Re-plan (최대 3회)
-
-8. 결과 반환 + Memory 저장
+7. 결과 반환 + Memory 저장
    → Notion 페이지 URL + 에피소드 기록 + 스킬 통계 갱신
+   → 실패 시 자동 롤백 (생성된 리소스 삭제)
 ```
 
-### Tool 정의 (9개)
+### Tool Registry (11개)
 
 | Tool | 설명 |
 |------|------|
@@ -113,11 +115,13 @@
 | `create_database` | DB 생성 + 속성 설정 |
 | `add_blocks` | 블록 추가 (heading, callout, toggle, button 등) |
 | `create_columns` | 칼럼 레이아웃 (2단/3단) |
-| `add_database_items` | 샘플 데이터 입력 |
+| `add_database_items` | 샘플 데이터 입력 (한국어 동의어 매핑) |
 | `create_view` | DB 뷰 생성 (gallery, board, calendar 등 10종) |
 | `apply_color_theme` | 색상 테마 일괄 적용 |
 | `link_databases` | DB 간 Relation/Rollup 설정 |
 | `generate_cover` | 커버 이미지 URL 생성 |
+| `create_worker` | Notion Workers 생성 (Sync/Tool/Webhook) |
+| `register_agent` | External Agent Notion 등록 |
 
 ---
 
@@ -178,13 +182,18 @@ AI가 생성하는 중간 구조 (JSON):
 
 | 항목 | 값 |
 |------|-----|
-| API 버전 | `2022-06-28` |
+| API 버전 (읽기/뷰/Workers) | `2026-03-11` |
+| API 버전 (DB/페이지 생성) | `2022-06-28` (속성 정상 처리를 위한 legacy) |
 | Base URL | `https://api.notion.com/v1/` |
 | 인증 | Internal Integration Token (`ntn_xxxx`) |
 | Rate Limit | **3 req/s** (평균) |
 | 블록 추가 | max **100 blocks/request** |
 | Rich Text | max 2000자/블록 |
 | 비용 | **무료** |
+
+> **듀얼 버전 전략**: `2026-03-11`은 DB 생성 시 properties를 무시하고 200 OK를 반환하는 문제가 있음.
+> DB/페이지 생성·수정·아이템 추가는 `_http_client_legacy` (2022-06-28)를 사용하고,
+> Views/Workers/Data Sources/쿼리는 `_http_client` (2026-03-11)를 사용.
 
 ### 블록 타입별 지원 현황
 
@@ -294,7 +303,7 @@ Select 옵션 색상: `default`, `gray`, `brown`, `orange`, `yellow`, `green`, `
 
 | 제한 | 해결 |
 |------|------|
-| DB 뷰 커스텀 불가 | 기본 뷰 생성, 뷰 변경 안내 |
+| 2026-03-11에서 DB 속성 무시 | 듀얼 버전: DB 생성은 2022-06-28 사용 |
 | Button 블록 미지원 | 콜아웃 + emoji + 링크 |
 | 블록 위치 삽입 불가 (append만) | 순서 미리 정해서 순서대로 append |
 | Rich Text 2000자 제한 | 여러 블록으로 분할 |
@@ -302,7 +311,7 @@ Select 옵션 색상: `default`, `gray`, `brown`, `orange`, `yellow`, `green`, `
 
 ---
 
-## 6. Provider 안정성 (v8.1.0)
+## 6. Provider 안정성
 
 ### Retry + Exponential Backoff
 

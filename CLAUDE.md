@@ -8,13 +8,13 @@ AI 기반 Notion 템플릿 자동 생성 에이전트. 자연어 입력 → 전�
 - **Backend**: Python 3.11+ / FastAPI / uv
 - **Frontend**: React 19 / TypeScript 5.7 / Vite 7 / Zustand 5 / TailwindCSS 4
 - **AI Providers**: Copilot SDK, Claude, Gemini, Groq, OpenAI (Strategy Pattern)
-- **Notion**: notion-client 2.x + httpx (API 2026-03-11)
+- **Notion**: notion-client 2.x + httpx (듀얼 API: 쓰기 2022-06-28 / 읽기·뷰 2026-03-11)
 
 ## Git Branch Strategy (Git Flow 변형)
 
 ### 브랜치 구조
 ```
-main          ← 안정 버전만. 태그로 버전 관리 (v8.0.0, v8.1.0...)
+main          ← 안정 버전만. 태그로 버전 관리 (v0.1.0, v0.2.0...)
   └── dev     ← 통합 브랜치. feature들이 여기로 머지됨
        ├── feature/agent-loop      ← 기능 브랜치
        ├── feature/skill-upgrade   ← 기능 브랜치
@@ -76,8 +76,8 @@ User Input
           ├─ create_view / apply_color_theme / generate_cover
           ├─ create_worker / register_external_agent
       → Reflect (결과 자가 평가, 최대 3회 Re-plan)
-  → QualityValidator (3계층 검증)
-  → 5-Pass Creation (페이지→서브페이지→DB→뷰→블록 + 롤백)
+  → PostProcessor (13종 자동 보정 + 구조 검증)
+  → 5-Pass Creation (페이지→서브페이지→DB(레거시)→뷰(최신)→샘플 데이터 + 롤백)
 ```
 
 ## Key Directories

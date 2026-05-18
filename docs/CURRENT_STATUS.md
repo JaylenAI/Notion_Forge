@@ -1,6 +1,6 @@
 # 진행 현황 (Current Status)
 
-> 최종 업데이트: 2026-05-15
+> 최종 업데이트: 2026-05-18
 > 현재 브랜치: dev
 > 버전: v0.1.0 (첫 오픈소스 공개 릴리스)
 
@@ -12,13 +12,13 @@
 AI Agent 아키텍처            [██████████] 100%  Plan-Execute-Reflect + Tool Registry 11개
 AI Provider 5종              [██████████] 100%  Copilot/Claude/Gemini/Groq/OpenAI
 스킬 시스템 48개             [██████████] 100%  12 Tier1 + 36 Tier2
-Notion API 2026-03-11        [██████████] 100%  블록 30+종, 뷰 10종, Workers, External Agents
+Notion API 듀얼 버전          [██████████] 100%  쓰기 2022-06-28 + 읽기/뷰 2026-03-11
 프론트엔드 UI 5페이지        [██████████] 100%  다크/라이트, 반응형, 키보드 단축키
 프롬프트 엔지니어링           [██████████] 100%  모듈화 .md 13개 + 골든 예제 8종
-3계층 품질 검증              [██████████] 100%  Schema/Content/Design + 자동 수정
+블루프린트 자동 수정          [██████████] 100%  PostProcessor 13종 + 구조 검증
 보안 미들웨어                [██████████] 100%  Rate Limit, CSRF, 에러 정제, 업로드 검증
 CI/CD 파이프라인             [██████████] 100%  lint→test→typecheck→docker→security→api-docs
-테스트 1309개 (80%+ 커버리지) [██████████] 100%  unit 51개 파일, fail_under=80
+테스트 1,320개 (80%+ 커버리지) [██████████] 100%  unit 51개 파일, fail_under=80
 문서화                       [██████████] 100%  README, CONTRIBUTING, SECURITY, API, ARCHITECTURE
 Docker 배포                  [██████████] 100%  Multi-stage, health check, 리소스 제한
 오픈소스 배포 준비            [██████████] 100%  MIT, 배너, 이슈 템플릿, Dependabot
@@ -31,7 +31,7 @@ Docker 배포                  [██████████] 100%  Multi-stag
 ### Phase 1: Notion API 2026-03-11 업그레이드
 - API 버전 최신화 (→ 2026-03-11)
 - Comments API, File Upload API, Data Sources API 확장
-- 레거시 호환 코드 제거
+- 듀얼 API 버전 전략: DB/페이지 생성은 2022-06-28 (속성 정상 처리), Views/Workers/쿼리는 2026-03-11
 
 ### Phase 2: 13개 기능 확장
 - 고급 필터 빌더 (상대 날짜, AND/OR 복합 조건)
@@ -51,6 +51,13 @@ Docker 배포                  [██████████] 100%  Multi-stag
 - 문서 전면 개편 (README, CONTRIBUTING, SECURITY)
 - 브랜치 26개 정리 → main + dev만 유지
 
+### Phase 5: 안정화 — DB 속성/샘플 데이터 정상화
+- Notion API 듀얼 버전 전략 (근본 원인: 2026-03-11이 DB 생성 시 속성 무시)
+- `_http_client_legacy` (2022-06-28) 추가 — DB/페이지 생성 전용
+- 한국어 동의어 매핑 강화 (30+ 패턴) — 블루프린트 키 → 실제 속성 매칭
+- QualityValidator 파이프라인 분리 — 불필요한 재생성 방지, PostProcessor로 자동 수정
+- 테스트 1,309 → 1,320개 (+11), 커버리지 80.07%
+
 ---
 
 ## 아키텍처 개요
@@ -60,13 +67,11 @@ User Input
   → InputGuardrail (프롬프트 인젝션 방어)
   → IntentAnalyzer (의도 분석 + 레이아웃 라우팅)
   → SkillRouter (키워드 빠른경로 + LLM 정밀경로)
-  → BlueprintGenerator (Gen-Eval 피드백 루프, 최대 3회)
+  → BlueprintGenerator (Gen-Eval 구조 검증, 최대 3회)
       → PromptAssembler (base.md + mode + layout + views_catalog)
-      → QualityValidator (Schema 50% + Content 30% + Design 20%)
-      → PostProcessor (13종 자동 수정)
-  → ApprovalGate (사용자 확인/취소)
-  → Agent Loop (Plan-Execute-Reflect, Tool Registry 11개)
-  → 5-Pass Creation (페이지 → 서브페이지 → DB → 뷰 → 블록)
+      → PostProcessor (13종 자동 수정 + 구조 검증)
+  → 5-Pass Creation (페이지 → 서브페이지 → DB → 뷰 → 샘플 데이터)
+      → Notion API 듀얼 버전 (쓰기: 2022-06-28 / 읽기+뷰: 2026-03-11)
   → Rollback (실패 시 자동 삭제)
 ```
 
@@ -81,7 +86,7 @@ User Input
 | 상태관리 | Zustand | 5 |
 | 스타일 | TailwindCSS | 4 |
 | AI | Copilot SDK / Claude / Gemini / Groq / OpenAI | Strategy Pattern |
-| Notion | notion-client + httpx (API 2026-03-11) | 2.x |
+| Notion | notion-client + httpx (듀얼: 2022-06-28 + 2026-03-11) | 2.x |
 | 테스트 | pytest / pytest-asyncio / pytest-cov | 80%+ 커버리지 |
 | CI/CD | GitHub Actions | lint + test + typecheck + docker + security |
 | 배포 | Docker Compose (Multi-stage) | dev/prod |
@@ -92,8 +97,8 @@ User Input
 ## 테스트 현황
 
 ```
-테스트 총 수:     1,309개
-커버리지:         80%+ (fail_under=80%)
+테스트 총 수:     1,320개
+커버리지:         80.07% (fail_under=80%)
 테스트 파일:      51개+
 카테고리:         unit (48+) + integration (3)
 ```
@@ -114,16 +119,16 @@ NotionForge/
 │   │   │   └── prompts/        # 모듈화 프롬프트 (.md 13개)
 │   │   ├── skills/             # 48개 도메인 스킬
 │   │   ├── notion/             # Notion API 클라이언트 (Mixin 패턴)
-│   │   │   ├── client.py       # 통합 클라이언트
+│   │   │   ├── client.py       # 듀얼 버전 클라이언트
 │   │   │   ├── workers.py      # Workers + External Agents API
 │   │   │   ├── worker_builder.py # TS scaffold 빌더
 │   │   │   ├── filter_builder.py # 고급 필터 빌더
 │   │   │   ├── widget_builder.py # 위젯 빌더
 │   │   │   └── cli.py          # Notion CLI 래퍼
-│   │   ├── routers/            # FastAPI 라우터 (7개)
+│   │   ├── routers/            # FastAPI 라우터 (8개)
 │   │   ├── core/               # 미들웨어, 로깅, 메트릭스
 │   │   └── schemas/            # Pydantic 모델
-│   └── tests/                  # 1,309개 테스트
+│   └── tests/                  # 1,320개 테스트
 ├── frontend/
 │   └── src/
 │       ├── components/         # React 컴포넌트
