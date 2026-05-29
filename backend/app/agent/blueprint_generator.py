@@ -542,19 +542,41 @@ def _assemble_blueprint(content: dict) -> dict[str, Any]:
 # ============================================================
 
 
+def _clean_title(user_message: str) -> str:
+    """사용자 메시지에서 색상/스타일 지시와 요청 동사를 제거해 깔끔한 제목을 추출.
+
+    예: "운동 습관 트래커 만들어줘, 주황색으로" → "운동 습관 트래커"
+    """
+    import re
+
+    from app.agent.intent_analyzer import COLOR_MAP
+
+    t = user_message
+    # 색상/스타일 지시 제거 (긴 단어부터: "주황색" 우선 매칭 후 ", 주황색으로" 등)
+    for w in sorted(COLOR_MAP.keys(), key=len, reverse=True):
+        t = re.sub(rf"[,，]?\s*{re.escape(w)}\s*(으?로)?", " ", t, flags=re.IGNORECASE)
+    # 요청 동사/표현 제거
+    for v in ("만들어주세요", "만들어 줘", "만들어줘", "제작해 줘", "제작해줘", "생성해줘", "만들어", "제작", "해줘", "만들기"):
+        t = t.replace(v, " ")
+    t = t.replace("!", " ")
+    # 공백 정리 + 양끝 구두점 제거
+    t = re.sub(r"\s+", " ", t).strip(" ,，.·\t")
+    return t.strip()
+
+
 def _smart_fallback(user_message: str) -> dict[str, Any]:
     msg = user_message.lower()
     for template_key, keywords in FALLBACK_KEYWORDS.items():
         if any(kw in msg for kw in keywords):
             template = json.loads(json.dumps(FALLBACK_TEMPLATES[template_key]))
-            clean_title = user_message.replace("만들어줘", "").replace("제작해줘", "").replace("!", "").strip()
+            clean_title = _clean_title(user_message)
             if clean_title and len(clean_title) < 30:
                 template["title"] = clean_title
             return template
 
     # 기본 폴백
     defaults = json.loads(json.dumps(FALLBACK_TEMPLATES["프로젝트"]))
-    clean_title = user_message.replace("만들어줘", "").replace("제작해줘", "").replace("!", "").strip()
+    clean_title = _clean_title(user_message)
     if clean_title and len(clean_title) < 30:
         defaults["title"] = clean_title
     return defaults
