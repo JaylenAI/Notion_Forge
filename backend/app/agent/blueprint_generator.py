@@ -413,6 +413,28 @@ async def _call_ai_for_content(
         ProviderRouter.circuit_breaker.record_success(provider.name)
     else:
         ProviderRouter.circuit_breaker.record_failure(provider.name)
+        # 1차 provider 실패 시 작동하는 다른 provider로 즉시 폴백 (실 AI 생성 보장).
+        # 키가 있는 provider만 후보 — mock/headless에서 copilot이 None을 줘도 groq/gemini로 생성.
+        from app.agent.providers.router import create_provider
+        from app.config import settings as _s
+
+        fb_candidates = [
+            (n, k)
+            for n, k in (("claude", _s.anthropic_api_key), ("gemini", _s.gemini_api_key), ("groq", _s.groq_api_key))
+            if k and n != provider.name
+        ][:2]
+        for fb_name, fb_key in fb_candidates:
+            try:
+                fb_provider = create_provider(fb_name, api_key=fb_key)
+            except Exception:
+                continue
+            note_call()
+            result = await fb_provider.call_with_retry(prompt, user_message, model=ai_model, timeout=timeout)
+            if result:
+                ProviderRouter.circuit_breaker.record_success(fb_name)
+                logger.info(f"[provider 폴백] {provider.name} 실패 → {fb_name} 성공")
+                break
+            ProviderRouter.circuit_breaker.record_failure(fb_name)
 
     if not result:
         return None
