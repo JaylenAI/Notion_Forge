@@ -54,7 +54,8 @@
             {"name": "개발", "color": "green"},
             {"name": "디자인", "color": "purple"},
             {"name": "QA", "color": "orange"}
-          ]}
+          ]},
+          "D-Day": {"type": "formula", "expression": "if(empty(prop(\"기한\")), \"\", format(dateBetween(prop(\"기한\"), now(), \"days\")) + \"일 남음\")"}
         },
         "views": [
           {"type": "board", "title": "칸반 보드", "group_by": {"property": "상태"}},

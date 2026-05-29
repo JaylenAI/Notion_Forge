@@ -334,51 +334,59 @@ class CreationExecutor:
             return  # relation은 최소 2개 DB 필요
 
         databases = blueprint.get("databases", [])
+
+        def _props_of(db_spec: dict) -> dict:
+            return db_spec.get("properties", db_spec.get("db_properties", {}))
+
+        # ── Pass 1: relation 먼저 생성 (rollup이 참조할 relation이 존재하도록) ──
         for i, db_spec in enumerate(databases):
             if i >= len(created_dbs):
                 break
-            db_id = created_dbs[i]["id"]
-            props = db_spec.get("properties", db_spec.get("db_properties", {}))
-
             relation_props: dict[str, Any] = {}
-            for prop_name, prop_spec in props.items():
+            for prop_name, prop_spec in _props_of(db_spec).items():
                 if not isinstance(prop_spec, dict):
                     continue
-
-                prop_type = prop_spec.get("type", "")
-
-                # relation: target_db_index → 실제 database_id
-                if prop_type == "relation" and "target_db_index" in prop_spec:
+                if prop_spec.get("type") == "relation" and "target_db_index" in prop_spec:
                     target_idx = prop_spec["target_db_index"]
-                    if target_idx < len(created_dbs):
-                        target_db_id = created_dbs[target_idx]["id"]
+                    if 0 <= target_idx < len(created_dbs):
                         relation_props[prop_name] = {
                             "relation": {
-                                "database_id": target_db_id,
+                                "database_id": created_dbs[target_idx]["id"],
                                 "single_property": {},
                             }
                         }
+            if relation_props:
+                try:
+                    await self.client.update_database(created_dbs[i]["id"], {"properties": relation_props})
+                    logger.info(f"[Relation 후처리] {created_dbs[i]['title']}: {list(relation_props.keys())}")
+                except Exception as e:
+                    logger.info(f"[Relation 후처리 실패] {created_dbs[i]['title']}: {str(e)[:100]}")
 
-                # formula: expression 그대로
-                elif prop_type == "formula" and "expression" in prop_spec:
-                    relation_props[prop_name] = {"formula": {"expression": prop_spec["expression"]}}
-
-                # rollup: relation_property + target_property + function
+        # ── Pass 2: rollup / formula (relation이 존재한 뒤에 추가) ──
+        for i, db_spec in enumerate(databases):
+            if i >= len(created_dbs):
+                break
+            derived_props: dict[str, Any] = {}
+            for prop_name, prop_spec in _props_of(db_spec).items():
+                if not isinstance(prop_spec, dict):
+                    continue
+                prop_type = prop_spec.get("type", "")
+                if prop_type == "formula" and "expression" in prop_spec:
+                    derived_props[prop_name] = {"formula": {"expression": prop_spec["expression"]}}
                 elif prop_type == "rollup" and "relation_property" in prop_spec:
-                    relation_props[prop_name] = {
+                    derived_props[prop_name] = {
                         "rollup": {
                             "relation_property_name": prop_spec["relation_property"],
                             "rollup_property_name": prop_spec.get("target_property", "이름"),
                             "function": prop_spec.get("function", "count"),
                         }
                     }
-
-            if relation_props:
+            if derived_props:
                 try:
-                    await self.client.update_database(db_id, {"properties": relation_props})
-                    logger.info(f"[Relation 후처리] {created_dbs[i]['title']}: {list(relation_props.keys())}")
+                    await self.client.update_database(created_dbs[i]["id"], {"properties": derived_props})
+                    logger.info(f"[Rollup/Formula 후처리] {created_dbs[i]['title']}: {list(derived_props.keys())}")
                 except Exception as e:
-                    logger.info(f"[Relation 후처리 실패] {created_dbs[i]['title']}: {str(e)[:100]}")
+                    logger.info(f"[Rollup/Formula 후처리 실패] {created_dbs[i]['title']}: {str(e)[:100]}")
 
     # ── Pre-creation 검증 (API 호출 전) ──────────────────────────
 

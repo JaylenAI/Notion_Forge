@@ -44,7 +44,10 @@
         "properties": {
           "고객명": "title", "회사": "rich_text", "이메일": "email", "전화": "rich_text",
           "등급": {"type": "select", "options": [{"name": "VIP", "color": "red"}, {"name": "일반", "color": "blue"}, {"name": "잠재", "color": "gray"}]},
-          "담당자": "rich_text", "최근 연락일": "date"
+          "담당자": "rich_text", "최근 연락일": "date",
+          "관련 딜": {"type": "relation", "target_db_index": 1},
+          "총 딜금액": {"type": "rollup", "relation_property": "관련 딜", "target_property": "금액", "function": "sum"},
+          "딜 수": {"type": "rollup", "relation_property": "관련 딜", "target_property": "딜 명", "function": "count"}
         },
         "views": [{"type": "table", "title": "전체 고객"}, {"type": "board", "title": "등급별", "group_by": {"property": "등급"}}],
         "sample_items": [
@@ -62,7 +65,8 @@
           "딜 명": "title",
           "단계": {"type": "select", "options": [{"name": "리드", "color": "gray"}, {"name": "미팅", "color": "blue"}, {"name": "제안", "color": "orange"}, {"name": "협상", "color": "purple"}, {"name": "성사", "color": "green"}, {"name": "실패", "color": "red"}]},
           "금액": "number", "예상 마감일": "date", "담당자": "rich_text",
-          "관련 고객": {"type": "relation", "target_db_index": 0}
+          "관련 고객": {"type": "relation", "target_db_index": 0},
+          "남은일수": {"type": "formula", "expression": "dateBetween(prop(\"예상 마감일\"), now(), \"days\")"}
         },
         "views": [{"type": "board", "title": "파이프라인", "group_by": {"property": "단계"}}, "table"],
         "sample_items": [

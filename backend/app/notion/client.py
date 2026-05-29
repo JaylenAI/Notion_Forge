@@ -43,7 +43,8 @@ class NotionClient(PageOpsMixin, DatabaseOpsMixin, BlockOpsMixin, ViewOpsMixin, 
         if not self.mock_mode:
             from notion_client import AsyncClient
 
-            self._real_client = AsyncClient(auth=self.token)
+            # 버전 핀 — SDK 기본값이 아닌 의도한 NOTION_VERSION 사용 (search/users/comments 등)
+            self._real_client = AsyncClient(auth=self.token, notion_version=NOTION_VERSION)
             self._http_client = httpx.AsyncClient(
                 base_url=NOTION_API_BASE,
                 headers={
