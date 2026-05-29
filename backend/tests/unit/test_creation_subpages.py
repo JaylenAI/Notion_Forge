@@ -62,3 +62,34 @@ async def test_execute_blueprint_subpage_missing_both_keys_no_crash(monkeypatch)
     result = await executor.execute_blueprint(bp, "mock-parent")
     # 크래시 없이 완료되면 성공 (메인 페이지는 반드시 존재)
     assert len(result.get("pages", [])) >= 1
+
+
+async def test_post_process_creates_formula_for_single_db(monkeypatch):
+    """단일 DB 템플릿의 formula도 후처리에서 생성돼야 한다 (라이브 E2E 회귀).
+
+    과거 post_process_relations가 DB<2면 조기 반환해 단일 DB formula가 누락됐다.
+    """
+    client = _mock_client(monkeypatch)
+    calls: list[dict] = []
+
+    async def _spy_update(db_id, updates):
+        calls.append(updates)
+        return {"id": db_id}
+
+    monkeypatch.setattr(client, "update_database", _spy_update)
+    executor = CreationExecutor(client, AddDatabaseItemsTool(client))
+    blueprint = {
+        "databases": [
+            {
+                "title": "태스크",
+                "db_properties": {
+                    "이름": "title",
+                    "D-Day": {"type": "formula", "expression": "dateBetween(prop(\"기한\"), now(), \"days\")"},
+                },
+            }
+        ]
+    }
+    result = {"databases": [{"id": "db1", "title": "태스크"}]}
+    await executor.post_process_relations(blueprint, result)
+    patched_props = {k for u in calls for k in u.get("properties", {})}
+    assert "D-Day" in patched_props, "단일 DB formula가 후처리에서 생성되지 않음"

@@ -328,10 +328,14 @@ class CreationExecutor:
     # ── Relation / Rollup / Formula 후처리 ──────────────────────
 
     async def post_process_relations(self, blueprint: dict, result: dict) -> None:
-        """DB 생성 후 relation/rollup/formula 속성 후처리 — target_db_index → 실제 DB ID 매핑"""
+        """DB 생성 후 relation/rollup/formula 속성 후처리 — target_db_index → 실제 DB ID 매핑.
+
+        relation/rollup은 다중 DB가 필요하지만 formula는 단일 DB에서도 유효하므로,
+        DB가 1개여도 formula는 반드시 생성한다(과거 <2 조기반환으로 단일 DB formula가 누락되던 버그).
+        """
         created_dbs = result.get("databases", [])
-        if len(created_dbs) < 2:
-            return  # relation은 최소 2개 DB 필요
+        if not created_dbs:
+            return
 
         databases = blueprint.get("databases", [])
 
