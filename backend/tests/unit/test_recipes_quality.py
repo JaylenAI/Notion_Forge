@@ -20,10 +20,15 @@ def _load(fp: Path) -> dict:
     return json.loads(fp.read_text(encoding="utf-8"))
 
 
+def _db_props(db: dict) -> dict:
+    """레시피는 'properties', 골든은 'db_properties' 키를 쓴다 — 둘 다 처리."""
+    return db.get("properties") or db.get("db_properties") or {}
+
+
 def _prop_types(db: dict) -> list[str]:
     """DB properties의 타입 목록 (문자열 단축형 + dict 형 모두 처리)."""
     types = []
-    for spec in db.get("properties", {}).values():
+    for spec in _db_props(db).values():
         if isinstance(spec, str):
             types.append(spec)
         elif isinstance(spec, dict):
@@ -119,3 +124,41 @@ def test_crm_dashboard_has_rollup():
 def test_project_board_has_formula():
     bp = _load(RECIPES_DIR / "project-board.json")["blueprint"]
     assert "formula" in _all_prop_types(bp), "프로젝트 보드는 D-Day formula를 포함해야 합니다"
+
+
+# ── 골든 예시(AI 생성 가이드) 품질 검증 ──
+
+GOLDEN_DIR = Path(__file__).resolve().parents[1].parent / "app" / "agent" / "prompts" / "golden"
+GOLDEN_FILES = sorted(GOLDEN_DIR.glob("*.json"))
+GOLDEN_IDS = [fp.stem for fp in GOLDEN_FILES]
+
+
+@pytest.mark.parametrize("fp", GOLDEN_FILES, ids=GOLDEN_IDS)
+def test_golden_valid_and_relation_integrity(fp):
+    """골든 예시가 유효 JSON이고 relation 인덱스/rollup 참조가 무결한지 검증."""
+    g = _load(fp)  # 골든은 blueprint 자체가 최상위
+    dbs = g.get("databases", [])
+    assert isinstance(dbs, list) and dbs, f"{fp.name}: databases 없음"
+    for db in dbs:
+        props = _db_props(db)
+        prop_names = set(props.keys())
+        for name, spec in props.items():
+            if not isinstance(spec, dict):
+                continue
+            if spec.get("type") == "relation" and "target_db_index" in spec:
+                idx = spec["target_db_index"]
+                assert 0 <= idx < len(dbs), f"{fp.name}: relation '{name}' target_db_index 범위 초과"
+            if spec.get("type") == "rollup":
+                assert spec.get("relation_property") in prop_names, (
+                    f"{fp.name}: rollup '{name}' relation_property 미존재"
+                )
+
+
+def test_golden_dashboard_widgets_has_rollup():
+    """대시보드 골든은 AI에게 rollup 집계를 가르치는 레퍼런스여야 한다."""
+    g = _load(GOLDEN_DIR / "dashboard_widgets.json")
+    types = []
+    for db in g.get("databases", []):
+        types.extend(_prop_types(db))
+    assert "rollup" in types, "dashboard_widgets 골든은 rollup 예시를 포함해야 합니다"
+    assert "formula" in types, "dashboard_widgets 골든은 formula 예시를 포함해야 합니다"

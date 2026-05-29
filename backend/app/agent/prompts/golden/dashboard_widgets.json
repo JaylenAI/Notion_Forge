@@ -62,7 +62,10 @@
         "등급": {"type": "select", "options": [{"name": "VIP", "color": "red"}, {"name": "일반", "color": "blue"}, {"name": "잠재", "color": "gray"}]},
         "담당자": "rich_text",
         "이메일": "email",
-        "최근연락": "date"
+        "최근연락": "date",
+        "거래목록": {"type": "relation", "target_db_index": 1},
+        "총거래액": {"type": "rollup", "relation_property": "거래목록", "target_property": "금액", "function": "sum"},
+        "거래수": {"type": "rollup", "relation_property": "거래목록", "target_property": "거래명", "function": "count"}
       },
       "views": [
         {"type": "board", "title": "상태별", "group_by": {"property": "상태"}},
@@ -87,7 +90,8 @@
         "금액": "number",
         "고객": {"type": "relation", "target_db_index": 0},
         "마감일": "date",
-        "담당자": "rich_text"
+        "담당자": "rich_text",
+        "D-Day": {"type": "formula", "expression": "if(empty(prop(\"마감일\")), \"\", format(dateBetween(prop(\"마감일\"), now(), \"days\")) + \"일\")"}
       },
       "views": [
         {"type": "board", "title": "파이프라인", "group_by": {"property": "상태"}},
