@@ -16,6 +16,9 @@ from app.notion.client import NotionClient
 
 logger = logging.getLogger("notionforge.agent_loop")
 
+# LLM이 반환한 plan의 스텝 수 하드 상한 (악의적/오류 plan의 폭주 방지)
+MAX_STEPS = 15
+
 PLANNER_SYSTEM = """You are a Notion template creation PLANNER.
 
 Given a user request and available tools, output a JSON execution plan.
@@ -70,6 +73,9 @@ class AgentLoop:
             return {"success": False, "error": "계획 수립 실패"}
 
         steps = plan.get("plan", [])
+        if len(steps) > MAX_STEPS:
+            logger.warning(f"[AgentLoop] 계획 {len(steps)}단계 → {MAX_STEPS}단계로 제한")
+            steps = steps[:MAX_STEPS]
         logger.info(f"[AgentLoop] {len(steps)}단계 계획 수립: {plan.get('reasoning', '')}")
 
         for step in steps:
@@ -110,6 +116,9 @@ class AgentLoop:
             return
 
         steps = plan.get("plan", [])
+        if len(steps) > MAX_STEPS:
+            logger.warning(f"[AgentLoop] 계획 {len(steps)}단계 → {MAX_STEPS}단계로 제한")
+            steps = steps[:MAX_STEPS]
         total = len(steps)
         yield {
             "type": "progress",

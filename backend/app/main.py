@@ -66,10 +66,17 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # CORS — '*' + credentials 조합은 금지 (임의 오리진이 인증 컨텍스트로 요청 가능).
+    # 운영자가 CORS_ORIGINS=["*"]로 설정하면 credentials를 자동 비활성화한다.
+    cors_origins = settings.cors_origins
+    allow_credentials = True
+    if "*" in cors_origins:
+        logger.warning("CORS_ORIGINS에 '*' 포함 — 보안상 allow_credentials를 비활성화합니다.")
+        allow_credentials = False
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
+        allow_origins=cors_origins,
+        allow_credentials=allow_credentials,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Authorization", "X-Notion-Token", "X-Request-ID"],
     )

@@ -25,6 +25,15 @@ def _force_mock_provider(monkeypatch):
         monkeypatch.delenv(k, raising=False)
     os.environ.setdefault("NOTIONFORGE_TEST", "1")
 
+    # WebSocket 연결 rate limit 상태는 모듈 전역이라 테스트 간 누적 방지를 위해 리셋
+    try:
+        from app.routers import chat as _chat
+
+        _chat._ws_active.clear()
+        _chat._ws_recent_connects.clear()
+    except Exception:
+        pass
+
 
 @pytest.fixture
 def sample_prompt():

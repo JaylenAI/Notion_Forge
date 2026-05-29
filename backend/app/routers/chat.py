@@ -7,6 +7,7 @@ Approval Gate 대기 중에도 WebSocket 메시지(confirm_create 등)를 수신
 import asyncio
 import json
 import logging
+from collections import defaultdict
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -21,9 +22,35 @@ router = APIRouter(tags=["chat"])
 WS_INIT_TIMEOUT = 10
 WS_MESSAGE_RATE_LIMIT = 20
 
+# WebSocket 연결 단위 DoS 방어 (HTTP RateLimitMiddleware는 WS 핸드셰이크를 못 막음)
+WS_MAX_CONN_PER_IP = 5  # IP당 동시 연결 수
+WS_MAX_NEW_PER_MIN = 30  # IP당 분당 신규 연결 수
+_ws_active: dict[str, int] = defaultdict(int)
+_ws_recent_connects: dict[str, list[float]] = defaultdict(list)
+
+
+def _ws_client_ip(websocket: WebSocket) -> str:
+    fwd = websocket.headers.get("x-forwarded-for")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return websocket.client.host if websocket.client else "unknown"
+
 
 @router.websocket("/ws/chat")
 async def websocket_chat(websocket: WebSocket):
+    # ── 연결 단위 IP rate limit (accept 전 검사) ──
+    ip = _ws_client_ip(websocket)
+    _now = asyncio.get_event_loop().time()
+    recent = [t for t in _ws_recent_connects[ip] if _now - t < 60]
+    if _ws_active[ip] >= WS_MAX_CONN_PER_IP or len(recent) >= WS_MAX_NEW_PER_MIN:
+        await websocket.accept()
+        await websocket.send_json({"type": "error", "content": "연결 한도 초과. 잠시 후 다시 시도해주세요."})
+        await websocket.close(code=4029)
+        return
+    recent.append(_now)
+    _ws_recent_connects[ip] = recent
+    _ws_active[ip] += 1
+
     await websocket.accept()
 
     agent: AgentOrchestrator | None = None
@@ -155,5 +182,8 @@ async def websocket_chat(websocket: WebSocket):
         except Exception:
             pass
     finally:
+        _ws_active[ip] = max(0, _ws_active[ip] - 1)
+        if _ws_active[ip] == 0:
+            _ws_active.pop(ip, None)
         if process_task and not process_task.done():
             process_task.cancel()

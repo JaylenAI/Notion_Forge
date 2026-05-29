@@ -86,6 +86,9 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """보안 응답 헤더 자동 설정"""
 
+    # Swagger/ReDoc는 CDN 자산을 로드하므로 CSP 적용 제외
+    _CSP_EXEMPT = ("/docs", "/redoc", "/openapi.json")
+
     async def dispatch(self, request: Request, call_next) -> Response:
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -93,6 +96,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        if not request.url.path.startswith(self._CSP_EXEMPT):
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; img-src 'self' data: https:; "
+                "style-src 'self' 'unsafe-inline'; script-src 'self'; "
+                "connect-src 'self' ws: wss:; frame-ancestors 'none'; base-uri 'self'"
+            )
         return response
 
 
