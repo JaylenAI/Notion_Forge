@@ -624,18 +624,20 @@ class CreationExecutor:
             }
 
             async def _create_sub(sub: dict) -> tuple[str, dict | None, str]:
+                # recipe/golden은 'name', AI/스키마는 'title' — 양쪽 모두 허용 (핸들러도 안전 접근)
+                sub_title = sub.get("title") or sub.get("name") or "페이지"
                 try:
                     page = await _retry_notion(
                         self.client.create_page,
                         parent_id=main_page_id,
-                        title=sub["title"],
+                        title=sub_title,
                         icon=sub.get("icon"),
                         cover_url=sub.get("cover_url") or main.get("cover_url"),
                         position="page_end",
                     )
-                    return sub["title"], page, ""
+                    return sub_title, page, ""
                 except Exception as e:
-                    return sub["title"], None, str(e)[:50]
+                    return sub_title, None, str(e)[:50]
 
             sub_results = await asyncio.gather(*[_create_sub(s) for s in sub_pages])
             for title, page, error in sub_results:
