@@ -42,6 +42,18 @@ cd ../frontend
 npm install
 ```
 
+### pre-commit 훅 (권장)
+
+커밋 전 시크릿/개인키 스캔과 백엔드 린트를 자동 실행한다. **반드시 설치할 것** — 실수로 API 키를 커밋하는 것을 방지한다.
+
+```bash
+pip install pre-commit   # 또는 uv tool install pre-commit
+pre-commit install       # git hook 등록
+pre-commit run --all-files  # (선택) 전체 파일 1회 검사
+```
+
+> `.env` / `backend/.env`에는 실제 키를 넣되 절대 커밋하지 않는다(`.gitignore` 처리됨). 런타임에 생성되는 `custom_skills/`의 사용자 스킬도 커밋되지 않는다(`meeting` 예시만 추적).
+
 ### 실행
 
 ```bash

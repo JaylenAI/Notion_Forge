@@ -1,0 +1,34 @@
+# gitleaks 설정 — NotionForge
+# 실제 시크릿(Notion ntn_, Groq gsk_, Gemini AIza, OpenAI sk-, Anthropic sk-ant-,
+# GitHub ghp_ 등) 유입을 차단한다. 기본 룰을 확장하고, placeholder/테스트 픽스처만 allowlist.
+title = "NotionForge gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "notion-integration-token"
+description = "Notion internal integration token"
+regex = '''ntn_[A-Za-z0-9]{40,}'''
+keywords = ["ntn_"]
+
+[[rules]]
+id = "groq-api-key"
+description = "Groq API key"
+regex = '''gsk_[A-Za-z0-9]{40,}'''
+keywords = ["gsk_"]
+
+[allowlist]
+description = "placeholder 값과 테스트 픽스처는 시크릿이 아님"
+# .env.example의 placeholder와 테스트 디렉토리의 가짜 키는 스캔 제외
+paths = [
+  '''\.env\.example$''',
+  '''backend/tests/.*''',
+  '''\.gitleaks\.toml$''',
+]
+regexes = [
+  '''ntn_xxxxxxxxxxxx''',        # .env.example placeholder
+  '''sk-ant-test''',             # 테스트 픽스처
+  '''sk-test[0-9]*''',           # 테스트 픽스처 (sk-test, sk-test123)
+  '''AIza[x]{4,}''',             # placeholder
+]

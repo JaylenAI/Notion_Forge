@@ -1,0 +1,7 @@
+# 런타임에 사용자가 생성한 커스텀 스킬은 커밋하지 않는다.
+# (워크스페이스 고유 내용 / PII가 섞일 수 있음 — skills.save_custom_skill 경로)
+# SKILL.md 포맷을 보여주는 번들 예시 "meeting"만 추적한다.
+*
+!.gitignore
+!meeting/
+!meeting/SKILL.md
