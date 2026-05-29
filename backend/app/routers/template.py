@@ -254,6 +254,9 @@ async def agent_loop_generate(
     )
     pid = parent_page_id or cfg.notion_parent_page_id
 
+    from app.core.cost_control import set_budget
+
+    set_budget(cfg.max_llm_calls_per_session)
     loop = AgentLoop(client=client, api_key=ai_key, ai_model=ai_model)
     result = await loop.run(prompt, parent_page_id=pid)
 

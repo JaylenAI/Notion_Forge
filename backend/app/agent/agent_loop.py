@@ -197,10 +197,16 @@ class AgentLoop:
         if max_chars > 0 and len(system) > max_chars:
             system = system[:max_chars]
 
+        from app.core.cost_control import note_call
+
+        note_call()
         return await self.provider.call(system, enriched_message, model=self.ai_model)
 
     async def _reflect(self, step: dict, result: dict) -> dict[str, Any]:
+        from app.core.cost_control import note_call
+
         context = json.dumps({"step": step, "result": result}, ensure_ascii=False, default=str)[:2000]
+        note_call()
         reflection = await self.provider.call(REFLECTOR_SYSTEM, context, model=self.ai_model)
         return reflection or {"action": "continue"}
 

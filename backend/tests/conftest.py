@@ -34,6 +34,14 @@ def _force_mock_provider(monkeypatch):
     except Exception:
         pass
 
+    # LLM 호출 예산(ContextVar) 테스트 간 격리
+    try:
+        from app.core.cost_control import reset_budget
+
+        reset_budget()
+    except Exception:
+        pass
+
 
 @pytest.fixture
 def sample_prompt():

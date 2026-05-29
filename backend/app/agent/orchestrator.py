@@ -75,6 +75,12 @@ class AgentOrchestrator:
             yield {"type": "error", "content": guard.error_message}
             return
 
+        # 세션 LLM 호출 예산 설정 (비용 폭주 방지 — SEC-17)
+        from app.config import settings as _settings
+        from app.core.cost_control import set_budget
+
+        set_budget(_settings.max_llm_calls_per_session)
+
         self._conversation.append({"role": "user", "content": message})
 
         metrics = GenerationMetrics(

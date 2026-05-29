@@ -112,6 +112,9 @@ async def _call_agent(
     if max_chars > 0 and len(prompt) > max_chars:
         prompt = prompt[:max_chars]
 
+    from app.core.cost_control import note_call
+
+    note_call()
     return await provider.call(prompt, user_content, model=ai_model)
 
 

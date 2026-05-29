@@ -404,6 +404,9 @@ async def _call_ai_for_content(
             prompt += f"\n\n## History:\n{history_text[:400]}"
 
     timeout = 90.0 if mode == "advanced" else 45.0
+    from app.core.cost_control import note_call
+
+    note_call()
     result = await provider.call_with_retry(prompt, user_message, model=ai_model, timeout=timeout)
 
     if result:

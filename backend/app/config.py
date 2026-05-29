@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     input_max_length: int = 2000
     approval_timeout_seconds: int = 60
     gen_eval_max_retries: int = 3
+    # 세션당 LLM 호출 상한 (비용 폭주 방지). Gen-Eval·멀티에이전트·AgentLoop 누적 호출의 안전망.
+    max_llm_calls_per_session: int = 40
 
     @property
     def ai_provider(self) -> str:

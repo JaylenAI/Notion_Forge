@@ -110,6 +110,9 @@ async def _llm_classify(user_message: str, provider: Any) -> SkillMatch:
     system = CLASSIFY_SYSTEM.format(skill_list=skill_list)
 
     try:
+        from app.core.cost_control import note_call
+
+        note_call()
         result = await provider.call(system, user_message)
         if result and isinstance(result, dict):
             skill_id = result.get("skill_id", "")
