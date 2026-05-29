@@ -200,16 +200,30 @@ async def document_to_notion(file: UploadFile = File(...)):
 
 @router.post("/blueprint/import")
 async def import_blueprint(blueprint: dict = Body(...)):
-    """Blueprint JSON 가져오기 → 실제 Notion 생성"""
+    """Blueprint JSON 가져오기 → 실제 Notion 생성 (Pydantic 검증 후 실행)"""
+    from fastapi import HTTPException
+    from pydantic import ValidationError
+
     from app.config import settings as cfg
+    from app.schemas.blueprint import BlueprintSchema
+
+    # 임의 dict가 검증 없이 실행되는 것을 차단 (쿼터 소진형 DoS 방지)
+    try:
+        validated = BlueprintSchema.model_validate(blueprint)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=f"유효하지 않은 blueprint: {e.errors()[:3]}")
+
+    # 블록/DB 개수 상한 (과도한 Notion API 호출 방지)
+    if len(validated.blocks) > 200 or len(validated.databases) > 20 or len(validated.sub_pages) > 50:
+        raise HTTPException(status_code=422, detail="blueprint 규모 초과 (blocks≤200, databases≤20, sub_pages≤50)")
 
     agent = AgentOrchestrator(
         notion_token=cfg.notion_api_key,
         parent_page_id=cfg.notion_parent_page_id,
     )
 
-    # blueprint를 직접 실행
-    result = await agent._execute_blueprint(blueprint)
+    # 검증된 blueprint를 실행 (execute_blueprint 래퍼 사용)
+    result = await agent._executor.execute_blueprint(blueprint, agent.parent_page_id)
     return {
         "success": True,
         "notion_url": result.get("main_url"),

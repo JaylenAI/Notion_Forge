@@ -56,9 +56,15 @@ class AgentOrchestrator:
         self.use_pipeline: bool = False
         self.use_agent_loop: bool = False
 
-        # Approval Gate
+        # Approval Gate — blueprint_preview 후 생성 승인을 기다린다.
+        # require_approval=True면 approval_request 이벤트를 emit하고 approve_creation()을 대기.
+        # (REST/Task 호출자는 approval_request를 받아 즉시 자동승인, WebSocket은 사용자 confirm 대기)
+        self.require_approval: bool = True
         self._approval_event: asyncio.Event = asyncio.Event()
         self._approval_granted: bool = False
+
+        # Notion 생성 결과 (execute_streaming의 "result" 이벤트로 채워짐) — 항상 초기화
+        self._current_result: dict[str, Any] = {"pages": [], "databases": [], "blocks": 0}
 
     async def process(self, message: str) -> AsyncGenerator[dict[str, Any], None]:
         """메인 처리 파이프라인 — 실시간 스트리밍"""
@@ -153,7 +159,33 @@ class AgentOrchestrator:
         yield {"type": "progress", "step": "design_done", "message": self._format_design_msg(blueprint)}
         yield {"type": "blueprint_preview", "content": self._format_preview(blueprint), "blueprint": blueprint}
 
-        # ── Approval Gate (자동승인)
+        # ── Approval Gate ──
+        # require_approval=True면 사용자(또는 자동승인 호출자)의 승인을 대기한다.
+        if self.require_approval:
+            self._approval_event.clear()
+            self._approval_granted = False
+            yield {
+                "type": "approval_request",
+                "content": "이대로 생성할까요? (확인/취소)",
+                "blueprint": blueprint,
+            }
+            from app.config import settings
+
+            try:
+                await asyncio.wait_for(
+                    self._approval_event.wait(), timeout=settings.approval_timeout_seconds
+                )
+            except asyncio.TimeoutError:
+                # 응답 없으면 생성하지 않고 종료 (워크스페이스에 임의 생성 방지)
+                yield {
+                    "type": "error",
+                    "content": f"승인 대기 시간({settings.approval_timeout_seconds}초)을 초과했습니다. 다시 시도해주세요.",
+                }
+                return
+            if not self._approval_granted:
+                yield {"type": "progress", "step": "cancelled", "message": "생성을 취소했습니다."}
+                return
+
         yield {
             "type": "progress",
             "step": "approved",
@@ -168,6 +200,7 @@ class AgentOrchestrator:
 
         # ③ Notion 생성 (실시간 스트리밍)
         metrics.start_stage("notion_creation")
+        self._current_result = {"pages": [], "databases": [], "blocks": 0}  # 요청마다 리셋
         async for event in self._execute_creation(blueprint):
             yield event
 

@@ -118,11 +118,14 @@ class TestBlueprintFlow:
         events = []
         async for e in orchestrator.process("프로젝트 관리 템플릿 만들어줘"):
             events.append(e)
+            if e["type"] == "approval_request":
+                orchestrator.approve_creation(True)
             if e.get("step") == "approved":
                 break
 
         assert any(e["type"] == "progress" and "의도 파악" in e.get("message", "") for e in events)
         assert any(e["type"] == "blueprint_preview" for e in events)
+        assert any(e["type"] == "approval_request" for e in events)
         assert any(e.get("step") == "approved" for e in events)
 
     @patch("app.agent.orchestrator.analyze_intent")
@@ -135,6 +138,8 @@ class TestBlueprintFlow:
         events = []
         async for e in orchestrator.process("프로젝트 관리 템플릿 만들어줘"):
             events.append(e)
+            if e["type"] == "approval_request":
+                orchestrator.approve_creation(True)
             if e.get("step") == "approved":
                 break
 
@@ -150,6 +155,8 @@ class TestBlueprintFlow:
         events = []
         async for e in orchestrator.process("프로젝트 관리 템플릿 만들어줘"):
             events.append(e)
+            if e["type"] == "approval_request":
+                orchestrator.approve_creation(True)
             if e.get("step") == "approved":
                 break
 

@@ -106,7 +106,7 @@ async def _call_agent(
     """단일 에이전트 호출 — ProviderRouter 기반"""
     from app.agent.providers.router import ProviderRouter
 
-    provider = ProviderRouter.resolve(api_key=ai_key, ai_model=ai_model)
+    provider = ProviderRouter.resolve_with_fallback(api_key=ai_key, ai_model=ai_model)
     max_chars = provider.get_max_prompt_chars()
     prompt = system_prompt
     if max_chars > 0 and len(prompt) > max_chars:

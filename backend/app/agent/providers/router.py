@@ -11,7 +11,9 @@ logger = logging.getLogger("notionforge.provider_router")
 CIRCUIT_BREAKER_THRESHOLD = 3
 CIRCUIT_BREAKER_RESET_SECONDS = 120.0
 
-_FALLBACK_ORDER = ["openai", "claude", "gemini", "groq"]
+# copilot 우선 (키 불필요, GitHub 구독 인증) → 키 기반 프로바이더 순.
+# primary는 fallback 시 제외되므로 전 프로바이더를 나열한다.
+_FALLBACK_ORDER = ["copilot", "claude", "gemini", "groq", "openai"]
 
 
 def detect_provider_from_key(api_key: str) -> str:
@@ -123,14 +125,25 @@ class ProviderRouter:
         return create_provider(provider_name, model=ai_model)
 
     @staticmethod
+    def _settings_key_for(provider_name: str) -> str:
+        """fallback 프로바이더가 사용할 settings API 키. copilot/openai는 settings 키가 없다."""
+        from app.config import settings
+
+        return {
+            "claude": settings.anthropic_api_key,
+            "gemini": settings.gemini_api_key,
+            "groq": settings.groq_api_key,
+        }.get(provider_name, "")
+
+    @staticmethod
     def resolve_with_fallback(api_key: str = "", ai_model: str = "") -> BaseProvider:
         """Circuit Breaker를 확인하여 건강한 프로바이더 반환.
-        primary가 차단되면 fallback chain에서 대체 프로바이더 선택."""
+        primary가 차단되면 fallback chain에서 '키가 있거나 키가 불필요한' 대체 프로바이더 선택."""
+        from app.config import settings
+
         if api_key:
             primary = detect_provider_from_key(api_key)
         else:
-            from app.config import settings
-
             primary = settings.ai_provider
 
         if not _circuit_breaker.is_open(primary):
@@ -138,12 +151,20 @@ class ProviderRouter:
 
         logger.warning(f"[ProviderRouter] {primary} circuit open, fallback 탐색")
         for fallback_name in _FALLBACK_ORDER:
-            if fallback_name == primary:
+            if fallback_name == primary or _circuit_breaker.is_open(fallback_name):
                 continue
-            if not _circuit_breaker.is_open(fallback_name):
-                logger.info(f"[ProviderRouter] fallback → {fallback_name}")
-                return create_provider(fallback_name, model=ai_model)
+            # copilot은 키 불필요(구독 인증), 나머지는 settings 키가 있어야 의미 있음
+            if fallback_name == "copilot":
+                if not settings.copilot_enabled:
+                    continue
+                fb_key = ""
+            else:
+                fb_key = ProviderRouter._settings_key_for(fallback_name)
+                if not fb_key:
+                    continue
+            logger.info(f"[ProviderRouter] fallback → {fallback_name}")
+            return create_provider(fallback_name, api_key=fb_key, model=ai_model)
 
-        logger.warning("[ProviderRouter] 모든 프로바이더 차단, primary 강제 사용")
+        logger.warning("[ProviderRouter] 모든 프로바이더 차단/키없음, primary 강제 사용")
         _circuit_breaker.reset()
         return create_provider(primary, api_key=api_key, model=ai_model)

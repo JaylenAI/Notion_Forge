@@ -180,7 +180,11 @@ class TestProviderFallback:
             ProviderRouter.resolve_with_fallback(api_key="sk-test123")
             mock_create.assert_called_once_with("openai", api_key="sk-test123", model="")
 
-    def test_resolve_with_fallback_skips_open_circuit(self):
+    def test_resolve_with_fallback_skips_open_circuit(self, monkeypatch):
+        from app.config import settings
+
+        # fallback이 선택 가능하도록 copilot(키 불필요) 활성화 (conftest가 기본 비활성)
+        monkeypatch.setattr(settings, "copilot_enabled", True, raising=False)
         ProviderRouter.circuit_breaker.reset()
         for _ in range(3):
             ProviderRouter.circuit_breaker.record_failure("openai")
@@ -195,7 +199,8 @@ class TestProviderFallback:
 
     def test_resolve_with_fallback_resets_when_all_open(self):
         ProviderRouter.circuit_breaker.reset()
-        for name in ["openai", "claude", "gemini", "groq"]:
+        # copilot 포함 전 프로바이더가 모두 차단된 경우에만 reset → primary 강제
+        for name in ["copilot", "openai", "claude", "gemini", "groq"]:
             for _ in range(3):
                 ProviderRouter.circuit_breaker.record_failure(name)
 

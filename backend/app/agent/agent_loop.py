@@ -60,7 +60,7 @@ Output JSON:
 class AgentLoop:
     def __init__(self, client: NotionClient, api_key: str = "", ai_model: str = ""):
         self.registry = ToolRegistry(client)
-        self.provider = ProviderRouter.resolve(api_key=api_key, ai_model=ai_model)
+        self.provider = ProviderRouter.resolve_with_fallback(api_key=api_key, ai_model=ai_model)
         self.ai_model = ai_model
         self.step_results: dict[int, dict[str, Any]] = {}
 

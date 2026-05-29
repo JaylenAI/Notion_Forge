@@ -185,7 +185,7 @@ async def generate_blueprint(
     from app.agent.memory import Episode, memory
     from app.agent.providers.router import ProviderRouter
 
-    provider = ProviderRouter.resolve(api_key=ai_key, ai_model=ai_model)
+    provider = ProviderRouter.resolve_with_fallback(api_key=ai_key, ai_model=ai_model)
     skill_guide, skill_match = await _build_skill_guide_async(user_message, provider=provider)
 
     memory_context = memory.build_memory_context(skill=skill_match.skill_id or "", query=user_message)
@@ -387,7 +387,7 @@ async def _call_ai_for_content(
         history_text = "\n".join(f"[{m['role']}]: {m['content'][:150]}" for m in recent[:-1])
         prompt += f"\n\n## Conversation History:\n{history_text}"
 
-    provider = ProviderRouter.resolve(api_key=ai_key, ai_model=ai_model)
+    provider = ProviderRouter.resolve_with_fallback(api_key=ai_key, ai_model=ai_model)
     max_chars = provider.get_max_prompt_chars()
     if max_chars > 0 and len(prompt) > max_chars:
         prompt = prompt_assembler.assemble_compact(
