@@ -142,6 +142,7 @@ async def submit_task(req: TaskSubmitRequest):
 @router.get("/{task_id}", response_model=TaskStatusResponse)
 async def get_task_status(task_id: str):
     """작업 상태 조회 (폴링)"""
+    _cleanup_old_tasks()  # 조회 시에도 만료 task 정리 (저트래픽 시 누수 방지)
     if task_id not in _task_store:
         raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
 

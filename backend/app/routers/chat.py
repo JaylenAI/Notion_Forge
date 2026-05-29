@@ -88,6 +88,12 @@ async def websocket_chat(websocket: WebSocket):
             asyncio.create_task(websocket.send_json({"type": "system", "content": f"AI 모드: {mode}"}))
             return True
 
+        if msg_type == "set_agent_loop" and agent:
+            agent.use_agent_loop = data.get("enabled", False)
+            mode = "Agent Loop (Plan-Execute-Reflect)" if agent.use_agent_loop else "표준 파이프라인"
+            asyncio.create_task(websocket.send_json({"type": "system", "content": f"생성 모드: {mode}"}))
+            return True
+
         return False
 
     try:
