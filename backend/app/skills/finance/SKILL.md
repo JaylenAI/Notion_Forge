@@ -108,5 +108,13 @@ Use column_list with 2 columns for every template:
 7. Toggle: "📖 사용 가이드" with numbered setup steps
 8. Toggle: "❓ 자주 묻는 질문" with 2-3 FAQs
 
+### Required Calculated Properties (필수 — 유료급 차별점)
+거래 내역 DB에 **계산 속성을 반드시 포함**하라. 단순 입력값 나열이 아닌 자동 계산이 유료 템플릿의 핵심이다.
+- `부호금액` (formula): 수입/지출 부호 반영 — `{"type": "formula", "expression": "if(prop(\"구분\") == \"지출\", prop(\"금액\") * -1, prop(\"금액\"))"}`
+- 카테고리 예산 DB를 함께 둘 경우(권장, 멀티 DB):
+  - 거래내역에 `카테고리`(relation → 카테고리예산), 카테고리예산에 `거래목록`(relation → 거래내역)
+  - 카테고리예산 `사용액` (rollup): `{"type": "rollup", "relation_property": "거래목록", "target_property": "금액", "function": "sum"}`
+  - 카테고리예산 `잔액` (formula): `{"type": "formula", "expression": "prop(\"월예산\") - prop(\"사용액\")"}`
+
 ### Cover Image Category
 cover_category: "finance" (maps to themed Unsplash cover)

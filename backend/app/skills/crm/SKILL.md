@@ -113,5 +113,10 @@ Use column_list with 2 columns for every template:
 7. Toggle: "📖 사용 가이드" with numbered setup steps
 8. Toggle: "❓ 자주 묻는 질문" with 2-3 FAQs
 
+### Required Calculated Properties (필수 — 유료급 차별점)
+고객 ↔ 딜 **멀티 DB + 자동 집계**가 유료급 CRM의 핵심이다.
+- 딜 DB: `관련 고객`(relation → 고객), `남은일수`(formula): `{"type": "formula", "expression": "dateBetween(prop(\"예상 마감일\"), now(), \"days\")"}`
+- 고객 DB: `관련 딜`(relation → 딜), `총 딜금액`(rollup): `{"type": "rollup", "relation_property": "관련 딜", "target_property": "금액", "function": "sum"}`, `딜 수`(rollup, function "count")
+
 ### Cover Image Category
 cover_category: "business" (maps to themed Unsplash cover)

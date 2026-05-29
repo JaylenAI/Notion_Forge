@@ -162,3 +162,19 @@ def test_golden_dashboard_widgets_has_rollup():
         types.extend(_prop_types(db))
     assert "rollup" in types, "dashboard_widgets 골든은 rollup 예시를 포함해야 합니다"
     assert "formula" in types, "dashboard_widgets 골든은 formula 예시를 포함해야 합니다"
+
+
+# ── SKILL.md 계산속성 가이드 검증 (QUAL-2) ──
+
+SKILLS_DIR = Path(__file__).resolve().parents[1].parent / "app" / "skills"
+
+
+@pytest.mark.parametrize("skill", ["finance", "project", "crm", "sales"])
+def test_premium_skills_document_calculated_properties(skill):
+    """유료급 도메인 스킬은 rollup/formula 계산 속성을 SKILL.md에 명문화해야 한다."""
+    fp = SKILLS_DIR / skill / "SKILL.md"
+    assert fp.exists(), f"{skill}/SKILL.md 없음"
+    text = fp.read_text(encoding="utf-8").lower()
+    assert "formula" in text or "rollup" in text, (
+        f"{skill}/SKILL.md는 계산 속성(formula/rollup) 가이드를 포함해야 합니다 (유료급 차별점)"
+    )

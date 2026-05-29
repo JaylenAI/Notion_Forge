@@ -115,5 +115,10 @@ Use column_list with 2 columns for every template:
 7. Toggle: "📖 사용 가이드" with numbered setup steps
 8. Toggle: "❓ 자주 묻는 질문" with 2-3 FAQs
 
+### Required Calculated Properties (필수 — 유료급 차별점)
+태스크 DB에 마감 추적 **계산 속성을 반드시 포함**하라.
+- `D-Day` (formula): `{"type": "formula", "expression": "if(empty(prop(\"기한\")), \"\", format(dateBetween(prop(\"기한\"), now(), \"days\")) + \"일\")"}`
+- 프로젝트 DB를 별도로 둘 경우(권장, 멀티 DB): 태스크에 `프로젝트`(relation → 프로젝트), 프로젝트에 `태스크목록`(relation → 태스크) + `진행률`(rollup, function "percent_checked" 또는 완료 태스크 count)
+
 ### Cover Image Category
 cover_category: "business" (maps to themed Unsplash cover)
