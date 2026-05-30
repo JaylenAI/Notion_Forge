@@ -89,3 +89,62 @@ class TestRateLimiter:
         out = await rl.gather_with_limit([ok_task, bad_task])
         assert out[0] == "ok"
         assert isinstance(out[1], ValueError)
+
+
+class _FakeResp:
+    def __init__(self, retry_after):
+        self.headers = {"Retry-After": retry_after}
+
+
+class _RateError(Exception):
+    def __init__(self, msg, retry_after=None):
+        super().__init__(msg)
+        self.response = _FakeResp(retry_after) if retry_after is not None else None
+
+
+class TestRetryAfterAndJitter:
+    async def test_retry_after_honored(self, monkeypatch):
+        from app.notion.rate_limiter import RateLimiter
+
+        rl = RateLimiter(max_per_second=10)
+        slept = []
+
+        async def _sleep(s):
+            slept.append(s)
+
+        monkeypatch.setattr("asyncio.sleep", _sleep)
+        attempts = 0
+
+        async def fn():
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise _RateError("429 rate limited", retry_after="0.05")
+            return "ok"
+
+        result = await rl.call_with_retry(fn, max_retries=3)
+        assert result == "ok"
+        assert 0.05 in slept, f"Retry-After가 적용되지 않음: {slept}"
+
+    async def test_backoff_has_jitter(self, monkeypatch):
+        from app.notion.rate_limiter import RateLimiter
+
+        rl = RateLimiter(max_per_second=10)
+        slept = []
+
+        async def _sleep(s):
+            slept.append(s)
+
+        monkeypatch.setattr("asyncio.sleep", _sleep)
+        attempts = 0
+
+        async def fn():
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise _RateError("429")  # Retry-After 없음 → 지수+jitter
+            return "ok"
+
+        await rl.call_with_retry(fn, max_retries=3)
+        # attempt 0: 2**0 + jitter(0~0.5) = [1.0, 1.5)
+        assert slept and 1.0 <= slept[0] < 1.5, f"jitter 범위 벗어남: {slept}"

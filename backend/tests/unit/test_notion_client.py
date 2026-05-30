@@ -464,3 +464,45 @@ class TestClientClose:
         mock_client._http_client = None
 
         await mock_client.close()
+
+
+class TestQueryPagination:
+    async def test_query_database_paginates(self, real_client):
+        from unittest.mock import AsyncMock, MagicMock
+
+        client = real_client
+        get_resp = MagicMock()
+        get_resp.status_code = 200
+        get_resp.json = MagicMock(return_value={"data_sources": [{"id": "ds1"}]})
+        client._http_client.get = AsyncMock(return_value=get_resp)
+
+        page1 = MagicMock()
+        page1.status_code = 200
+        page1.json = MagicMock(return_value={"results": [{"id": "1"}, {"id": "2"}], "has_more": True, "next_cursor": "c1"})
+        page2 = MagicMock()
+        page2.status_code = 200
+        page2.json = MagicMock(return_value={"results": [{"id": "3"}], "has_more": False})
+        client._http_client.post = AsyncMock(side_effect=[page1, page2])
+        client.rate_limiter.acquire = AsyncMock()
+
+        rows = await client.query_database("db1")
+        assert [r["id"] for r in rows] == ["1", "2", "3"]
+        assert client._http_client.post.call_count == 2
+
+    async def test_query_database_single_page(self, real_client):
+        from unittest.mock import AsyncMock, MagicMock
+
+        client = real_client
+        get_resp = MagicMock()
+        get_resp.status_code = 200
+        get_resp.json = MagicMock(return_value={"data_sources": [{"id": "ds1"}]})
+        client._http_client.get = AsyncMock(return_value=get_resp)
+        page = MagicMock()
+        page.status_code = 200
+        page.json = MagicMock(return_value={"results": [{"id": "1"}], "has_more": False})
+        client._http_client.post = AsyncMock(return_value=page)
+        client.rate_limiter.acquire = AsyncMock()
+
+        rows = await client.query_database("db1")
+        assert len(rows) == 1
+        assert client._http_client.post.call_count == 1

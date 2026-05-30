@@ -1,12 +1,26 @@
-"""Notion API Rate Limiter: Semaphore 기반 동시 요청 제한 + 지수 백오프"""
+"""Notion API Rate Limiter: Semaphore 기반 동시 요청 제한 + 지수 백오프(+jitter, Retry-After)"""
 
 import asyncio
 import logging
+import random
 import time
 from collections import deque
 from typing import Any, Callable, Coroutine
 
 logger = logging.getLogger("notionforge.rate_limiter")
+
+
+def _parse_retry_after(error: Exception) -> float | None:
+    """예외에 붙은 응답 헤더에서 Retry-After(초)를 best-effort로 파싱."""
+    resp = getattr(error, "response", None)
+    headers = getattr(resp, "headers", None) if resp is not None else None
+    if not headers:
+        return None
+    try:
+        val = headers.get("Retry-After") or headers.get("retry-after")
+        return float(val) if val is not None else None
+    except (ValueError, TypeError, AttributeError):
+        return None
 
 
 class RateLimiter:
@@ -47,13 +61,16 @@ class RateLimiter:
             except Exception as e:
                 error_str = str(e)
                 if "429" in error_str or "rate" in error_str.lower():
-                    wait = 2**attempt
-                    logger.info(f"[RateLimiter] 429 감지, {wait}s 대기 (시도 {attempt + 1}/{max_retries})")
-                    await asyncio.sleep(wait)
                     if attempt == max_retries - 1:
                         raise
+                    # Retry-After 우선, 없으면 지수 백오프 + jitter (thundering herd 방지)
+                    retry_after = _parse_retry_after(e)
+                    wait = retry_after if retry_after is not None else (2**attempt) + random.uniform(0, 0.5)
+                    logger.info(f"[RateLimiter] 429 감지, {wait:.1f}s 대기 (시도 {attempt + 1}/{max_retries})")
+                    await asyncio.sleep(wait)
                 else:
                     raise
+        return None
 
     async def gather_with_limit(
         self,

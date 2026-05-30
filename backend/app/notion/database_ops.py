@@ -260,22 +260,34 @@ class DatabaseOpsMixin:
             body["filter_properties"] = filter_properties
 
         data_source_id = await self.get_data_source_id(database_id)
-        await self.rate_limiter.acquire()
-        try:
-            resp = await self._http_client.post(f"/data_sources/{data_source_id}/query", json=body)
-            if resp.status_code >= 400:
-                # 새 API 실패 시 레거시 쿼리 엔드포인트로 폴백
-                logger.info("[query_database] 2026-03-11 실패, 레거시 폴백 시도")
-                await self.rate_limiter.acquire()
-                resp = await self._http_client_legacy.post(f"/databases/{database_id}/query", json=body)
+        results: list[dict[str, Any]] = []
+        cursor: str | None = None
+        client = self._http_client
+        endpoint = f"/data_sources/{data_source_id}/query"
+        for _page in range(20):  # 안전 상한 ~2000개 (무한 페이지네이션 방지)
+            if cursor:
+                body["start_cursor"] = cursor
+            await self.rate_limiter.acquire()
+            try:
+                resp = await client.post(endpoint, json=body)
+                # 첫 페이지에서 새 API 실패 시 레거시 엔드포인트로 1회 폴백
+                if resp.status_code >= 400 and not results and client is self._http_client:
+                    logger.info("[query_database] 2026-03-11 실패, 레거시 폴백 시도")
+                    client = self._http_client_legacy
+                    endpoint = f"/databases/{database_id}/query"
+                    await self.rate_limiter.acquire()
+                    resp = await client.post(endpoint, json=body)
                 if resp.status_code >= 400:
                     logger.warning(f"[query_database 에러 {resp.status_code}] {resp.text[:200]}")
-                    return []
-            data = resp.json()
-            request_status = data.get("request_status", {})
-            if request_status.get("type") == "incomplete":
-                logger.info(f"[query 부분 결과] reason: {request_status.get('incomplete_reason', 'unknown')}")
-            return data.get("results", [])
-        except Exception as e:
-            logger.warning(f"[query_database 에러] {str(e)[:100]}")
-            return []
+                    break
+                data = resp.json()
+                results.extend(data.get("results", []))
+                if not data.get("has_more"):
+                    break
+                cursor = data.get("next_cursor")
+                if not cursor:
+                    break
+            except Exception as e:
+                logger.warning(f"[query_database 에러] {str(e)[:100]}")
+                break
+        return results
