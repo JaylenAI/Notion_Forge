@@ -43,3 +43,7 @@ class TestHealthEndpoints:
         assert data["period"] == "7d"
         assert "total_generations" in data
         assert "success_rate" in data
+        # 관측성: 백분위 지연 + 토큰 (avg만이 아님)
+        assert "p50_duration_ms" in data
+        assert "p95_duration_ms" in data
+        assert "total_tokens_used" in data

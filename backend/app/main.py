@@ -167,19 +167,35 @@ def create_app() -> FastAPI:
         success = sum(1 for r in records if r.get("metrics", {}).get("success"))
 
         skills_used: dict[str, int] = {}
-        total_duration = 0
+        durations: list[int] = []
+        total_tokens = 0
         for r in records:
             m = r.get("metrics", {})
             skill = m.get("skill", "unknown")
             skills_used[skill] = skills_used.get(skill, 0) + 1
-            total_duration += m.get("total_duration_ms", 0)
+            d = m.get("total_duration_ms", 0)
+            if d:
+                durations.append(d)
+            total_tokens += m.get("tokens_used", 0) or 0
+
+        def _pct(data: list[int], q: float) -> int:
+            if not data:
+                return 0
+            ordered = sorted(data)
+            if len(ordered) == 1:
+                return ordered[0]
+            idx = min(len(ordered) - 1, int(round(q * (len(ordered) - 1))))
+            return ordered[idx]
 
         return {
             "period": "7d",
             "total_generations": total,
             "success_count": success,
             "success_rate": round(success / total * 100, 1) if total > 0 else 0,
-            "avg_duration_ms": round(total_duration / total) if total > 0 else 0,
+            "avg_duration_ms": round(sum(durations) / len(durations)) if durations else 0,
+            "p50_duration_ms": _pct(durations, 0.5),
+            "p95_duration_ms": _pct(durations, 0.95),
+            "total_tokens_used": total_tokens,
             "top_skills": dict(sorted(skills_used.items(), key=lambda x: -x[1])[:10]),
         }
 
