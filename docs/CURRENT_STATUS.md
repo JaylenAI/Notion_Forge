@@ -6,21 +6,23 @@
 
 ---
 
-## v1.0 하드닝 게이트 진행 (2026-05-30)
+## v1.0 하드닝 게이트 (2026-05-30 — 전 게이트 핵심 완료)
 
-실제 Notion 라이브 검증 기반으로 안정성·품질·보안을 게이트 단위로 강화 중. **25개 결함 발견·수정**(라이브 E2E 5 + 27-에이전트 자기검증 20), 전부 회귀테스트화. 테스트 1,374 → **1,414** 통과.
+실제 Notion 라이브 검증 기반으로 6개 게이트를 진행. 누적 결함 발견·수정 약 30건(라이브 E2E + 27-에이전트 자기검증), 전부 회귀테스트화. 백엔드 **1,442** + 프론트 vitest/Playwright E2E 통과.
 
 ```
-Gate 0  공개 전 보안 차단            [██████████] 완료   gitleaks/pre-commit/custom_skills/CI 스캔
-Gate 1  Agent 안정성 봉합            [██████████] 완료   fallback/approval/cost 실배선 + ADR
-Gate 2  템플릿 유료급 품질           [█████░░░░░] ~55%   rollup/formula 실집계(dual_property)·버전핀·비용통제 ✅ / 멀티DB기본·골든셋·스코어카드 잔여
-Gate 3  Notion API 완전성           [░░░░░░░░░░] 대기   data_source 마이그레이션·페이지네이션·jitter
-Gate 4  테스트·관측성·회귀게이트     [░░░░░░░░░░] 대기   CI 통합테스트·Playwright E2E·Prometheus
-Gate 5  릴리스·DevOps·공급망         [░░░░░░░░░░] 대기   버전 SSOT·SBOM·라이선스 CI
-Gate 6  커뮤니티·문서·UX → 공개      [░░░░░░░░░░] 대기   README 정직화·거버넌스·a11y
+Gate 0  공개 전 보안 차단            [██████████] 완료   gitleaks/pre-commit/custom_skills/CI 전체스캔
+Gate 1  Agent 안정성 봉합            [██████████] 완료   fallback/approval/cost 실배선 + ADR 0001
+Gate 2  템플릿 유료급 품질           [██████████] 완료   rollup 실집계(dual_property+샘플링크)·OKR골든·통화포맷·품질스코어
+Gate 3  Notion API 완전성           [██████████] 완료   data_source·페이지네이션·jitter/Retry-After
+Gate 4  테스트·관측성·회귀게이트     [█████████░] ~90%   CI 통합테스트·p50/p95·Prometheus·Vitest·Playwright E2E
+Gate 5  릴리스·DevOps·공급망         [████████░░] ~80%   버전 SSOT·setup.sh·라이선스 CI·SBOM / cosign·semantic-release 후속
+Gate 6  커뮤니티·문서·UX → 공개      [█████████░] ~90%   거버넌스·문서 정직화·예제갤러리·a11y 린트 / a11y 37건 점진개선
 ```
 
-**라이브 검증 완료**: 자연어 → 실제 AI 생성 → 멀티DB + 양방향 relation + rollup 실집계 + formula + 샘플행, 전 과정 실제 Notion에서 동작 확인.
+**라이브 검증 완료**: 자연어 → 실제 AI 생성 → 멀티DB + 양방향 relation + **rollup 실집계(고객별 딜금액 합산, OKR 진행률 평균)** + formula + 통화포맷 + 샘플행, 전 과정 실제 Notion에서 동작 확인.
+
+> 1.0+ 후속(선택): cosign 서명, semantic-release, a11y 경고 37건 해소, diff-coverage 도구. **버전 태그/릴리스는 메인테이너 수행.**
 
 ---
 

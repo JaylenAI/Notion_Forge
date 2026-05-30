@@ -32,8 +32,14 @@
 - 테스트 격리 — conftest가 LLM/Notion 키·circuit breaker·WS상태 미리셋
 
 ### Quality
-- 25개 결함 발견·수정 (라이브 E2E 5 + 27-에이전트 자기검증 20), 전부 회귀테스트화
-- 테스트 1,374 → **1,414** 통과
+- 약 30개 결함 발견·수정 (라이브 E2E + 27-에이전트 자기검증), 전부 회귀테스트화
+- 백엔드 테스트 1,374 → **1,442**, 프론트 Vitest + Playwright E2E 신규
+
+### Gate 3~6 (추가 하드닝)
+- **Gate 3 API**: query 페이지네이션(has_more), rate limiter jitter + Retry-After, data_source 마이그레이션 정합
+- **Gate 4 테스트/관측성**: CI에 통합테스트 포함, `/api/metrics/summary` p50/p95+토큰, Prometheus `/metrics`, 프론트 Vitest, Playwright E2E(스모크)
+- **Gate 5 릴리스**: 버전 SSOT(`app.__version__`)+버전 일치 CI, setup.sh env키 수정, pip-licenses 라이선스 CI, release SBOM(syft)
+- **Gate 6 공개**: GOVERNANCE/MAINTAINERS/SUPPORT/CODEOWNERS, README·SECURITY 정직화(단일워커·결정성·재판매권리), 예제 갤러리, a11y 린트(jsx-a11y warn)
 
 ---
 
