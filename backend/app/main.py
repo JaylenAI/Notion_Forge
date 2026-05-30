@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app import __version__
 from app.config import settings
 from app.core.logging_config import setup_logging
 from app.core.middleware import RateLimitMiddleware, RequestIdMiddleware, SecurityHeadersMiddleware
@@ -60,7 +61,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="NotionForge API",
         description="AI 기반 노션 템플릿 자동 생성 에이전트",
-        version="0.1.6",
+        version=__version__,
         docs_url="/docs",
         redoc_url="/redoc",
         lifespan=lifespan,
@@ -129,7 +130,7 @@ def create_app() -> FastAPI:
 
         return {
             "status": "ok",
-            "version": "0.1.6",
+            "version": __version__,
             "ai_provider": settings.ai_provider,
             "notion_ready": settings.notion_ready,
             "copilot": copilot_status,

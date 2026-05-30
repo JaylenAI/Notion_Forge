@@ -213,5 +213,12 @@ jobs:
 
       - name: Check version consistency
         run: |
-          echo "Backend version check..."
-          cd backend && grep -r "version" pyproject.toml | head -5
+          PYPROJECT=$(grep -m1 '^version = ' backend/pyproject.toml | sed -E 's/version = "(.*)"/\1/')
+          APPVER=$(grep -m1 '^__version__' backend/app/__init__.py | sed -E 's/.*"(.*)"/\1/')
+          PKG=$(grep -m1 '"version"' frontend/package.json | sed -E 's/.*"version": "(.*)",/\1/')
+          echo "pyproject=$PYPROJECT app=$APPVER package.json=$PKG"
+          if [ "$PYPROJECT" != "$APPVER" ] || [ "$PYPROJECT" != "$PKG" ]; then
+            echo "::error::버전 불일치 — pyproject=$PYPROJECT app=$APPVER package.json=$PKG"
+            exit 1
+          fi
+          echo "[OK] 버전 일치: $PYPROJECT"

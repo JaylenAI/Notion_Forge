@@ -12,9 +12,9 @@ if [ ! -f .env ]; then
     echo "[OK] .env created from .env.example"
     echo ""
     echo ">> Please edit .env and set your API keys:"
-    echo "   - NOTION_TOKEN (required)"
+    echo "   - NOTION_API_KEY (required)"
     echo "   - NOTION_PARENT_PAGE_ID (required)"
-    echo "   - GEMINI_API_KEY or OPENAI_API_KEY (at least one)"
+    echo "   - GEMINI_API_KEY / GROQ_API_KEY / ANTHROPIC_API_KEY (at least one, or use Copilot SDK)"
     echo ""
     read -p "Press Enter after editing .env, or Ctrl+C to exit..."
 else
