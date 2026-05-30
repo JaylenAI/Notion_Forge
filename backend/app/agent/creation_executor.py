@@ -403,31 +403,48 @@ class CreationExecutor:
                 except Exception as e:
                     logger.info(f"[Relation 후처리 실패] {created_dbs[i]['title']}: {str(e)[:100]}")
 
-        # ── Pass 2: rollup / formula (relation이 존재한 뒤에 추가) ──
+        # ── Pass 2: rollup / formula ──
+        # 교차 의존(rollup이 다른 DB의 formula 참조, formula가 같은 DB의 rollup 참조 등) 때문에
+        # 단순 순차 생성은 실패한다. 개별 생성 + 최대 3라운드 재시도로 의존성을 점진 해소한다.
+        pending: list[tuple[int, str, dict]] = []
         for i, db_spec in enumerate(databases):
             if i >= len(created_dbs):
                 break
-            derived_props: dict[str, Any] = {}
             for prop_name, prop_spec in _props_of(db_spec).items():
                 if not isinstance(prop_spec, dict):
                     continue
                 prop_type = prop_spec.get("type", "")
                 if prop_type == "formula" and "expression" in prop_spec:
-                    derived_props[prop_name] = {"formula": {"expression": prop_spec["expression"]}}
+                    pending.append((i, prop_name, {"formula": {"expression": prop_spec["expression"]}}))
                 elif prop_type == "rollup" and "relation_property" in prop_spec:
-                    derived_props[prop_name] = {
-                        "rollup": {
-                            "relation_property_name": prop_spec["relation_property"],
-                            "rollup_property_name": prop_spec.get("target_property", "이름"),
-                            "function": prop_spec.get("function", "count"),
-                        }
-                    }
-            if derived_props:
-                try:
-                    await self.client.update_database(created_dbs[i]["id"], {"properties": derived_props})
-                    logger.info(f"[Rollup/Formula 후처리] {created_dbs[i]['title']}: {list(derived_props.keys())}")
-                except Exception as e:
-                    logger.info(f"[Rollup/Formula 후처리 실패] {created_dbs[i]['title']}: {str(e)[:100]}")
+                    pending.append(
+                        (
+                            i,
+                            prop_name,
+                            {
+                                "rollup": {
+                                    "relation_property_name": prop_spec["relation_property"],
+                                    "rollup_property_name": prop_spec.get("target_property", "이름"),
+                                    "function": prop_spec.get("function", "count"),
+                                }
+                            },
+                        )
+                    )
+
+        for _round in range(3):
+            if not pending:
+                break
+            still: list[tuple[int, str, dict]] = []
+            for i, prop_name, cfg in pending:
+                res = await self.client.update_database(created_dbs[i]["id"], {"properties": {prop_name: cfg}})
+                if isinstance(res, dict) and res.get("fallback"):
+                    still.append((i, prop_name, cfg))  # 의존성 미충족 추정 → 다음 라운드 재시도
+                else:
+                    logger.info(f"[Derived 후처리] {created_dbs[i]['title']}.{prop_name}")
+            if len(still) == len(pending):
+                logger.info(f"[Derived 후처리] {len(still)}개 미해결(의존성/스키마) — 중단: {[p for _, p, _ in still]}")
+                break
+            pending = still
 
     @staticmethod
     def _title_key(props: dict) -> str:

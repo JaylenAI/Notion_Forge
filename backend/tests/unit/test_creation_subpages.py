@@ -165,6 +165,53 @@ async def test_post_process_bidirectional_pair_uses_dual_property(monkeypatch):
     assert len(single) == 0, f"쌍의 반대쪽은 skip되어야 함: {rels}"
 
 
+async def test_post_process_derived_round_retry(monkeypatch):
+    """cross-DB rollup-of-formula 등 의존 순서는 라운드 재시도로 해소돼야 한다 (라이브 검증: OKR).
+
+    rollup(진행률)이 다른 DB의 formula(달성률)를 참조 → 1라운드 실패, formula 생성 후 2라운드 성공.
+    """
+    client = _mock_client(monkeypatch)
+    attempts: dict = {}
+
+    async def _spy(db_id, updates):
+        name = next(iter(updates["properties"]))
+        attempts[name] = attempts.get(name, 0) + 1
+        if name == "진행률" and attempts[name] == 1:
+            return {"id": db_id, "fallback": True}  # 1라운드: 달성률 미존재로 실패 시뮬
+        return {"id": db_id}
+
+    monkeypatch.setattr(client, "update_database", _spy)
+    executor = CreationExecutor(client, AddDatabaseItemsTool(client))
+    blueprint = {
+        "databases": [
+            {
+                "title": "O",
+                "db_properties": {
+                    "이름": "title",
+                    "관련KR": {"type": "relation", "target_db_index": 1},
+                    "진행률": {
+                        "type": "rollup",
+                        "relation_property": "관련KR",
+                        "target_property": "달성률",
+                        "function": "average",
+                    },
+                },
+            },
+            {
+                "title": "KR",
+                "db_properties": {
+                    "이름": "title",
+                    "달성률": {"type": "formula", "expression": "1"},
+                    "관련O": {"type": "relation", "target_db_index": 0},
+                },
+            },
+        ]
+    }
+    result = {"databases": [{"id": "o", "title": "O"}, {"id": "kr", "title": "KR"}]}
+    await executor.post_process_relations(blueprint, result)
+    assert attempts.get("진행률", 0) >= 2, "진행률 rollup이 재시도되지 않음"
+
+
 async def test_post_process_creates_formula_for_single_db(monkeypatch):
     """단일 DB 템플릿의 formula도 후처리에서 생성돼야 한다 (라이브 E2E 회귀).
 

@@ -1,0 +1,90 @@
+{
+  "id": "okr-dashboard",
+  "name": "OKR 목표 관리",
+  "name_en": "OKR Dashboard",
+  "description": "목표(Objective) ↔ 핵심결과(Key Result) 연동 + 진행률 자동 집계 OKR 대시보드",
+  "description_en": "Objectives linked to Key Results with auto-aggregated progress",
+  "category": "business",
+  "icon": "🎯",
+  "author": "NotionForge",
+  "tags": ["okr", "goals", "objective", "kpi", "rollup", "relation"],
+  "complexity": "advanced",
+  "blueprint": {
+    "version": "3.0",
+    "metadata": {"title": "OKR 목표 관리", "template_type": "okr", "color_theme": "purple"},
+    "main_page": {"title": "OKR 목표 관리", "icon": "🎯", "cover_url": "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=1600"},
+    "blocks": [
+      {"type": "callout", "text": "목표와 핵심결과를 연결해 진행률을 자동으로 추적하세요 🎯", "icon": "🎯", "color": "purple_background"},
+      {"type": "table_of_contents"},
+      {"type": "paragraph", "text": ""},
+      {"type": "column_list", "columns": [
+        [{"type": "callout", "text": "🎯 진행중 목표 2개", "icon": "🎯", "color": "purple_background"}],
+        [{"type": "callout", "text": "📊 핵심결과 5개", "icon": "📊", "color": "blue_background"}],
+        [{"type": "callout", "text": "✅ 평균 달성률 자동 집계", "icon": "✅", "color": "green_background"}]
+      ], "width_ratios": [0.33, 0.34, 0.33]},
+      {"type": "paragraph", "text": ""},
+      {"type": "heading_1", "text": "🎯 목표 (Objectives)", "color": "purple"},
+      {"type": "database_ref", "db_index": 0},
+      {"type": "paragraph", "text": ""},
+      {"type": "heading_1", "text": "📊 핵심결과 (Key Results)", "color": "blue"},
+      {"type": "database_ref", "db_index": 1},
+      {"type": "paragraph", "text": ""},
+      {"type": "divider"},
+      {"type": "toggle", "text": "📖 OKR 작성 가이드", "children": [
+        {"type": "numbered_list", "text": "목표(Objective)는 영감을 주는 정성적 방향"},
+        {"type": "numbered_list", "text": "핵심결과(KR)는 측정 가능한 정량 지표 (목표값/현재값)"},
+        {"type": "numbered_list", "text": "KR을 목표에 연결하면 목표 진행률이 자동 집계됩니다"},
+        {"type": "callout", "text": "팁: KR은 목표당 2~4개가 적정합니다", "icon": "💡", "color": "yellow_background"}
+      ]}
+    ],
+    "databases": [
+      {
+        "title": "목표", "is_inline": true, "icon": "🎯",
+        "description": "분기별 목표(Objective)를 관리합니다",
+        "properties": {
+          "목표명": "title",
+          "분기": {"type": "select", "options": [{"name": "Q1", "color": "blue"}, {"name": "Q2", "color": "green"}, {"name": "Q3", "color": "orange"}, {"name": "Q4", "color": "red"}]},
+          "상태": "status",
+          "관련 KR": {"type": "relation", "target_db_index": 1},
+          "진행률": {"type": "rollup", "relation_property": "관련 KR", "target_property": "달성률", "function": "average"},
+          "KR 수": {"type": "rollup", "relation_property": "관련 KR", "target_property": "KR명", "function": "count"}
+        },
+        "views": [{"type": "table", "title": "전체 목표"}, {"type": "board", "title": "분기별", "group_by": {"property": "분기"}}],
+        "sample_items": [
+          {"목표명": "분기 매출 1억 달성", "분기": "Q1", "관련 KR": ["신규 고객 50명 확보", "객단가 20% 상승"], "icon": "💰"},
+          {"목표명": "제품 안정성 강화", "분기": "Q1", "관련 KR": ["버그 50% 감소", "응답속도 30% 개선"], "icon": "🛡️"},
+          {"목표명": "팀 역량 강화", "분기": "Q1", "관련 KR": ["교육 12회 진행"], "icon": "🌱"}
+        ]
+      },
+      {
+        "title": "핵심결과", "is_inline": true, "icon": "📊",
+        "description": "측정 가능한 핵심결과(Key Result)",
+        "properties": {
+          "KR명": "title",
+          "측정지표": "rich_text",
+          "목표값": {"type": "number", "format": "number"},
+          "현재값": {"type": "number", "format": "number"},
+          "달성률": {"type": "formula", "expression": "if(prop(\"목표값\") == 0, 0, round(prop(\"현재값\") / prop(\"목표값\") * 100))"},
+          "관련 목표": {"type": "relation", "target_db_index": 0}
+        },
+        "views": [{"type": "table", "title": "전체 KR"}],
+        "sample_items": [
+          {"KR명": "신규 고객 50명 확보", "측정지표": "신규 계약 수", "목표값": 50, "현재값": 32, "icon": "📈"},
+          {"KR명": "객단가 20% 상승", "측정지표": "평균 객단가", "목표값": 20, "현재값": 12, "icon": "💵"},
+          {"KR명": "버그 50% 감소", "측정지표": "월간 버그 수", "목표값": 50, "현재값": 45, "icon": "🐞"},
+          {"KR명": "응답속도 30% 개선", "측정지표": "P95 응답시간", "목표값": 30, "현재값": 18, "icon": "⚡"},
+          {"KR명": "교육 12회 진행", "측정지표": "교육 세션 수", "목표값": 12, "현재값": 4, "icon": "📚"}
+        ]
+      }
+    ],
+    "sub_pages": [
+      {"name": "OKR 회고", "icon": "🔄", "blocks": [
+        {"type": "callout", "text": "분기말 OKR 회고를 기록하세요", "icon": "🔄", "color": "purple_background"},
+        {"type": "heading_2", "text": "✅ 잘된 점"},
+        {"type": "bulleted_list", "text": "달성률 70% 이상 KR 분석"},
+        {"type": "heading_2", "text": "🔧 개선할 점"},
+        {"type": "bulleted_list", "text": "미달 KR의 원인과 다음 분기 액션"}
+      ]}
+    ]
+  }
+}
