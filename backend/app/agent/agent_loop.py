@@ -176,6 +176,9 @@ class AgentLoop:
             if max_chars > 0 and len(system) > max_chars:
                 system = system[:max_chars]
 
+            from app.core.cost_control import note_call
+
+            note_call()
             result = await self.provider.call_with_tools(system, enriched_message, tool_specs, model=self.ai_model)
             if result and "tool_calls" in result:
                 steps = [
