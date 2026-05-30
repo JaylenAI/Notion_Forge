@@ -366,6 +366,22 @@ def _detect_mode(user_message: str) -> str:
 # ============================================================
 
 
+def _fallback_candidates(exclude_provider: str, max_candidates: int = 2) -> list[tuple[str, str]]:
+    """1차 provider 실패 시 시도할 폴백 (provider명, api_key) 목록.
+
+    settings에 키가 있는 provider만 후보로, 1차 provider는 제외, 최대 max_candidates개.
+    copilot/openai는 settings 키가 없어 제외된다(키 기반 폴백만).
+    """
+    from app.config import settings
+
+    pairs = (
+        ("claude", settings.anthropic_api_key),
+        ("gemini", settings.gemini_api_key),
+        ("groq", settings.groq_api_key),
+    )
+    return [(n, k) for n, k in pairs if k and n != exclude_provider][:max_candidates]
+
+
 async def _call_ai_for_content(
     user_message: str,
     ai_key: str = "",
@@ -418,16 +434,9 @@ async def _call_ai_for_content(
     else:
         ProviderRouter.circuit_breaker.record_failure(provider.name)
         # 1차 provider 실패 시 작동하는 다른 provider로 즉시 폴백 (실 AI 생성 보장).
-        # 키가 있는 provider만 후보 — mock/headless에서 copilot이 None을 줘도 groq/gemini로 생성.
         from app.agent.providers.router import create_provider
-        from app.config import settings as _s
 
-        fb_candidates = [
-            (n, k)
-            for n, k in (("claude", _s.anthropic_api_key), ("gemini", _s.gemini_api_key), ("groq", _s.groq_api_key))
-            if k and n != provider.name
-        ][:2]
-        for fb_name, fb_key in fb_candidates:
+        for fb_name, fb_key in _fallback_candidates(provider.name):
             try:
                 fb_provider = create_provider(fb_name, api_key=fb_key)
             except Exception:
