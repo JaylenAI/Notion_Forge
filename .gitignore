@@ -60,3 +60,8 @@ claude-code-notion-plugin/
 # 발표자료 (비공개)
 docs/PRESENTATION.md
 output/
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+frontend/.playwright/
