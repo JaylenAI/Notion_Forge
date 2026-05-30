@@ -32,3 +32,12 @@ def test_strips_trailing_punctuation():
     assert not t.endswith(",")
     assert "!" not in t
     assert "운동" in t
+
+
+def test_preserves_words_containing_color_substring():
+    """색상어를 substring으로 포함하는 정상 단어는 보존돼야 한다 (WIRE-03 회귀)."""
+    assert "블루베리" in _clean_title("블루베리 농장 관리")
+    assert "그린팀" in _clean_title("그린팀 프로젝트 보드")
+    assert "Evergreen" in _clean_title("Evergreen 독서 기록")
+    assert "레드오션" in _clean_title("레드오션 분석 보드")
+    assert "핑크퐁" in _clean_title("핑크퐁 콘텐츠 기획")

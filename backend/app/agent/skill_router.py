@@ -121,6 +121,10 @@ async def _llm_classify(user_message: str, provider: Any) -> SkillMatch:
                 logger.info(f"[SkillRouter/LLM] {skill_id} (conf={confidence:.2f})")
                 return SkillMatch(skill_id=skill_id, confidence=confidence, method="llm")
     except Exception as e:
+        from app.core.cost_control import BudgetExceededError
+
+        if isinstance(e, BudgetExceededError):
+            raise  # 비용 상한 초과는 삼키지 않고 전파
         logger.warning(f"[SkillRouter/LLM] 분류 실패: {e}")
 
     return SkillMatch(skill_id=None, confidence=0.0, method="llm_fallback")

@@ -40,6 +40,11 @@ async def _retry_notion(coro_fn, *args, max_retries: int = NOTION_RETRY_MAX, **k
             await asyncio.sleep(wait)
 
 
+def _subpage_title(sub: dict) -> str:
+    """서브페이지 제목 통일 — recipe/golden은 'name', AI/스키마는 'title' 키 사용."""
+    return sub.get("title") or sub.get("name") or "페이지"
+
+
 class CreationExecutor:
     """Blueprint의 Notion 리소스 생성을 담당하는 실행기."""
 
@@ -289,7 +294,8 @@ class CreationExecutor:
         from app.notion import block_builder as bb
 
         async def _fill_single(sub: dict) -> None:
-            sub_id = sub_page_map.get(sub["title"])
+            sub_title = _subpage_title(sub)
+            sub_id = sub_page_map.get(sub_title)
             if not sub_id:
                 return
             sub_blocks = sub.get("blocks", [])
@@ -302,17 +308,17 @@ class CreationExecutor:
             else:
                 color = blueprint.get("metadata", {}).get("color_theme", "blue")
                 bg = f"{color}_background" if color != "default" else "default"
-                desc = sub.get("description", f"{sub['title']} 페이지입니다.")
+                desc = sub.get("description", f"{sub_title} 페이지입니다.")
                 default_blocks = [
                     bb.callout(desc, icon=sub.get("icon", "📄"), color=bg),
                     bb.divider(),
-                    bb.heading(f"📋 {sub['title']} 개요", level=2, color=color),
+                    bb.heading(f"📋 {sub_title} 개요", level=2, color=color),
                     bb.paragraph("이 페이지의 내용을 자유롭게 작성해보세요."),
                     bb.paragraph(""),
                     bb.toggle(
                         "📖 활용 팁",
                         children=[
-                            bb.paragraph(f"• {sub['title']}에 관련된 정보를 정리해보세요"),
+                            bb.paragraph(f"• {sub_title}에 관련된 정보를 정리해보세요"),
                             bb.paragraph("• 필요한 내용을 자유롭게 추가하고 수정하세요"),
                         ],
                     ),
@@ -445,7 +451,7 @@ class CreationExecutor:
                 issues.append(f"DB[{di}]: title 타입 속성이 없습니다.")
 
         # db_parent 참조 검증
-        sub_page_titles = {s.get("title", "") for s in sub_pages}
+        sub_page_titles = {_subpage_title(s) for s in sub_pages}
         for di, db in enumerate(databases):
             db_parent = db.get("db_parent", "")
             if db_parent and db_parent not in sub_page_titles:
@@ -628,8 +634,7 @@ class CreationExecutor:
             }
 
             async def _create_sub(sub: dict) -> tuple[str, dict | None, str]:
-                # recipe/golden은 'name', AI/스키마는 'title' — 양쪽 모두 허용 (핸들러도 안전 접근)
-                sub_title = sub.get("title") or sub.get("name") or "페이지"
+                sub_title = _subpage_title(sub)
                 try:
                     page = await _retry_notion(
                         self.client.create_page,

@@ -64,6 +64,33 @@ async def test_execute_blueprint_subpage_missing_both_keys_no_crash(monkeypatch)
     assert len(result.get("pages", [])) >= 1
 
 
+async def test_subpage_name_key_blocks_are_filled(monkeypatch):
+    """name키 서브페이지의 blocks가 실제 add_blocks로 채워져야 한다 (CE-01 회귀).
+
+    과거 fill_sub_pages가 sub['title']만 접근해 name-only 서브페이지의 블록이 조용히 누락됐다.
+    """
+    client = _mock_client(monkeypatch)
+    added: list = []
+
+    async def _spy_add_blocks(page_id, blocks):
+        added.append((page_id, blocks))
+        return {"results": []}
+
+    monkeypatch.setattr(client, "add_blocks", _spy_add_blocks)
+    executor = CreationExecutor(client, AddDatabaseItemsTool(client))
+    bp = {
+        "main_page": {"title": "테스트", "icon": "🧪"},
+        "blocks": [],
+        "databases": [],
+        "sub_pages": [
+            {"name": "name서브", "icon": "📁", "blocks": [{"type": "paragraph", "text": "채워질 내용"}]},
+        ],
+    }
+    await executor.execute_blueprint(bp, "mock-parent")
+    # 메인 blocks=[] 이므로 add_blocks 호출은 서브페이지 충전뿐이어야 함
+    assert any(blocks for _, blocks in added), "name키 서브페이지의 블록이 채워지지 않음 (CE-01)"
+
+
 async def test_post_process_creates_formula_for_single_db(monkeypatch):
     """단일 DB 템플릿의 formula도 후처리에서 생성돼야 한다 (라이브 E2E 회귀).
 

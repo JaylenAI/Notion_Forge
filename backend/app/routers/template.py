@@ -254,11 +254,14 @@ async def agent_loop_generate(
     )
     pid = parent_page_id or cfg.notion_parent_page_id
 
-    from app.core.cost_control import set_budget
+    from app.core.cost_control import BudgetExceededError, set_budget
 
     set_budget(cfg.max_llm_calls_per_session)
     loop = AgentLoop(client=client, api_key=ai_key, ai_model=ai_model)
-    result = await loop.run(prompt, parent_page_id=pid)
+    try:
+        result = await loop.run(prompt, parent_page_id=pid)
+    except BudgetExceededError as e:
+        return {"success": False, "error": f"AI 호출 한도 초과: {e}", "steps_completed": 0, "steps_total": 0}
 
     return {
         "success": result.get("success", False),

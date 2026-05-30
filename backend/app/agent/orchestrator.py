@@ -131,6 +131,7 @@ class AgentOrchestrator:
             from app.agent.agent_loop import AgentLoop
 
             loop = AgentLoop(client=self.client, api_key=self.ai_key, ai_model=self.ai_model)
+            loop_result: dict[str, Any] = {}  # result 이벤트 미수신 대비 초기화 (UnboundLocalError 방지)
             async for event in loop.run_streaming(message, self.parent_page_id):
                 if event.get("type") == "result":
                     loop_result = event["result"]
@@ -140,6 +141,8 @@ class AgentOrchestrator:
             metrics.end_stage()
 
             if not loop_result.get("success"):
+                metrics.finish(success=False, error=loop_result.get("error", "agent_loop_failed"))
+                save_generation_record(metrics.to_dict(), {})
                 yield {"type": "error", "content": f"Agent Loop 실패: {loop_result.get('error', '알 수 없는 오류')}"}
                 return
 
@@ -158,7 +161,16 @@ class AgentOrchestrator:
 
         # ② AI 설계
         metrics.start_stage("blueprint_generation")
-        blueprint = await self._generate_blueprint(message, metrics)
+        from app.core.cost_control import BudgetExceededError
+
+        try:
+            blueprint = await self._generate_blueprint(message, metrics)
+        except BudgetExceededError as e:
+            metrics.end_stage(success=False, error="budget_exceeded")
+            metrics.finish(success=False, error="budget_exceeded")
+            save_generation_record(metrics.to_dict(), {})
+            yield {"type": "error", "content": f"이번 세션 AI 호출 한도를 초과했어요. 잠시 후 다시 시도해주세요. ({e})"}
+            return
         metrics.end_stage()
 
         meta = blueprint.get("metadata", {})

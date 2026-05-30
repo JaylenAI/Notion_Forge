@@ -292,6 +292,10 @@ async def generate_blueprint(
                 )
 
         except Exception as e:
+            from app.core.cost_control import BudgetExceededError
+
+            if isinstance(e, BudgetExceededError):
+                raise  # 비용 상한 초과는 폴백으로 삼키지 않고 중단
             elapsed = time.time() - t0
             logger.info(f"[Gen-Eval 시도 {attempt + 1}/{max_retries}] 예외: {str(e)[:100]} ({elapsed:.1f}s)")
             feedback_context = f"이전 시도에서 오류 발생: {str(e)[:200]}. 올바른 JSON으로 다시 응답하세요."
@@ -567,23 +571,36 @@ def _assemble_blueprint(content: dict) -> dict[str, Any]:
 def _clean_title(user_message: str) -> str:
     """사용자 메시지에서 색상/스타일 지시와 요청 동사를 제거해 깔끔한 제목을 추출.
 
+    색상어는 **토큰 단위 완전일치**로만 제거한다(substring 금지) — '블루베리', '그린팀',
+    'Evergreen' 같은 정상 단어는 보존된다.
     예: "운동 습관 트래커 만들어줘, 주황색으로" → "운동 습관 트래커"
     """
     import re
 
     from app.agent.intent_analyzer import COLOR_MAP
 
+    color_words = {w.lower() for w in COLOR_MAP}
+
+    def _is_color_token(tok: str) -> bool:
+        s = tok.strip(",，.!·").strip().lower()
+        if not s:
+            return False
+        if s in color_words:
+            return True
+        for suffix in ("으로", "로"):  # "주황색으로", "파란색으로"
+            if s.endswith(suffix) and s[: -len(suffix)] in color_words:
+                return True
+        return False
+
     t = user_message
-    # 색상/스타일 지시 제거 (긴 단어부터: "주황색" 우선 매칭 후 ", 주황색으로" 등)
-    for w in sorted(COLOR_MAP.keys(), key=len, reverse=True):
-        t = re.sub(rf"[,，]?\s*{re.escape(w)}\s*(으?로)?", " ", t, flags=re.IGNORECASE)
-    # 요청 동사/표현 제거
+    # 요청 동사/표현 제거 (동사는 어절 치환)
     for v in ("만들어주세요", "만들어 줘", "만들어줘", "제작해 줘", "제작해줘", "생성해줘", "만들어", "제작", "해줘", "만들기"):
         t = t.replace(v, " ")
     t = t.replace("!", " ")
-    # 공백 정리 + 양끝 구두점 제거
-    t = re.sub(r"\s+", " ", t).strip(" ,，.·\t")
-    return t.strip()
+    # 색상 지시는 토큰 완전일치로만 제거
+    kept = [tok for tok in re.split(r"\s+", t) if tok and not _is_color_token(tok)]
+    result = re.sub(r"\s+", " ", " ".join(kept)).strip(" ,，.·\t")
+    return result.strip()
 
 
 def _smart_fallback(user_message: str) -> dict[str, Any]:

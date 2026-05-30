@@ -20,8 +20,11 @@ def _force_mock_provider(monkeypatch):
     monkeypatch.setattr(settings, "anthropic_api_key", "", raising=False)
     monkeypatch.setattr(settings, "gemini_api_key", "", raising=False)
     monkeypatch.setattr(settings, "groq_api_key", "", raising=False)
+    # Notion 키도 비워 테스트가 실수로 실제 Notion API를 치지 않게 함 (TEST-ISO-01)
+    monkeypatch.setattr(settings, "notion_api_key", "", raising=False)
+    monkeypatch.setattr(settings, "notion_parent_page_id", "", raising=False)
     monkeypatch.setenv("COPILOT_ENABLED", "false")
-    for k in ("ANTHROPIC_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY"):
+    for k in ("ANTHROPIC_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY", "NOTION_API_KEY", "NOTION_PARENT_PAGE_ID"):
         monkeypatch.delenv(k, raising=False)
     os.environ.setdefault("NOTIONFORGE_TEST", "1")
 
@@ -39,6 +42,14 @@ def _force_mock_provider(monkeypatch):
         from app.core.cost_control import reset_budget
 
         reset_budget()
+    except Exception:
+        pass
+
+    # Circuit Breaker 싱글톤 테스트 간 리셋 (TEST-ISO-02)
+    try:
+        from app.agent.providers.router import _circuit_breaker
+
+        _circuit_breaker.reset()
     except Exception:
         pass
 
