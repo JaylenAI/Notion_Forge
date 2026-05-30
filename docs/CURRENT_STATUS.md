@@ -1,12 +1,30 @@
 # 진행 현황 (Current Status)
 
-> 최종 업데이트: 2026-05-18
+> 최종 업데이트: 2026-05-30
 > 현재 브랜치: dev
-> 버전: v0.1.6
+> 버전: v0.1.6 (v1.0 하드닝 진행 중 — 버전 태그 미부여)
 
 ---
 
-## 전체 진행률
+## v1.0 하드닝 게이트 진행 (2026-05-30)
+
+실제 Notion 라이브 검증 기반으로 안정성·품질·보안을 게이트 단위로 강화 중. **25개 결함 발견·수정**(라이브 E2E 5 + 27-에이전트 자기검증 20), 전부 회귀테스트화. 테스트 1,374 → **1,414** 통과.
+
+```
+Gate 0  공개 전 보안 차단            [██████████] 완료   gitleaks/pre-commit/custom_skills/CI 스캔
+Gate 1  Agent 안정성 봉합            [██████████] 완료   fallback/approval/cost 실배선 + ADR
+Gate 2  템플릿 유료급 품질           [█████░░░░░] ~55%   rollup/formula 실집계(dual_property)·버전핀·비용통제 ✅ / 멀티DB기본·골든셋·스코어카드 잔여
+Gate 3  Notion API 완전성           [░░░░░░░░░░] 대기   data_source 마이그레이션·페이지네이션·jitter
+Gate 4  테스트·관측성·회귀게이트     [░░░░░░░░░░] 대기   CI 통합테스트·Playwright E2E·Prometheus
+Gate 5  릴리스·DevOps·공급망         [░░░░░░░░░░] 대기   버전 SSOT·SBOM·라이선스 CI
+Gate 6  커뮤니티·문서·UX → 공개      [░░░░░░░░░░] 대기   README 정직화·거버넌스·a11y
+```
+
+**라이브 검증 완료**: 자연어 → 실제 AI 생성 → 멀티DB + 양방향 relation + rollup 실집계 + formula + 샘플행, 전 과정 실제 Notion에서 동작 확인.
+
+---
+
+## 전체 진행률 (기능 기준)
 
 ```
 AI Agent 아키텍처            [██████████] 100%  Plan-Execute-Reflect + Tool Registry 11개
@@ -18,7 +36,7 @@ Notion API 듀얼 버전          [██████████] 100%  쓰기 
 블루프린트 자동 수정          [██████████] 100%  PostProcessor 13종 + 구조 검증
 보안 미들웨어                [██████████] 100%  Rate Limit, CSRF, 에러 정제, 업로드 검증
 CI/CD 파이프라인             [██████████] 100%  lint→test→typecheck→docker→security→api-docs
-테스트 1,374개 (80%+ 커버리지) [██████████] 100%  unit 51개 파일, fail_under=80
+테스트 1,414개 (80%+ 커버리지) [██████████] 100%  unit 58개 파일, fail_under=80
 문서화                       [██████████] 100%  README, CONTRIBUTING, SECURITY, API, ARCHITECTURE
 Docker 배포                  [██████████] 100%  Multi-stage, health check, 리소스 제한
 오픈소스 배포 준비            [██████████] 100%  MIT, 배너, 이슈 템플릿, Dependabot
@@ -97,10 +115,10 @@ User Input
 ## 테스트 현황
 
 ```
-테스트 총 수:     1,374개
+테스트 총 수:     1,414개 (+ 라이브 Notion QA 하네스)
 커버리지:         80%+ (fail_under=80%)
-테스트 파일:      51개+
-카테고리:         unit (48+) + integration (3)
+테스트 파일:      58개+
+카테고리:         unit (57+) + integration (1)
 ```
 
 ---

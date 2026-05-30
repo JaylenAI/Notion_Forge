@@ -4,6 +4,22 @@
 
 ---
 
+## v1.0 하드닝 게이트 (진행 중, 2026-05-30 기준)
+
+실제 Notion 라이브 검증 기반으로 "기업급 구조 + 유료급 결과물 + 떳떳한 공개"를 목표로 게이트별 강화.
+
+- [x] **Gate 0 — 공개 전 보안 차단**: gitleaks/pre-commit, custom_skills 위생, CI 전체 히스토리 스캔
+- [x] **Gate 1 — Agent 안정성 봉합**: Provider Fallback·Approval Gate·비용통제 실배선, ADR 0001
+- [ ] **Gate 2 — 템플릿 유료급 품질** (~55%): rollup/formula 실집계(dual_property)·SDK 버전핀·비용통제 ✅ / 멀티DB 기본화·advanced 골든셋·통화포맷·품질 스코어카드 잔여
+- [ ] **Gate 3 — Notion API 완전성**: data_source 마이그레이션 완결, 페이지네이션, rate limiter jitter
+- [ ] **Gate 4 — 테스트·관측성·회귀게이트**: CI 통합테스트 포함, diff-coverage, Playwright E2E, Prometheus/OTel
+- [ ] **Gate 5 — 릴리스·DevOps·공급망**: 버전 SSOT, SBOM/cosign, 라이선스 호환 CI, semantic-release
+- [ ] **Gate 6 — 커뮤니티·문서·UX → v1.0.0**: README 정직화, 거버넌스, a11y, 결정성 한계 명시
+
+> 코드로 도달 가능한 천장 = "기업급 구조 + 유료급($20~30) 결과물 + 공개 가능한 v1.0". 최상위($50) 비주얼 디자인과 실시장 검증은 코드 외 영역.
+
+---
+
 ## 단기 (1~2개월)
 
 ### 템플릿 품질 프리미엄화

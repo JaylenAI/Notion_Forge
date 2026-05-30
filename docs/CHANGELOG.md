@@ -4,6 +4,39 @@
 
 ---
 
+## [Unreleased]
+
+> v1.0 하드닝 진행 중. 버전 태그는 별도 릴리스 시점에 부여. 전 변경 1,414 테스트 통과 + 실제 Notion 라이브 검증.
+
+### Added
+- **세션 LLM 호출 예산** (`app/core/cost_control.py`) — ContextVar 기반 동시세션 격리, 호출 상한(기본 40)으로 비용 폭주 방지
+- **라이브 QA 하네스** (`backend/scripts/live_qa.py`) — 실제 Notion 생성 후 페이지/DB/샘플행/속성 정량 검증 (recipe·prompt 모드)
+- 보안: `.gitleaks.toml` + `.pre-commit-config.yaml`(gitleaks/detect-private-key/ruff) + CI 전체 히스토리 시크릿 스캔
+- CSP 보안 헤더, WebSocket IP 연결 rate limit, CORS `*`+credentials 자동 차단
+- 핵심 스킬(finance/project/crm)에 필수 계산속성(rollup/formula) 가이드 명문화
+- 레시피/골든 품질 회귀 게이트 테스트, ADR 0001(안정성 횡단 결정)
+
+### Changed
+- **Provider Fallback 실배선** — Gen-Eval/pipeline/agent_loop가 `resolve_with_fallback` 사용, copilot 폴백 포함
+- **AI 생성 실패 시 작동하는 provider로 자동 폴백** — 1차 None 반환 시 키 있는 provider로 전환해 실제 AI 생성 보장
+- **Approval Gate 실배선** — 미리보기 후 승인 대기(타임아웃 시 중단), REST/Task는 자동 승인
+- **양방향 relation을 dual_property로 생성** — rollup 자동 집계 활성화
+- AgentLoop 스텝 하드캡(MAX_STEPS=15), Notion SDK 버전 핀
+- 서브페이지 `name`/`title` 키 호환(`_subpage_title`) — 서브페이지 콘텐츠 누락 수정
+- 제목 정리 — 색상 지시 제거(토큰 완전일치, '블루베리'·'그린팀' 보존)
+
+### Fixed
+- `import_blueprint` 항상 500 → execute_blueprint 래퍼 + Pydantic 검증
+- `_current_result` AttributeError, agent_loop `loop_result` UnboundLocalError
+- 단일 DB formula 후처리 누락, `BudgetExceededError` 광역 except에 삼켜지던 문제
+- 테스트 격리 — conftest가 LLM/Notion 키·circuit breaker·WS상태 미리셋
+
+### Quality
+- 25개 결함 발견·수정 (라이브 E2E 5 + 27-에이전트 자기검증 20), 전부 회귀테스트화
+- 테스트 1,374 → **1,414** 통과
+
+---
+
 ## [0.1.6] - 2026-05-18
 
 ### Changed
