@@ -367,6 +367,13 @@ npm run dev
 
 ---
 
+## 알아두기 & 한계
+
+- **AI 생성은 비결정적입니다.** 같은 프롬프트가 매번 똑같은 결과를 주진 않습니다. NotionForge는 골든 예시 + 검증으로 *구조적* 품질(필수 블록·유효 DB·rollup/formula 연결)을 보장하며, 픽셀 단위 재현을 보장하지 않습니다.
+- **단일 워커 전용.** task store·OAuth state·rate limit·메트릭이 프로세스별 in-memory입니다. `--workers 1`로 실행하세요. 다중 워커/수평 확장은 미지원입니다([SECURITY.md](SECURITY.md)).
+- **생성물은 사용자 소유입니다.** 만든 템플릿은 Notion 약관 범위 내에서 사용·판매할 수 있습니다. NotionForge는 생성물에 대한 소유권을 주장하지 않습니다.
+- **최상위 비주얼 폴리시는 범위 밖.** 결과물은 기능적 유료급(멀티DB·relation·rollup·샘플)에 도달하며, 맞춤 그래픽/브랜딩은 사용자 몫입니다.
+
 ## 라이선스
 
 MIT License &mdash; [LICENSE](LICENSE) 참고.

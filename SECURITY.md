@@ -91,5 +91,5 @@ NotionForge is designed for self-hosted deployment. Operators should:
 ## Known Limitations
 
 - **No built-in authentication**: This is a self-hosted tool. Deploy behind a VPN or reverse proxy with auth (e.g., Cloudflare Access, OAuth2 Proxy, Authelia).
-- **In-memory task store**: Task state is lost on process restart. Use Redis backend for persistence (`TASK_STORE=redis`).
-- **Single-instance design**: Not designed for horizontal scaling without shared state backend.
+- **In-memory state (single worker only)**: Task store, OAuth state, session settings, rate-limit counters, and metrics are all kept in-memory per process. **Run with a single worker** (`uvicorn ... --workers 1`). Multi-worker / multi-instance deployment is **not supported** — counters and state are not shared across processes. (A shared backend such as Redis is not yet implemented; it is a future roadmap item, not a current option.)
+- **No horizontal scaling**: For higher throughput, scale vertically or place a queue/proxy in front; do not run multiple app workers expecting shared state.

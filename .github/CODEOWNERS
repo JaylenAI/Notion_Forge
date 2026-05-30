@@ -1,0 +1,10 @@
+# Code owners — PR 시 자동 리뷰 요청 대상
+# 형식: <경로>  <@소유자>
+
+*                       @JaylenAI
+
+# 핵심 영역
+/backend/app/agent/     @JaylenAI
+/backend/app/notion/    @JaylenAI
+/.github/               @JaylenAI
+/docs/                  @JaylenAI

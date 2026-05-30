@@ -369,6 +369,13 @@ npm run dev
 
 ---
 
+## Notes & Limitations
+
+- **AI output is non-deterministic.** The same prompt won't produce byte-identical templates each time. NotionForge guarantees *structural* quality (required blocks, valid DBs, rollup/formula wiring) via golden examples + validation, not pixel-identical reproduction.
+- **Single worker only.** Task store, OAuth state, rate-limit counters, and metrics are in-memory per process. Run with `--workers 1`; multi-worker/horizontal scaling is not supported (see [SECURITY.md](SECURITY.md)).
+- **Generated templates are yours.** You own what you create; you may use/sell them subject to Notion's Terms of Service. NotionForge claims no ownership over generated output.
+- **Top-tier visual polish is out of scope.** Output reaches functional paid-tier quality (multi-DB, relations, rollups, sample data); bespoke graphics/branding are left to the user.
+
 ## License
 
 MIT License — see [LICENSE](LICENSE).
