@@ -40,6 +40,40 @@ def _safe_color(color: str) -> str:
     return color if color in VALID_COLORS else "default"
 
 
+# Notion number 속성이 허용하는 포맷 (한국어 별칭 매핑 포함)
+VALID_NUMBER_FORMATS = {
+    "number",
+    "number_with_commas",
+    "percent",
+    "dollar",
+    "euro",
+    "pound",
+    "yen",
+    "won",
+    "yuan",
+    "rupee",
+    "real",
+    "franc",
+}
+_NUMBER_FORMAT_ALIASES = {
+    "원": "won",
+    "krw": "won",
+    "달러": "dollar",
+    "usd": "dollar",
+    "퍼센트": "percent",
+    "%": "percent",
+    "엔": "yen",
+    "콤마": "number_with_commas",
+    "천단위": "number_with_commas",
+}
+
+
+def _safe_number_format(fmt: str) -> str:
+    f = str(fmt).strip().lower()
+    f = _NUMBER_FORMAT_ALIASES.get(f, f)
+    return f if f in VALID_NUMBER_FORMATS else "number"
+
+
 # ============================================================
 # Phase B: Rich Text (인라인 서식 전체 지원)
 # ============================================================
@@ -632,5 +666,8 @@ def build_database_properties(props: dict[str, Any]) -> dict[str, Any]:
                 config["relation_property_name"] = spec["relation_property_name"]
                 config["rollup_property_name"] = spec["rollup_property_name"]
                 config["function"] = spec.get("function", "count")
+            elif prop_type == "number" and "format" in spec:
+                # 통화/퍼센트 등 숫자 포맷 (won/dollar/euro/yen/percent/number ...)
+                config["format"] = _safe_number_format(spec["format"])
             result[name] = {prop_type: config}
     return result
