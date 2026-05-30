@@ -348,7 +348,34 @@ class CreationExecutor:
         def _props_of(db_spec: dict) -> dict:
             return db_spec.get("properties", db_spec.get("db_properties", {}))
 
-        # ── Pass 1: relation 먼저 생성 (rollup이 참조할 relation이 존재하도록) ──
+        # 선언된 relation 수집: db_index -> {prop_name: target_idx}
+        rel_decls: dict[int, dict[str, int]] = {}
+        for i, db_spec in enumerate(databases):
+            if i >= len(created_dbs):
+                continue
+            for name, spec in _props_of(db_spec).items():
+                if isinstance(spec, dict) and spec.get("type") == "relation" and "target_db_index" in spec:
+                    ti = spec["target_db_index"]
+                    if 0 <= ti < len(created_dbs):
+                        rel_decls.setdefault(i, {})[name] = ti
+
+        # 양방향 쌍 탐지 (DATA-1): i.name_i→j 와 j.name_j→i 가 모두 선언되면
+        # dual_property 로 1개만 생성(반대쪽은 Notion이 synced 속성으로 자동 생성) → rollup 집계 가능
+        dual_make: set[tuple[int, str]] = set()
+        dual_skip: set[tuple[int, str]] = set()
+        for i, props_i in rel_decls.items():
+            for name_i, j in props_i.items():
+                if i == j or (i, name_i) in dual_skip or (i, name_i) in dual_make:
+                    continue
+                back = next(
+                    (nj for nj, tj in rel_decls.get(j, {}).items() if tj == i and (j, nj) not in dual_skip),
+                    None,
+                )
+                if back is not None:
+                    dual_make.add((i, name_i))
+                    dual_skip.add((j, back))
+
+        # ── Pass 1: relation 생성 (rollup이 참조할 relation이 존재하도록) ──
         for i, db_spec in enumerate(databases):
             if i >= len(created_dbs):
                 break
@@ -358,13 +385,17 @@ class CreationExecutor:
                     continue
                 if prop_spec.get("type") == "relation" and "target_db_index" in prop_spec:
                     target_idx = prop_spec["target_db_index"]
-                    if 0 <= target_idx < len(created_dbs):
-                        relation_props[prop_name] = {
-                            "relation": {
-                                "database_id": created_dbs[target_idx]["id"],
-                                "single_property": {},
-                            }
-                        }
+                    if not (0 <= target_idx < len(created_dbs)):
+                        continue
+                    if (i, prop_name) in dual_skip:
+                        continue  # 양방향 쌍의 synced 측 — dual 생성 시 자동 생성됨
+                    cfg: dict[str, Any] = {"database_id": created_dbs[target_idx]["id"]}
+                    if (i, prop_name) in dual_make:
+                        cfg["type"] = "dual_property"
+                        cfg["dual_property"] = {}
+                    else:
+                        cfg["single_property"] = {}
+                    relation_props[prop_name] = {"relation": cfg}
             if relation_props:
                 try:
                     await self.client.update_database(created_dbs[i]["id"], {"properties": relation_props})

@@ -91,6 +91,39 @@ async def test_subpage_name_key_blocks_are_filled(monkeypatch):
     assert any(blocks for _, blocks in added), "name키 서브페이지의 블록이 채워지지 않음 (CE-01)"
 
 
+async def test_post_process_bidirectional_pair_uses_dual_property(monkeypatch):
+    """양방향 relation 쌍은 dual_property 1개로 생성, 반대쪽은 skip (DATA-1, 라이브 검증).
+
+    single_property 두 개면 rollup 자동집계가 안 됨 → dual로 통합해야 양쪽 동기화.
+    """
+    client = _mock_client(monkeypatch)
+    calls: list = []
+
+    async def _spy(db_id, updates):
+        calls.append((db_id, updates))
+        return {"id": db_id}
+
+    monkeypatch.setattr(client, "update_database", _spy)
+    executor = CreationExecutor(client, AddDatabaseItemsTool(client))
+    blueprint = {
+        "databases": [
+            {"title": "A", "db_properties": {"이름": "title", "b링크": {"type": "relation", "target_db_index": 1}}},
+            {"title": "B", "db_properties": {"이름": "title", "a링크": {"type": "relation", "target_db_index": 0}}},
+        ]
+    }
+    result = {"databases": [{"id": "dbA", "title": "A"}, {"id": "dbB", "title": "B"}]}
+    await executor.post_process_relations(blueprint, result)
+    rels = []
+    for _db_id, upd in calls:
+        for _name, spec in upd.get("properties", {}).items():
+            if "relation" in spec:
+                rels.append(spec["relation"])
+    dual = [r for r in rels if r.get("type") == "dual_property" or "dual_property" in r]
+    single = [r for r in rels if "single_property" in r]
+    assert len(dual) == 1, f"양방향 쌍은 dual 1개여야 함: {rels}"
+    assert len(single) == 0, f"쌍의 반대쪽은 skip되어야 함: {rels}"
+
+
 async def test_post_process_creates_formula_for_single_db(monkeypatch):
     """단일 DB 템플릿의 formula도 후처리에서 생성돼야 한다 (라이브 E2E 회귀).
 
