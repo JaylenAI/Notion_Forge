@@ -47,3 +47,14 @@ class TestHealthEndpoints:
         assert "p50_duration_ms" in data
         assert "p95_duration_ms" in data
         assert "total_tokens_used" in data
+
+
+class TestPrometheusMetrics:
+    async def test_metrics_endpoint(self, client):
+        resp = await client.get("/metrics")
+        assert resp.status_code == 200
+        body = resp.text
+        assert "notionforge_generations_total" in body
+        assert "notionforge_generation_duration_ms_p95" in body
+        assert "notionforge_tokens_total" in body
+        assert "# TYPE" in body

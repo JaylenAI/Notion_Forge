@@ -158,6 +158,17 @@ jobs:
           cd backend && uv run pip install pip-audit -q
           uv run pip-audit || true
 
+      - name: Check dependency license compatibility
+        run: |
+          cd backend && uv run pip install pip-licenses -q
+          uv run pip-licenses --format=markdown --with-urls > ../THIRD_PARTY_LICENSES.md || true
+          # GPL/AGPL 계열(비호환 가능) 발견 시 경고 — MIT 프로젝트 라이선스 호환성 점검
+          if uv run pip-licenses --format=plain | grep -iE "GPL|AGPL" | grep -ivE "LGPL"; then
+            echo "::warning::GPL/AGPL 계열 의존성 발견 — MIT 라이선스 호환성 검토 필요"
+          else
+            echo "[OK] GPL/AGPL 비호환 의존성 없음"
+          fi
+
       - name: Upload security report
         if: always()
         uses: actions/upload-artifact@v4

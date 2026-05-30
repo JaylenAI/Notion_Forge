@@ -200,6 +200,41 @@ def create_app() -> FastAPI:
             "top_skills": dict(sorted(skills_used.items(), key=lambda x: -x[1])[:10]),
         }
 
+    @app.get("/metrics")
+    async def prometheus_metrics():
+        """Prometheus 텍스트 노출 포맷 (의존성 없이 직접 생성). 스크레이프용."""
+        from fastapi.responses import PlainTextResponse
+
+        from app.core.history import get_recent_history
+
+        records = get_recent_history(days=7, limit=500)
+        total = len(records)
+        success = sum(1 for r in records if r.get("metrics", {}).get("success"))
+        durations = [m for r in records if (m := r.get("metrics", {}).get("total_duration_ms", 0))]
+        tokens = sum(r.get("metrics", {}).get("tokens_used", 0) or 0 for r in records)
+
+        def _p95(data: list[int]) -> int:
+            if not data:
+                return 0
+            ordered = sorted(data)
+            return ordered[min(len(ordered) - 1, int(round(0.95 * (len(ordered) - 1))))]
+
+        lines = [
+            "# HELP notionforge_generations_total Total template generations (7d).",
+            "# TYPE notionforge_generations_total counter",
+            f"notionforge_generations_total {total}",
+            "# HELP notionforge_generation_success_total Successful generations (7d).",
+            "# TYPE notionforge_generation_success_total counter",
+            f"notionforge_generation_success_total {success}",
+            "# HELP notionforge_generation_duration_ms_p95 p95 generation latency (7d).",
+            "# TYPE notionforge_generation_duration_ms_p95 gauge",
+            f"notionforge_generation_duration_ms_p95 {_p95(durations)}",
+            "# HELP notionforge_tokens_total Total LLM tokens used (7d).",
+            "# TYPE notionforge_tokens_total counter",
+            f"notionforge_tokens_total {tokens}",
+        ]
+        return PlainTextResponse("\n".join(lines) + "\n")
+
     return app
 
 
