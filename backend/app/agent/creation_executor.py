@@ -429,6 +429,85 @@ class CreationExecutor:
                 except Exception as e:
                     logger.info(f"[Rollup/Formula 후처리 실패] {created_dbs[i]['title']}: {str(e)[:100]}")
 
+    @staticmethod
+    def _title_key(props: dict) -> str:
+        for name, spec in props.items():
+            if spec == "title" or (isinstance(spec, dict) and spec.get("type") == "title"):
+                return name
+        return ""
+
+    @staticmethod
+    def _row_title(row: dict) -> str:
+        for prop in row.get("properties", {}).values():
+            if prop.get("type") == "title":
+                return "".join(rt.get("plain_text", "") for rt in prop.get("title", []))
+        return ""
+
+    async def post_process_sample_links(self, blueprint: dict, result: dict) -> None:
+        """샘플 아이템 간 relation 연결 — rollup이 실제 값을 집계하도록 시연용 링크.
+
+        db_spec의 sample_item에 relation 속성값(대상 DB 아이템 제목 또는 제목 리스트)이 있으면
+        생성된 해당 페이지에 relation을 설정한다. dual_property로 생성된 측 속성에 설정하면
+        양방향 동기화되어 rollup이 집계된다.
+        """
+        created_dbs = result.get("databases", [])
+        if len(created_dbs) < 2:
+            return
+        databases = blueprint.get("databases", [])
+
+        def _props_of(db_spec: dict) -> dict:
+            return db_spec.get("properties", db_spec.get("db_properties", {}))
+
+        # 각 DB의 title → page_id 맵 (생성된 샘플 조회 — 순서/실패 무관하게 안정적)
+        item_maps: list[dict[str, str]] = []
+        for db in created_dbs:
+            m: dict[str, str] = {}
+            try:
+                for row in await self.client.query_database(db["id"]):
+                    t = self._row_title(row)
+                    if t:
+                        m[t] = row["id"]
+            except Exception:
+                pass
+            item_maps.append(m)
+
+        for i, db_spec in enumerate(databases):
+            if i >= len(created_dbs):
+                break
+            props = _props_of(db_spec)
+            rel_props = {
+                n: s
+                for n, s in props.items()
+                if isinstance(s, dict) and s.get("type") == "relation" and "target_db_index" in s
+            }
+            if not rel_props:
+                continue
+            title_key = self._title_key(props)
+            if not title_key:
+                continue
+            for item in db_spec.get("sample_items", []):
+                if not isinstance(item, dict):
+                    continue
+                src_id = item_maps[i].get(str(item.get(title_key, "")))
+                if not src_id:
+                    continue
+                update_props: dict[str, Any] = {}
+                for rel_name, rel_spec in rel_props.items():
+                    if rel_name not in item:
+                        continue
+                    tgt_idx = rel_spec["target_db_index"]
+                    if not (0 <= tgt_idx < len(item_maps)):
+                        continue
+                    vals = item[rel_name] if isinstance(item[rel_name], list) else [item[rel_name]]
+                    rel_ids = [{"id": item_maps[tgt_idx][str(v)]} for v in vals if str(v) in item_maps[tgt_idx]]
+                    if rel_ids:
+                        update_props[rel_name] = {"relation": rel_ids}
+                if update_props:
+                    try:
+                        await self.client.update_page(src_id, properties=update_props)
+                    except Exception as e:
+                        logger.info(f"[샘플 링크 실패] {str(e)[:80]}")
+
     # ── Pre-creation 검증 (API 호출 전) ──────────────────────────
 
     @staticmethod
@@ -806,6 +885,9 @@ class CreationExecutor:
 
         # 5. Relation/Rollup/Formula 후처리
         await self.post_process_relations(blueprint, result)
+
+        # 5.5 샘플 아이템 간 relation 링크 (rollup 실집계 시연)
+        await self.post_process_sample_links(blueprint, result)
         relation_count = sum(
             1
             for db in databases

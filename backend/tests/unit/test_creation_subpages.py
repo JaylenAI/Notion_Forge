@@ -91,6 +91,47 @@ async def test_subpage_name_key_blocks_are_filled(monkeypatch):
     assert any(blocks for _, blocks in added), "name키 서브페이지의 블록이 채워지지 않음 (CE-01)"
 
 
+async def test_post_process_sample_links_sets_relation(monkeypatch):
+    """샘플 아이템의 relation 값(대상 제목)이 실제 relation으로 설정돼야 한다 (rollup 실집계).
+
+    라이브 검증: CRM 고객→딜 링크 후 rollup 총딜금액이 실제 합산됨.
+    """
+    client = _mock_client(monkeypatch)
+    db_rows = {
+        "dbA": [{"id": "a1", "properties": {"이름": {"type": "title", "title": [{"plain_text": "고객1"}]}}}],
+        "dbB": [{"id": "b1", "properties": {"이름": {"type": "title", "title": [{"plain_text": "딜1"}]}}}],
+    }
+
+    async def _q(db_id, **kw):
+        return db_rows.get(db_id, [])
+
+    updates: list = []
+
+    async def _up(page_id, **kw):
+        updates.append((page_id, kw))
+        return {"id": page_id}
+
+    monkeypatch.setattr(client, "query_database", _q)
+    monkeypatch.setattr(client, "update_page", _up)
+    executor = CreationExecutor(client, AddDatabaseItemsTool(client))
+    blueprint = {
+        "databases": [
+            {
+                "title": "A",
+                "db_properties": {"이름": "title", "링크": {"type": "relation", "target_db_index": 1}},
+                "sample_items": [{"이름": "고객1", "링크": ["딜1"]}],
+            },
+            {"title": "B", "db_properties": {"이름": "title"}, "sample_items": [{"이름": "딜1"}]},
+        ]
+    }
+    result = {"databases": [{"id": "dbA", "title": "A"}, {"id": "dbB", "title": "B"}]}
+    await executor.post_process_sample_links(blueprint, result)
+    assert updates, "샘플 링크가 설정되지 않음"
+    pid, kw = updates[0]
+    assert pid == "a1"
+    assert kw["properties"]["링크"]["relation"] == [{"id": "b1"}]
+
+
 async def test_post_process_bidirectional_pair_uses_dual_property(monkeypatch):
     """양방향 relation 쌍은 dual_property 1개로 생성, 반대쪽은 skip (DATA-1, 라이브 검증).
 
