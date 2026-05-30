@@ -178,3 +178,21 @@ def test_premium_skills_document_calculated_properties(skill):
     assert "formula" in text or "rollup" in text, (
         f"{skill}/SKILL.md는 계산 속성(formula/rollup) 가이드를 포함해야 합니다 (유료급 차별점)"
     )
+
+
+# ── 품질 스코어카드 배선 (quality_validator no longer orphan) ──
+
+
+def test_assemble_blueprint_adds_quality_score():
+    from app.agent.blueprint_generator import _assemble_blueprint
+
+    bp = _assemble_blueprint(
+        {
+            "title": "테스트",
+            "color": "blue",
+            "databases": [{"title": "DB", "db_properties": {"이름": "title"}, "sample_items": [{}, {}, {}]}],
+        }
+    )
+    assert "quality_score" in bp["metadata"], "품질 스코어가 metadata에 기록되지 않음"
+    assert isinstance(bp["metadata"]["quality_score"], (int, float))
+    assert "quality_breakdown" in bp["metadata"]

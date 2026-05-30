@@ -569,6 +569,16 @@ def _assemble_blueprint(content: dict) -> dict[str, Any]:
             }
         )
 
+    # 품질 스코어카드 (비차단) — 생성은 막지 않고 점수만 metadata에 기록
+    try:
+        from app.agent.quality_validator import QualityValidator
+
+        qresult = QualityValidator().validate(blueprint)
+        blueprint["metadata"]["quality_score"] = qresult.score
+        blueprint["metadata"]["quality_breakdown"] = qresult.layer_scores
+    except Exception as e:
+        logger.info(f"[QualityValidator 스킵] {str(e)[:80]}")
+
     return blueprint
 
 
