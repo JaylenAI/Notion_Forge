@@ -3,6 +3,7 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app import __version__
 from app.main import app
 
 
@@ -18,7 +19,7 @@ class TestHealthEndpoints:
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ok"
-        assert data["version"] == "0.1.6"
+        assert data["version"] == __version__  # 하드코딩 금지 — 버전 bump에도 안 깨지게 SSOT 참조
         assert "ai_provider" in data
         assert "today_stats" in data
 
