@@ -8,7 +8,7 @@
 ## 🇬🇧 EN — v0.2.0: End-to-End Working (UI + AI Pipeline)
 
 The milestone where the product actually works end-to-end across **both** the UI and the AI pipeline.
-Backend **1,454 tests** + frontend Vitest/Playwright E2E + live Notion verification.
+Backend **1,461 tests** + frontend Vitest/Playwright E2E + live Notion verification.
 (A production-stable 1.0 is intentionally deferred until broader skill/beta validation.)
 
 ### Fixed (release-blocking defects found via live & UI verification)
@@ -36,7 +36,7 @@ Backend **1,454 tests** + frontend Vitest/Playwright E2E + live Notion verificat
 ## 🇰🇷 KR — v0.2.0: 전 경로 작동 확정 (UI + AI 파이프라인)
 
 제품이 UI·AI 파이프라인 **양쪽** 전 경로에서 실제로 end-to-end 작동하게 된 마일스톤.
-백엔드 **1,454 테스트** + 프론트 Vitest/Playwright E2E + 실제 Notion 라이브 검증.
+백엔드 **1,461 테스트** + 프론트 Vitest/Playwright E2E + 실제 Notion 라이브 검증.
 (production-stable 1.0 선언은 더 넓은 스킬/베타 검증 후로 의도적 보류.)
 
 ### 수정 (라이브·UI 검증에서 발견한 릴리스 차단급 결함)

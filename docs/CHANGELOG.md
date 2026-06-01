@@ -7,7 +7,7 @@
 ## [0.2.0] - 미배포 (태그 예정)
 
 > 제품이 UI·AI 파이프라인 전 경로에서 실제로 end-to-end 작동하게 된 마일스톤.
-> 백엔드 **1,454** 테스트 + 프론트 Vitest/Playwright E2E 통과 + 실제 Notion 라이브 검증.
+> 백엔드 **1,461** 테스트 + 프론트 Vitest/Playwright E2E 통과 + 실제 Notion 라이브 검증.
 > (production-stable 1.0 선언은 더 넓은 스킬/베타 검증 후로 보류.)
 
 ### Fixed (2026-06-01 — 라이브/UI 검증에서 발견한 릴리스 차단급 결함)
@@ -19,6 +19,7 @@
 - **provider 폴백 신뢰성 (CRITICAL)** — copilot이 `databases` 없는 빈 dict를 반환하면 '성공'으로 처리돼 groq/gemini 폴백을 건너뛰던 결함. 유효(databases 존재) 응답만 성공으로 보고, 무효면 다음 provider로 캐스케이드(copilot→groq→gemini→claude). `_fallback_candidates`를 circuit-aware(429 차단 provider 건너뜀)·groq 우선·copilot 포함으로 개선.
 - **AI 무title 시 긴 메시지가 제목 / DB명 'Items' 중복** — 제목은 첫 구 30자 캡, DB명은 고유 한국어('데이터베이스 N').
 - **CRM recipe '남은일수' formula 미계산** — 딜 샘플에 '예상 마감일' 날짜가 없어 formula가 전부 None이던 문제 → 미래 날짜 보완(라이브: [91,13,64,38,23]일).
+- **AI가 properties를 list로 반환 시 크래시 (CRITICAL)** — Groq가 properties를 dict 대신 list로 내보내면 `validate_ai_content`의 `props.values()`가 `'list' object has no attribute 'values'`로 크래시 → Gen-Eval 3회 전부 실패 → smart_fallback. list 3형태를 dict로 정규화. 라이브: '독서 모임'이 일관 smart_fallback → 이제 ai_dynamic(참석 횟수 rollup [3,2,2,3,3] 집계).
 
 ### Added (2026-06-01)
 - **전 provider 실패 시 generic 폴백 사용 고지** — 모든 AI provider가 실패(한도/빈응답)해 smart_fallback이 쓰이면 system 경고를 emit('기본 템플릿 사용, 재시도 시 맞춤 설계')해 silently 잘못된 템플릿이 나오던 혼란 방지.
