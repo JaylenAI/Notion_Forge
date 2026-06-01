@@ -281,6 +281,36 @@ class TestGroqProvider:
 
         assert result is None
 
+    async def test_call_injects_json_word_when_absent(self):
+        """json_object 모드는 메시지에 'json'이 없으면 Groq가 400을 낸다 → user 메시지에 보장 (라이브 회귀)."""
+        p = GroqProvider(api_key="gsk-test")
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content='{"ok": true}'))]
+        mock_response.usage = None
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+
+        # system/user 어디에도 'json'이 없는 프롬프트
+        with patch("groq.AsyncGroq", return_value=mock_client):
+            await p.call("템플릿을 설계하라", "회의록 만들어줘")
+        msgs = mock_client.chat.completions.create.call_args.kwargs["messages"]
+        combined = (msgs[0]["content"] + msgs[1]["content"]).lower()
+        assert "json" in combined, "json_object 모드인데 메시지에 'json' 단어가 없음 (Groq 400 유발)"
+
+    async def test_call_keeps_user_message_when_json_present(self):
+        """이미 'json'이 있으면 user 메시지를 변형하지 않는다."""
+        p = GroqProvider(api_key="gsk-test")
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content='{"ok": true}'))]
+        mock_response.usage = None
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+
+        with patch("groq.AsyncGroq", return_value=mock_client):
+            await p.call("Output JSON only.", "회의록 만들어줘")
+        msgs = mock_client.chat.completions.create.call_args.kwargs["messages"]
+        assert msgs[1]["content"] == "회의록 만들어줘"  # 변형 없음
+
     async def test_call_with_tools_tool_calls(self):
         p = GroqProvider(api_key="gsk-test")
 

@@ -248,7 +248,7 @@ async def generate_blueprint(
             if is_pass:
                 # 검증 통과 → Post-processor 보정 → 반환
                 ai_content = blueprint_validator.validate_and_fix(ai_content)
-                blueprint = _assemble_blueprint(ai_content)
+                blueprint = _assemble_blueprint(ai_content, user_message)
                 blueprint["metadata"]["generation_method"] = "ai_dynamic"
                 blueprint["metadata"]["skill_used"] = skill_match.skill_id or ai_content.get("skill", "custom")
                 blueprint["metadata"]["skill_match_method"] = skill_match.method
@@ -314,7 +314,7 @@ async def generate_blueprint(
             temp_bp = CreationExecutor._auto_fix_blueprint(temp_bp, integrity_issues)
             best_content.update({k: v for k, v in temp_bp.items() if k in ("blocks", "databases", "sub_pages")})
 
-        blueprint = _assemble_blueprint(best_content)
+        blueprint = _assemble_blueprint(best_content, user_message)
         blueprint["metadata"]["generation_method"] = "ai_dynamic_partial"
         blueprint["metadata"]["gen_eval_attempts"] = max_retries
         blueprint["metadata"]["gen_eval_errors"] = best_error_count
@@ -333,7 +333,7 @@ async def generate_blueprint(
         )
     )
     content = _smart_fallback(user_message)
-    blueprint = _assemble_blueprint(content)
+    blueprint = _assemble_blueprint(content, user_message)
     blueprint["metadata"]["generation_method"] = "smart_fallback"
     return blueprint
 
@@ -480,10 +480,16 @@ def _strip_leading_emoji(title: str) -> str:
     return cleaned or title  # 전부 이모지였다면 원본 유지
 
 
-def _assemble_blueprint(content: dict) -> dict[str, Any]:
+def _assemble_blueprint(content: dict, user_message: str = "") -> dict[str, Any]:
     """AI가 생성한 전체 구조를 Blueprint로 조립"""
     color = content.get("color", "gray")
-    title = _strip_leading_emoji(content.get("title", "My Template"))
+    # AI(특히 Groq)가 title을 안 주거나 영어 기본값을 주면 사용자 요청에서 한국어 제목을 만든다
+    # (과거 'My Template'/'Untitled'가 그대로 노션 페이지 제목이 되던 결함).
+    raw_title = (content.get("title") or "").strip()
+    if not raw_title or raw_title.lower() in ("my template", "untitled", "template", "items"):
+        cleaned = _clean_title(user_message) if user_message else ""
+        raw_title = cleaned if (cleaned and len(cleaned) <= 40) else (cleaned or "새 템플릿")
+    title = _strip_leading_emoji(raw_title)
 
     # Pick cover: prefer category-specific, fallback to color-based
     cover_category = content.get("cover_category", "")

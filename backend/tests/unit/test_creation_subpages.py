@@ -234,6 +234,27 @@ async def test_format_value_date_accepts_dict_range():
     assert _format_value("date", "") == {"date": None}
 
 
+def test_assemble_blueprint_title_fallback_from_user_message():
+    """AI(Groq 등)가 title을 안 주거나 'My Template' 기본값을 주면 사용자 요청에서 한국어 제목 생성 (라이브 회귀)."""
+    from app.agent.blueprint_generator import _assemble_blueprint
+
+    bp = _assemble_blueprint({"databases": [], "blocks": []}, "회의록 작성 템플릿 만들어줘")
+    assert bp["main_page"]["title"] not in ("My Template", "Untitled", "")
+    assert "회의록" in bp["main_page"]["title"]
+
+    bp2 = _assemble_blueprint({"title": "My Template"}, "가계부 만들어줘")
+    assert bp2["main_page"]["title"] != "My Template"
+    assert "가계부" in bp2["main_page"]["title"]
+
+    # 정상 한국어 title은 그대로 보존
+    bp3 = _assemble_blueprint({"title": "독서 기록"}, "아무거나")
+    assert bp3["main_page"]["title"] == "독서 기록"
+
+    # user_message도 없으면 영어 기본값 대신 한국어 기본값
+    bp4 = _assemble_blueprint({}, "")
+    assert bp4["main_page"]["title"] == "새 템플릿"
+
+
 def test_strip_leading_emoji():
     """제목 선두 이모지 제거 — 아이콘과 중복('📚 📚 ...') 방지 (전 템플릿 라이브 회귀)."""
     from app.agent.blueprint_generator import _strip_leading_emoji

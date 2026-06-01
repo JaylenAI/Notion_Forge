@@ -30,12 +30,18 @@ class GroqProvider(BaseProvider):
             if len(system_prompt) > self.MAX_PROMPT_CHARS:
                 system_prompt = system_prompt[: self.MAX_PROMPT_CHARS]
 
+            # Groq의 json_object 모드는 메시지에 'json' 단어가 반드시 포함돼야 한다(없으면 400 BadRequest).
+            # 프롬프트 truncation으로 'json'이 잘려나갈 수 있으므로 user 메시지에 보장한다.
+            user_content = user_message
+            if "json" not in (system_prompt + user_message).lower():
+                user_content = f"{user_message}\n\n(Respond with a single valid JSON object.)"
+
             client = AsyncGroq(api_key=self.api_key or settings.groq_api_key)
             response = await client.chat.completions.create(
                 model=model or self.default_model,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message},
+                    {"role": "user", "content": user_content},
                 ],
                 response_format={"type": "json_object"},
                 temperature=0.3,

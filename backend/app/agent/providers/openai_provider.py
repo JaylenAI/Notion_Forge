@@ -21,6 +21,11 @@ class OpenAIProvider(BaseProvider):
         try:
             import httpx
 
+            # OpenAI json_object 모드도 메시지에 'json' 단어가 필요하다(없으면 400).
+            user_content = user_message
+            if "json" not in (system_prompt + user_message).lower():
+                user_content = f"{user_message}\n\n(Respond with a single valid JSON object.)"
+
             async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS) as client:
                 resp = await client.post(
                     "https://api.openai.com/v1/chat/completions",
@@ -29,7 +34,7 @@ class OpenAIProvider(BaseProvider):
                         "model": model or self.default_model,
                         "messages": [
                             {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_message},
+                            {"role": "user", "content": user_content},
                         ],
                         "response_format": {"type": "json_object"},
                         "temperature": 0.3,
