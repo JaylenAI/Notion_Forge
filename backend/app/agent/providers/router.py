@@ -82,6 +82,10 @@ class CircuitBreaker:
         self._last_failure_time[provider_name] = time.monotonic()
         logger.info(f"[CircuitBreaker] {provider_name} 실패 {self._failures[provider_name]}/{self._threshold}")
 
+    def failure_count(self, provider_name: str) -> int:
+        """현재 누적 실패 횟수 (폴백 후보를 건강한 순으로 정렬할 때 사용)."""
+        return self._failures.get(provider_name, 0)
+
     def is_open(self, provider_name: str) -> bool:
         failures = self._failures.get(provider_name, 0)
         if failures < self._threshold:

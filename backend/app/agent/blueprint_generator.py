@@ -366,20 +366,34 @@ def _detect_mode(user_message: str) -> str:
 # ============================================================
 
 
-def _fallback_candidates(exclude_provider: str, max_candidates: int = 2) -> list[tuple[str, str]]:
+def _fallback_candidates(exclude_provider: str, max_candidates: int = 3) -> list[tuple[str, str]]:
     """1차 provider 실패 시 시도할 폴백 (provider명, api_key) 목록.
 
-    settings에 키가 있는 provider만 후보로, 1차 provider는 제외, 최대 max_candidates개.
-    copilot/openai는 settings 키가 없어 제외된다(키 기반 폴백만).
+    - 키가 있는 provider + copilot(키 불필요, 구독 인증)을 후보로 한다.
+    - **circuit-open provider는 건너뛴다** — 예: Gemini가 429로 연속 실패해 차단되면
+      매 시도마다 재호출해 낭비하던 문제를 막고, 건강한 provider(groq 등)에 우선권을 준다.
+    - 누적 실패가 적은(건강한) 순으로 정렬해 성공 확률을 높인다.
     """
+    from app.agent.providers.router import _circuit_breaker
     from app.config import settings
 
-    pairs = (
-        ("claude", settings.anthropic_api_key),
-        ("gemini", settings.gemini_api_key),
-        ("groq", settings.groq_api_key),
+    pairs: list[tuple[str, str]] = []
+    if settings.copilot_enabled and exclude_provider != "copilot":
+        pairs.append(("copilot", ""))  # copilot은 키 불필요
+    pairs.extend(
+        [
+            ("groq", settings.groq_api_key),
+            ("gemini", settings.gemini_api_key),
+            ("claude", settings.anthropic_api_key),
+        ]
     )
-    return [(n, k) for n, k in pairs if k and n != exclude_provider][:max_candidates]
+    candidates = [
+        (n, k)
+        for n, k in pairs
+        if n != exclude_provider and (n == "copilot" or k) and not _circuit_breaker.is_open(n)
+    ]
+    candidates.sort(key=lambda c: _circuit_breaker.failure_count(c[0]))
+    return candidates[:max_candidates]
 
 
 async def _call_ai_for_content(
@@ -426,14 +440,19 @@ async def _call_ai_for_content(
     timeout = 90.0 if mode == "advanced" else 45.0
     from app.core.cost_control import note_call
 
+    def _valid(r: Any) -> bool:
+        """유효한 blueprint 응답인지 — databases/db_properties가 있어야 한다.
+        (databases 없는 truthy dict를 '성공'으로 처리해 폴백을 건너뛰던 결함 방지.)"""
+        return bool(r) and isinstance(r, dict) and ("databases" in r or "db_properties" in r)
+
     note_call()
     result = await provider.call_with_retry(prompt, user_message, model=ai_model, timeout=timeout)
 
-    if result:
+    if _valid(result):
         ProviderRouter.circuit_breaker.record_success(provider.name)
     else:
         ProviderRouter.circuit_breaker.record_failure(provider.name)
-        # 1차 provider 실패 시 작동하는 다른 provider로 즉시 폴백 (실 AI 생성 보장).
+        # 1차 provider 실패(또는 무효 응답) 시 건강한 다른 provider로 폴백 (실 AI 생성 보장).
         from app.agent.providers.router import create_provider
 
         for fb_name, fb_key in _fallback_candidates(provider.name):
@@ -443,15 +462,13 @@ async def _call_ai_for_content(
                 continue
             note_call()
             result = await fb_provider.call_with_retry(prompt, user_message, model=ai_model, timeout=timeout)
-            if result:
+            if _valid(result):
                 ProviderRouter.circuit_breaker.record_success(fb_name)
                 logger.info(f"[provider 폴백] {provider.name} 실패 → {fb_name} 성공")
                 break
             ProviderRouter.circuit_breaker.record_failure(fb_name)
 
-    if not result:
-        return None
-    if "databases" in result or "db_properties" in result:
+    if _valid(result):
         return result
     return None
 
@@ -480,15 +497,33 @@ def _strip_leading_emoji(title: str) -> str:
     return cleaned or title  # 전부 이모지였다면 원본 유지
 
 
+def _fallback_title_from_message(user_message: str) -> str:
+    """AI가 제목을 안 줬을 때 사용자 요청에서 짧고 의미 있는 한국어 제목을 추출.
+
+    과거: 긴 사용자 메시지 전체가 노션 페이지 제목이 되던 결함
+    ("북마크 정리 트래커 . 사이트명, URL, 카테고리..."). 첫 구만 취하고 30자로 캡한다.
+    """
+    import re
+
+    cleaned = _clean_title(user_message) if user_message else ""
+    if not cleaned:
+        return "새 템플릿"
+    # 서술형 설명 제거: 문장부호/대시 기준 첫 조각만
+    first = re.split(r"[.\n,·•:;?!]|\s-\s|—", cleaned)[0].strip()
+    title = first or cleaned
+    if len(title) > 30:  # 너무 길면 단어 경계로 절단
+        title = title[:30].rsplit(" ", 1)[0].strip() or title[:30].strip()
+    return title or "새 템플릿"
+
+
 def _assemble_blueprint(content: dict, user_message: str = "") -> dict[str, Any]:
     """AI가 생성한 전체 구조를 Blueprint로 조립"""
     color = content.get("color", "gray")
     # AI(특히 Groq)가 title을 안 주거나 영어 기본값을 주면 사용자 요청에서 한국어 제목을 만든다
-    # (과거 'My Template'/'Untitled'가 그대로 노션 페이지 제목이 되던 결함).
+    # (과거 'My Template'/'Untitled'가 그대로, 또는 긴 메시지 전체가 노션 제목이 되던 결함).
     raw_title = (content.get("title") or "").strip()
     if not raw_title or raw_title.lower() in ("my template", "untitled", "template", "items"):
-        cleaned = _clean_title(user_message) if user_message else ""
-        raw_title = cleaned if (cleaned and len(cleaned) <= 40) else (cleaned or "새 템플릿")
+        raw_title = _fallback_title_from_message(user_message)
     title = _strip_leading_emoji(raw_title)
 
     # Pick cover: prefer category-specific, fallback to color-based
@@ -527,16 +562,20 @@ def _assemble_blueprint(content: dict, user_message: str = "") -> dict[str, Any]
 
     # databases: AI 형식 통일
     if content.get("databases"):
-        for db in content["databases"]:
+        for i, db in enumerate(content["databases"]):
             views = []
             for v in db.get("views", ["table"]):
                 if isinstance(v, str):
                     views.append({"type": v, "title": v})
                 elif isinstance(v, dict):
                     views.append(v)
+            # AI가 DB title을 안 주면(groq 등) 영어 'Items' 중복 대신 고유 한국어 기본값
+            db_title = (db.get("title") or db.get("db_name") or "").strip()
+            if not db_title or db_title.lower() == "items":
+                db_title = "데이터베이스" if len(content["databases"]) == 1 else f"데이터베이스 {i + 1}"
             blueprint["databases"].append(
                 {
-                    "title": db.get("title", db.get("db_name", "Items")),
+                    "title": db_title,
                     "is_inline": True,
                     "properties": db.get("db_properties", db.get("properties", {"이름": "title"})),
                     "views": views,
@@ -554,9 +593,12 @@ def _assemble_blueprint(content: dict, user_message: str = "") -> dict[str, Any]
                 views.append({"type": v, "title": v})
             elif isinstance(v, dict):
                 views.append(v)
+        single_db_title = (content.get("db_name") or "").strip()
+        if not single_db_title or single_db_title.lower() == "items":
+            single_db_title = "데이터베이스"
         blueprint["databases"].append(
             {
-                "title": content.get("db_name", "Items"),
+                "title": single_db_title,
                 "is_inline": True,
                 "properties": content["db_properties"],
                 "views": views,

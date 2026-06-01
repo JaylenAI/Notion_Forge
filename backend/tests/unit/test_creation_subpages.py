@@ -254,6 +254,11 @@ def test_assemble_blueprint_title_fallback_from_user_message():
     bp4 = _assemble_blueprint({}, "")
     assert bp4["main_page"]["title"] == "새 템플릿"
 
+    # 긴 서술형 메시지는 첫 구만 취해 짧게 (과거 메시지 전체가 제목이 되던 버그)
+    bp5 = _assemble_blueprint({}, "북마크 정리 트래커 만들어줘. 사이트명, URL, 카테고리, 즐겨찾기 여부, 메모를 기록하고 싶어")
+    assert bp5["main_page"]["title"] == "북마크 정리 트래커"
+    assert len(bp5["main_page"]["title"]) <= 30
+
 
 def test_strip_leading_emoji():
     """제목 선두 이모지 제거 — 아이콘과 중복('📚 📚 ...') 방지 (전 템플릿 라이브 회귀)."""
