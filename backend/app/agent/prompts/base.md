@@ -154,6 +154,8 @@ Blocks can have "children" arrays. This is what makes pro templates look profess
    - Each item MUST fill ALL properties with realistic Korean data
    - Use real-sounding names, dates, numbers — NOT placeholder text
    - Example: {{"이름": "프로젝트 리뷰 준비", "상태": "진행 중", "날짜": "2026-04-25", "우선순위": "높음"}}
+   - date values: plain string "2026-04-25" (NOT an object). For ranges: {{"start": "2026-04-01", "end": "2026-04-30"}}
+   - relation values: the EXACT title string of a target item that also exists in the target DB's sample_items (see relations guide). Multiple → array of title strings. NEVER an index or {{db_index,item_index}} object.
 5. Sample items must be spread across ALL statuses (not all in one state)
 6. Properties limit: 5-8 per database (focused, not overwhelming)
 

@@ -461,10 +461,29 @@ async def _call_ai_for_content(
 # ============================================================
 
 
+def _strip_leading_emoji(title: str) -> str:
+    """제목 앞의 이모지/픽토그램을 제거한다 — 아이콘이 따로 표시되므로 중복('📚 📚 ...')을 막는다.
+
+    AI가 종종 제목에 이모지를 붙이는데(예: "📚 독서 기록"), main_page.icon이 같은 이모지면
+    노션에서 아이콘+제목이 이중으로 보인다. 선두 이모지 런만 제거하고 본문 텍스트는 보존한다.
+    """
+    import re
+
+    if not title:
+        return title
+    # 이모지/기호/변형선택자/ZWJ + 공백의 선두 런을 제거
+    emoji_run = re.compile(
+        r"^[\s\U0001F000-\U0001FAFF\U00002600-\U000027BF\U0001F1E6-\U0001F1FF"
+        r"\U00002190-\U000021FF\U00002B00-\U00002BFF️‍♀♂]+"
+    )
+    cleaned = emoji_run.sub("", title).strip()
+    return cleaned or title  # 전부 이모지였다면 원본 유지
+
+
 def _assemble_blueprint(content: dict) -> dict[str, Any]:
     """AI가 생성한 전체 구조를 Blueprint로 조립"""
     color = content.get("color", "gray")
-    title = content.get("title", "My Template")
+    title = _strip_leading_emoji(content.get("title", "My Template"))
 
     # Pick cover: prefer category-specific, fallback to color-based
     cover_category = content.get("cover_category", "")

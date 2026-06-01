@@ -166,6 +166,85 @@ async def test_post_process_relations_all_single_property(monkeypatch):
     assert len(single) == 2, f"양측 relation 모두 single_property로 생성돼야 함: {rels}"
 
 
+async def test_sample_links_resolve_index_ref_and_mirror(monkeypatch):
+    """AI가 relation 값을 {db_index,item_index} 또는 제목으로 줘도 해석하고, single_property
+    역방향을 미러링해 부모(고객)의 rollup이 집계되도록 양쪽을 채운다 (CRM 라이브 회귀)."""
+    client = _mock_client(monkeypatch)
+    db_rows = {
+        "dbA": [{"id": "c0", "properties": {"고객명": {"type": "title", "title": [{"plain_text": "삼성전자"}]}}}],
+        "dbB": [
+            {"id": "d0", "properties": {"거래명": {"type": "title", "title": [{"plain_text": "딜A"}]}}},
+            {"id": "d1", "properties": {"거래명": {"type": "title", "title": [{"plain_text": "딜B"}]}}},
+        ],
+    }
+
+    async def _q(db_id, **kw):
+        return db_rows.get(db_id, [])
+
+    updates: dict = {}
+
+    async def _up(page_id, **kw):
+        updates[page_id] = kw["properties"]
+        return {"id": page_id}
+
+    monkeypatch.setattr(client, "query_database", _q)
+    monkeypatch.setattr(client, "update_page", _up)
+    executor = CreationExecutor(client, AddDatabaseItemsTool(client))
+    blueprint = {
+        "databases": [
+            {
+                "title": "고객",
+                "db_properties": {
+                    "고객명": "title",
+                    "거래목록": {"type": "relation", "target_db_index": 1},
+                    "총거래액": {"type": "rollup", "relation_property": "거래목록", "target_property": "금액", "function": "sum"},
+                },
+                "sample_items": [{"고객명": "삼성전자"}],
+            },
+            {
+                "title": "거래",
+                "db_properties": {"거래명": "title", "고객": {"type": "relation", "target_db_index": 0}},
+                "sample_items": [
+                    {"거래명": "딜A", "고객": {"db_index": 0, "item_index": 0}},  # 위치 참조
+                    {"거래명": "딜B", "고객": "삼성전자"},  # 제목 문자열
+                ],
+            },
+        ]
+    }
+    result = {"databases": [{"id": "dbA", "title": "고객"}, {"id": "dbB", "title": "거래"}]}
+    await executor.post_process_sample_links(blueprint, result)
+
+    # 자식(거래) 양쪽 모두 고객=c0 으로 링크 (index-ref + 제목 둘 다 해석)
+    assert updates["d0"]["고객"]["relation"] == [{"id": "c0"}]
+    assert updates["d1"]["고객"]["relation"] == [{"id": "c0"}]
+    # 미러링: 부모(고객 c0)의 거래목록에 두 딜이 모두 채워져 rollup 총거래액이 집계됨
+    linked = {r["id"] for r in updates["c0"]["거래목록"]["relation"]}
+    assert linked == {"d0", "d1"}, f"미러링으로 부모 거래목록에 양쪽 자식이 채워져야 함: {linked}"
+
+
+async def test_format_value_date_accepts_dict_range():
+    """AI가 날짜를 dict({start,end})로 줘도 깨지지 않고 ISO 범위로 변환 (OKR 라이브 회귀)."""
+    from app.agent.tools.add_database_items import _format_value
+
+    assert _format_value("date", {"start": "2026-01-01", "end": "2026-03-31"}) == {
+        "date": {"start": "2026-01-01", "end": "2026-03-31"}
+    }
+    assert _format_value("date", {"start": "2026-01-01T09:00:00"}) == {"date": {"start": "2026-01-01"}}
+    assert _format_value("date", "2026-04-25") == {"date": {"start": "2026-04-25"}}
+    assert _format_value("date", "") == {"date": None}
+
+
+def test_strip_leading_emoji():
+    """제목 선두 이모지 제거 — 아이콘과 중복('📚 📚 ...') 방지 (전 템플릿 라이브 회귀)."""
+    from app.agent.blueprint_generator import _strip_leading_emoji
+
+    assert _strip_leading_emoji("📚 독서 기록 트래커") == "독서 기록 트래커"
+    assert _strip_leading_emoji("🎯 OKR 목표 관리") == "OKR 목표 관리"
+    assert _strip_leading_emoji("운동 관리") == "운동 관리"  # 이모지 없으면 그대로
+    assert _strip_leading_emoji("📚📚 중복") == "중복"
+    assert _strip_leading_emoji("📚") == "📚"  # 전부 이모지면 원본 유지
+
+
 async def test_post_process_derived_round_retry(monkeypatch):
     """cross-DB rollup-of-formula 등 의존 순서는 라운드 재시도로 해소돼야 한다 (라이브 검증: OKR).
 

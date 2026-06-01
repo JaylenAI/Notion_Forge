@@ -483,12 +483,27 @@ def _format_value(prop_type: str, value: Any) -> dict[str, Any]:
     elif prop_type == "email":
         return {"email": str(value) if value else None}
     elif prop_type == "date":
-        if value:
-            date_str = str(value).strip()
-            if len(date_str) >= 10:
-                date_str = date_str[:10]
-            return {"date": {"start": date_str}}
-        return {"date": None}
+        # AI는 날짜를 문자열("2026-04-01") 또는 dict({"start":..,"end":..})로 내보낸다.
+        # 과거엔 str(value)[:10]만 처리해 dict가 오면 "{'start': " 같은 깨진 값으로 400을 냈다.
+        def _iso(v: Any) -> str | None:
+            if not v:
+                return None
+            s = str(v).strip()
+            # 날짜만(YYYY-MM-DD)으로 절삭 — 타임존 혼란 방지(기존 계약 유지)
+            return s[:10] if len(s) >= 10 else s
+
+        start = end = None
+        if isinstance(value, dict):
+            start = _iso(value.get("start") or value.get("date") or value.get("from"))
+            end = _iso(value.get("end") or value.get("to"))
+        else:
+            start = _iso(value)
+        if not start:
+            return {"date": None}
+        out: dict[str, Any] = {"start": start}
+        if end:
+            out["end"] = end
+        return {"date": out}
     elif prop_type == "people":
         if isinstance(value, str) and not value.startswith(("user_", "u_")):
             return {"rich_text": [{"text": {"content": str(value)}}]}

@@ -125,22 +125,59 @@ class CreationExecutor:
 
         # 뷰 자동 생성 (Views API — group_by, quick_filters, configuration 포함)
         # property name → ID 매핑 (calendar/timeline의 date_property_id 변환에 필요)
-        prop_name_to_id = {}
+        prop_name_to_id: dict[str, str] = {}
+        date_prop_ids: list[str] = []  # 날짜 타입 속성 ID (캘린더/타임라인 기본값)
         try:
             db_info = await self.client.get_database(db_id)
             for pname, pdata in db_info.get("properties", {}).items():
-                prop_name_to_id[pname] = pdata.get("id", "")
+                pid = pdata.get("id", "")
+                prop_name_to_id[pname] = pid
+                if pdata.get("type") == "date":
+                    date_prop_ids.append(pid)
         except Exception:
             pass
+
+        def _resolve_date_prop(name: Any) -> str | None:
+            """date_property 이름 → ID. 정확일치 → 퍼지(날짜속성) → 첫 날짜속성 순 폴백.
+
+            AI가 뷰의 date_property를 실제 속성명과 약간 다르게 쓰면(예: '읽은 날짜' vs '독서일)'
+            이름 그대로 전송돼 'Property not found' 400이 났다. 날짜 속성으로 보정한다.
+            """
+            if name and name in prop_name_to_id:
+                return prop_name_to_id[name]
+            if name and date_prop_ids:
+                from difflib import SequenceMatcher
+
+                best, score = None, 0.0
+                for pname, pid in prop_name_to_id.items():
+                    if pid in date_prop_ids:
+                        s = SequenceMatcher(None, str(name).lower(), pname.lower()).ratio()
+                        if s > score:
+                            best, score = pid, s
+                if best and score >= 0.4:
+                    return best
+            return date_prop_ids[0] if date_prop_ids else None
 
         views = db_spec.get("views", [])
         view_specs = []
         for view in views:
             vs = view if isinstance(view, dict) else {"type": view}
-            for key in ("date_property", "date_property_id"):
-                dp = vs.get(key)
-                if dp and dp in prop_name_to_id:
-                    vs[key] = prop_name_to_id[dp]
+            vtype = vs.get("type", "table")
+            if vtype in ("calendar", "timeline"):
+                resolved = _resolve_date_prop(vs.get("date_property") or vs.get("date_property_id"))
+                if resolved:
+                    vs["date_property"] = resolved
+                    vs["date_property_id"] = resolved
+                else:
+                    # 날짜 속성이 없으면 캘린더/타임라인 불가 → table로 대체(깨진 뷰 방지)
+                    logger.info(f"[뷰] {vtype} 날짜 속성 없음 → table로 대체")
+                    vs = {k: v for k, v in vs.items() if k not in ("date_property", "date_property_id")}
+                    vs["type"] = "table"
+            else:
+                for key in ("date_property", "date_property_id"):
+                    dp = vs.get(key)
+                    if dp and dp in prop_name_to_id:
+                        vs[key] = prop_name_to_id[dp]
             view_specs.append(vs)
 
         async def _create_single_view(vs: dict) -> None:
@@ -438,9 +475,14 @@ class CreationExecutor:
     async def post_process_sample_links(self, blueprint: dict, result: dict) -> None:
         """샘플 아이템 간 relation 연결 — rollup이 실제 값을 집계하도록 시연용 링크.
 
-        db_spec의 sample_item에 relation 속성값(대상 DB 아이템 제목 또는 제목 리스트)이 있으면
-        생성된 해당 페이지에 relation을 설정한다. dual_property로 생성된 측 속성에 설정하면
-        양방향 동기화되어 rollup이 집계된다.
+        AI/recipe가 sample_item의 relation 값을 여러 형태로 내보낸다:
+          - 대상 제목 문자열: "딜1"
+          - 위치 참조 dict: {"db_index": 1, "item_index": 0}
+          - {"title": "딜1"} / {"name": ...} / {"id": "page_id"}
+          - 위 값들의 리스트
+        이를 모두 실제 page_id로 해석한다. 또한 single_property relation은 Notion이 양방향
+        동기화를 하지 않으므로, i→j 링크를 설정하면 명확한 역방향(j→i) relation이 있을 때
+        그쪽도 함께 채워(미러링) 어느 쪽 rollup이든 집계되게 한다. (라이브 회귀: workout/CRM/OKR)
         """
         created_dbs = result.get("databases", [])
         if len(created_dbs) < 2:
@@ -450,9 +492,11 @@ class CreationExecutor:
         def _props_of(db_spec: dict) -> dict:
             return db_spec.get("properties", db_spec.get("db_properties", {}))
 
-        # 각 DB의 title → page_id 맵 (생성된 샘플 조회 — 순서/실패 무관하게 안정적)
+        n_db = len(created_dbs)
+        # 각 DB: title→page_id 맵 + title_key
         item_maps: list[dict[str, str]] = []
-        for db in created_dbs:
+        title_keys: list[str] = []
+        for i, db in enumerate(created_dbs):
             m: dict[str, str] = {}
             try:
                 for row in await self.client.query_database(db["id"]):
@@ -462,49 +506,85 @@ class CreationExecutor:
             except Exception:
                 pass
             item_maps.append(m)
+            spec = databases[i] if i < len(databases) else {}
+            title_keys.append(self._title_key(_props_of(spec)))
 
-        for i, db_spec in enumerate(databases):
-            if i >= len(created_dbs):
-                break
-            props = _props_of(db_spec)
-            rel_props = {
-                n: s
-                for n, s in props.items()
-                if isinstance(s, dict) and s.get("type") == "relation" and "target_db_index" in s
-            }
-            if not rel_props:
+        # 각 DB의 relation 속성 → target_db_index 맵
+        rel_targets: list[dict[str, int]] = []
+        for i in range(n_db):
+            spec = databases[i] if i < len(databases) else {}
+            rt: dict[str, int] = {}
+            for n, s in _props_of(spec).items():
+                if isinstance(s, dict) and s.get("type") == "relation" and "target_db_index" in s:
+                    tgt = s["target_db_index"]
+                    if 0 <= tgt < n_db:
+                        rt[n] = tgt
+            rel_targets.append(rt)
+
+        def _inverse_rel(i: int, j: int) -> str | None:
+            """db i→j 의 명확한 역방향(db j→i) relation 이름. 양쪽 각각 1개일 때만(모호하면 None)."""
+            fwd = [n for n, t in rel_targets[i].items() if t == j]
+            back = [n for n, t in rel_targets[j].items() if t == i]
+            return back[0] if len(fwd) == 1 and len(back) == 1 else None
+
+        def _resolve(value: Any, tgt_idx: int) -> str | None:
+            """relation 값 1개 → 대상 page_id (제목/위치참조/{title,name,id} 모두 지원)."""
+            if isinstance(value, dict):
+                if value.get("id"):
+                    return str(value["id"])
+                if "db_index" in value and "item_index" in value:
+                    di, ii = value.get("db_index"), value.get("item_index")
+                    if isinstance(di, int) and isinstance(ii, int) and 0 <= di < len(databases):
+                        samples = databases[di].get("sample_items", [])
+                        if 0 <= ii < len(samples) and di < n_db and title_keys[di]:
+                            t = str(samples[ii].get(title_keys[di], ""))
+                            return item_maps[di].get(t)
+                    return None
+                t = value.get("title") or value.get("name")
+                return item_maps[tgt_idx].get(str(t)) if t else None
+            return item_maps[tgt_idx].get(str(value))
+
+        # page_id → {rel_name: set(target_ids)} 누적 (미러링 포함, relation은 배열 전체 치환이라 일괄)
+        page_rel: dict[str, dict[str, set[str]]] = {}
+
+        def _add(page_id: str, rel_name: str, tgt_id: str) -> None:
+            page_rel.setdefault(page_id, {}).setdefault(rel_name, set()).add(tgt_id)
+
+        for i in range(n_db):
+            spec = databases[i] if i < len(databases) else {}
+            rels = rel_targets[i]
+            tkey = title_keys[i]
+            if not rels or not tkey:
                 continue
-            title_key = self._title_key(props)
-            if not title_key:
-                continue
-            for item in db_spec.get("sample_items", []):
+            for item in spec.get("sample_items", []):
                 if not isinstance(item, dict):
                     continue
-                src_id = item_maps[i].get(str(item.get(title_key, "")))
+                src_id = item_maps[i].get(str(item.get(tkey, "")))
                 if not src_id:
                     continue
-                update_props: dict[str, Any] = {}
-                for rel_name, rel_spec in rel_props.items():
+                for rel_name, tgt_idx in rels.items():
                     if rel_name not in item:
                         continue
-                    tgt_idx = rel_spec["target_db_index"]
-                    if not (0 <= tgt_idx < len(item_maps)):
-                        continue
-                    vals = item[rel_name] if isinstance(item[rel_name], list) else [item[rel_name]]
-                    unmatched = [str(v) for v in vals if str(v) not in item_maps[tgt_idx]]
-                    if unmatched:
+                    raw = item[rel_name]
+                    vals = raw if isinstance(raw, list) else [raw]
+                    matched = [r for r in (_resolve(v, tgt_idx) for v in vals) if r]
+                    if len(matched) < len(vals):
                         logger.warning(
-                            f"[샘플 링크] '{rel_name}' 대상 제목 미매칭 {unmatched} — "
-                            f"대상 DB 샘플 제목과 불일치(rollup 집계 누락 가능)"
+                            f"[샘플 링크] '{rel_name}' 일부 대상 미해석 ({len(matched)}/{len(vals)}) — "
+                            f"대상 DB 샘플과 불일치 가능(rollup 집계 누락 가능)"
                         )
-                    rel_ids = [{"id": item_maps[tgt_idx][str(v)]} for v in vals if str(v) in item_maps[tgt_idx]]
-                    if rel_ids:
-                        update_props[rel_name] = {"relation": rel_ids}
-                if update_props:
-                    try:
-                        await self.client.update_page(src_id, properties=update_props)
-                    except Exception as e:
-                        logger.info(f"[샘플 링크 실패] {str(e)[:80]}")
+                    inv = _inverse_rel(i, tgt_idx)
+                    for tgt_id in matched:
+                        _add(src_id, rel_name, tgt_id)
+                        if inv:  # single_property 양방향 미러링 → 반대편 rollup도 집계
+                            _add(tgt_id, inv, src_id)
+
+        for page_id, rels in page_rel.items():
+            update_props = {n: {"relation": [{"id": rid} for rid in sorted(ids)]} for n, ids in rels.items()}
+            try:
+                await self.client.update_page(page_id, properties=update_props)
+            except Exception as e:
+                logger.info(f"[샘플 링크 실패] {str(e)[:80]}")
 
     # ── Pre-creation 검증 (API 호출 전) ──────────────────────────
 
