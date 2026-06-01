@@ -8,19 +8,23 @@
 
 ## 0.2.0 — 제품 전 경로 작동 확정 (2026-06-01)
 
-라이브/UI E2E 검증에서 **릴리스 차단급 결함**을 발견·수정해 제품이 UI·AI 파이프라인 전 경로에서 실제로 작동하게 됨. 백엔드 **1,446** + 프론트 Vitest/Playwright E2E(스모크 + 승인→생성) 통과.
+라이브/UI E2E 검증에서 **릴리스 차단급 결함**을 발견·수정해 제품이 UI·AI 파이프라인 전 경로에서 실제로 작동하게 됨. 백엔드 **1,454** + 프론트 Vitest/Playwright E2E(스모크 + 승인→생성) 통과.
 
 - **AI 파이프라인 relation 링크/rollup 집계 복구(CRITICAL)** — 그동안 recipe(결정적) 경로만 검증돼 가려졌던, 실제 제품(AI) 경로의 rollup 미집계 결함 수정. sample relation 다포맷 해석 + single_property 양방향 **미러링**.
 - **UI 무생성 함정 제거** — WS 미연결 시 미리보기 전용 폴백을 "성공"처럼 보이게 하던 문제 → 경고 배너 + 정직 안내 + 재연결. 실제 UI(ChatPanel) 승인→Notion 생성 E2E로 보증.
 - 차트 x_axis dict 크래시, Groq/OpenAI json 모드 400, AI 무title 영어 기본값, 날짜 dict, 제목 이모지 중복 수정. 미사용 중복 채팅 UI(ChatWindow 체인) 제거.
+- **provider 폴백 신뢰성(CRITICAL)** — copilot 빈응답을 '성공'처리해 폴백을 건너뛰던 결함 → 유효 응답만 성공으로 보고 copilot→groq→gemini→claude 캐스케이드. circuit-aware(429 차단 건너뜀)+groq 우선. 전 provider 실패 시 generic 폴백 사용을 명확히 고지.
+- **결정적 recipe 검증(쉬움→복잡 4종)** — reading/project/CRM/OKR 전부 rollup 집계·formula 계산·relation 양방향·샘플데이터 정상. CRM '남은일수' formula 미계산(딜 샘플 날짜 누락) 수정.
 
-> **알려진 한계(정직 고지)**: AI 생성은 provider 가용성 의존(Gemini 쿼터 소진 시 copilot/Groq 의존, 동시 실패 시 generic 폴백). AI 샘플 날짜가 과거로 생성될 수 있어 날짜 수식이 음수/큰 값 가능(로직 정상). 단일 워커 권장. 48개 스킬 중 일부 라이브 미검증.
+> **알려진 한계(정직 고지)**: AI 생성은 provider 가용성 의존(Gemini 쿼터 소진 시 copilot/Groq 의존, 동시 실패 시 generic 폴백으로 graceful degradation + 고지). AI 샘플 날짜가 과거로 생성될 수 있어 날짜 수식이 음수/큰 값 가능(로직 정상). 단일 워커 권장. 48개 스킬 중 일부 라이브 미검증.
+
+> **하드코딩 아님**: 자연어 입력의 정상 경로는 LLM이 전 구조(blocks·DB·relation·rollup·formula·샘플)를 자유 설계(ai_dynamic). 하드코딩은 (a) 전 provider 실패 시 비상 폴백(smart_fallback, 8종) (b) 큐레이션 예제 갤러리(recipes)뿐.
 
 ---
 
 ## v1.0 하드닝 게이트 (전 게이트 핵심 완료, 1.0 선언은 보류)
 
-실제 Notion 라이브 검증 기반으로 6개 게이트를 진행. 누적 결함 발견·수정 약 40건(라이브 E2E + UI E2E + 멀티에이전트 자기검증), 전부 회귀테스트화. 백엔드 **1,446** + 프론트 vitest/Playwright E2E 통과.
+실제 Notion 라이브 검증 기반으로 6개 게이트를 진행. 누적 결함 발견·수정 약 40건(라이브 E2E + UI E2E + 멀티에이전트 자기검증), 전부 회귀테스트화. 백엔드 **1,454** + 프론트 vitest/Playwright E2E 통과.
 
 ```
 Gate 0  공개 전 보안 차단            [██████████] 완료   gitleaks/pre-commit/custom_skills/CI 전체스캔
@@ -50,7 +54,7 @@ Notion API 듀얼 버전          [██████████] 100%  쓰기 
 블루프린트 자동 수정          [██████████] 100%  PostProcessor 13종 + 구조 검증
 보안 미들웨어                [██████████] 100%  Rate Limit, CSRF, 에러 정제, 업로드 검증
 CI/CD 파이프라인             [██████████] 100%  lint→test→typecheck→docker→security→api-docs
-테스트 1,446개 (80%+ 커버리지) [██████████] 100%  unit 58개 파일, fail_under=80
+테스트 1,454개 (80%+ 커버리지) [██████████] 100%  unit 58개 파일, fail_under=80
 문서화                       [██████████] 100%  README, CONTRIBUTING, SECURITY, API, ARCHITECTURE
 Docker 배포                  [██████████] 100%  Multi-stage, health check, 리소스 제한
 오픈소스 배포 준비            [██████████] 100%  MIT, 배너, 이슈 템플릿, Dependabot
@@ -129,7 +133,7 @@ User Input
 ## 테스트 현황
 
 ```
-테스트 총 수:     1,446개 (+ 라이브 Notion QA 하네스)
+테스트 총 수:     1,454개 (+ 라이브 Notion QA 하네스)
 커버리지:         80%+ (fail_under=80%)
 테스트 파일:      58개+
 카테고리:         unit (57+) + integration (1)
@@ -160,7 +164,7 @@ NotionForge/
 │   │   ├── routers/            # FastAPI 라우터 (8개)
 │   │   ├── core/               # 미들웨어, 로깅, 메트릭스
 │   │   └── schemas/            # Pydantic 모델
-│   └── tests/                  # 1,446개 테스트
+│   └── tests/                  # 1,454개 테스트
 ├── frontend/
 │   └── src/
 │       ├── components/         # React 컴포넌트

@@ -7,7 +7,7 @@
 ## [0.2.0] - 미배포 (태그 예정)
 
 > 제품이 UI·AI 파이프라인 전 경로에서 실제로 end-to-end 작동하게 된 마일스톤.
-> 백엔드 **1,446** 테스트 + 프론트 Vitest/Playwright E2E 통과 + 실제 Notion 라이브 검증.
+> 백엔드 **1,454** 테스트 + 프론트 Vitest/Playwright E2E 통과 + 실제 Notion 라이브 검증.
 > (production-stable 1.0 선언은 더 넓은 스킬/베타 검증 후로 보류.)
 
 ### Fixed (2026-06-01 — 라이브/UI 검증에서 발견한 릴리스 차단급 결함)
@@ -16,6 +16,13 @@
 - **차트 뷰 x_axis/y_axis dict 크래시** — dict를 멤버십 검사해 TypeError로 차트 포함 템플릿(가계부 등) 생성 전체가 실패하던 문제 수정.
 - **Groq/OpenAI json 모드 400** — `response_format=json_object`는 메시지에 'json' 단어 필수. user 메시지에 보장 → Gemini 쿼터 소진 시 Groq가 신뢰할 폴백이 됨.
 - **AI 무title 시 영어 기본값** — 'My Template'이 노션 제목이 되던 문제 → 사용자 요청에서 한국어 제목 생성. 날짜 `{start,end}` dict 미처리, 제목 선두 이모지 중복(`📚 📚`)도 수정.
+- **provider 폴백 신뢰성 (CRITICAL)** — copilot이 `databases` 없는 빈 dict를 반환하면 '성공'으로 처리돼 groq/gemini 폴백을 건너뛰던 결함. 유효(databases 존재) 응답만 성공으로 보고, 무효면 다음 provider로 캐스케이드(copilot→groq→gemini→claude). `_fallback_candidates`를 circuit-aware(429 차단 provider 건너뜀)·groq 우선·copilot 포함으로 개선.
+- **AI 무title 시 긴 메시지가 제목 / DB명 'Items' 중복** — 제목은 첫 구 30자 캡, DB명은 고유 한국어('데이터베이스 N').
+- **CRM recipe '남은일수' formula 미계산** — 딜 샘플에 '예상 마감일' 날짜가 없어 formula가 전부 None이던 문제 → 미래 날짜 보완(라이브: [91,13,64,38,23]일).
+
+### Added (2026-06-01)
+- **전 provider 실패 시 generic 폴백 사용 고지** — 모든 AI provider가 실패(한도/빈응답)해 smart_fallback이 쓰이면 system 경고를 emit('기본 템플릿 사용, 재시도 시 맞춤 설계')해 silently 잘못된 템플릿이 나오던 혼란 방지.
+- **실제 UI 승인→Notion 생성 E2E** (`frontend/e2e/approval.spec.ts`) — Approval Gate가 confirm 없이 멈추지 않고 실제 생성까지 도달함을 보증.
 
 ### Changed (2026-06-01)
 - **양방향 relation = single_property + 샘플 링크 미러링** (이전 dual_property 방식 폐기) — dual_property가 반대편 relation 이름을 Notion 자동명으로 덮어써 그 측 rollup을 영구 미집계로 깨뜨렸음(CE-01). 전부 single_property로 생성해 선언 이름을 보존하고, 후처리에서 양방향을 명시 충전.
