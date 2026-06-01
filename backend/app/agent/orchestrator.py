@@ -177,6 +177,17 @@ class AgentOrchestrator:
         yield {"type": "progress", "step": "design_done", "message": self._format_design_msg(blueprint)}
         yield {"type": "blueprint_preview", "content": self._format_preview(blueprint), "blueprint": blueprint}
 
+        # 모든 AI provider 실패(한도/빈응답)로 generic 폴백 템플릿이 쓰인 경우 명확히 고지.
+        # (silently 요청과 다른 템플릿이 나와 혼란을 주던 문제 방지 — 정직한 degradation.)
+        if meta.get("generation_method") == "smart_fallback":
+            yield {
+                "type": "system",
+                "content": (
+                    "⚠️ AI 맞춤 설계가 일시적으로 불가해(모든 AI provider 응답 실패 또는 호출 한도) "
+                    "요청과 다를 수 있는 기본 템플릿을 사용했어요. 잠시 후 다시 시도하면 맞춤 설계가 생성됩니다."
+                ),
+            }
+
         # ── Approval Gate ──
         # require_approval=True면 사용자(또는 자동승인 호출자)의 승인을 대기한다.
         if self.require_approval:

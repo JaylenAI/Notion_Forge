@@ -148,6 +148,45 @@ class TestBlueprintFlow:
 
     @patch("app.agent.orchestrator.analyze_intent")
     @patch("app.agent.orchestrator.generate_blueprint")
+    async def test_smart_fallback_emits_warning(self, mock_gen, mock_analyze, orchestrator):
+        """모든 AI provider 실패로 generic 폴백이 쓰이면 사용자에게 명확히 고지해야 한다 (라이브 회귀)."""
+        mock_analyze.return_value = _make_intent()
+        bp = _make_blueprint()
+        bp["metadata"]["generation_method"] = "smart_fallback"
+        mock_gen.return_value = bp
+
+        events = []
+        async for e in orchestrator.process("독서 모임 관리 만들어줘"):
+            events.append(e)
+            if e["type"] == "approval_request":
+                orchestrator.approve_creation(True)
+            if e.get("step") == "approved":
+                break
+
+        warn = [e for e in events if e["type"] == "system" and "기본 템플릿" in e.get("content", "")]
+        assert warn, "smart_fallback 시 기본 템플릿 사용 고지가 없음"
+
+    @patch("app.agent.orchestrator.analyze_intent")
+    @patch("app.agent.orchestrator.generate_blueprint")
+    async def test_no_fallback_warning_on_ai_dynamic(self, mock_gen, mock_analyze, orchestrator):
+        """정상 AI 생성(ai_dynamic 등)이면 폴백 경고를 띄우지 않는다."""
+        mock_analyze.return_value = _make_intent()
+        bp = _make_blueprint()
+        bp["metadata"]["generation_method"] = "ai_dynamic"
+        mock_gen.return_value = bp
+
+        events = []
+        async for e in orchestrator.process("프로젝트 관리 템플릿 만들어줘"):
+            events.append(e)
+            if e["type"] == "approval_request":
+                orchestrator.approve_creation(True)
+            if e.get("step") == "approved":
+                break
+
+        assert not [e for e in events if e["type"] == "system" and "기본 템플릿" in e.get("content", "")]
+
+    @patch("app.agent.orchestrator.analyze_intent")
+    @patch("app.agent.orchestrator.generate_blueprint")
     async def test_design_done_progress_event(self, mock_gen, mock_analyze, orchestrator):
         mock_analyze.return_value = _make_intent()
         mock_gen.return_value = _make_blueprint()
