@@ -4,11 +4,29 @@
 
 ---
 
-## [Unreleased]
+## [0.2.0] - 미배포 (태그 예정)
 
-> v1.0 하드닝 진행 중. 버전 태그는 별도 릴리스 시점에 부여. 전 변경 1,414 테스트 통과 + 실제 Notion 라이브 검증.
+> 제품이 UI·AI 파이프라인 전 경로에서 실제로 end-to-end 작동하게 된 마일스톤.
+> 백엔드 **1,446** 테스트 + 프론트 Vitest/Playwright E2E 통과 + 실제 Notion 라이브 검증.
+> (production-stable 1.0 선언은 더 넓은 스킬/베타 검증 후로 보류.)
 
-### Added
+### Fixed (2026-06-01 — 라이브/UI 검증에서 발견한 릴리스 차단급 결함)
+- **AI 파이프라인 relation 링크/rollup 집계 복구 (CRITICAL)** — AI가 sample relation 값을 제목 문자열·`{db_index,item_index}`·`{title,id}`·리스트 등 다양하게 내보내는데 제목 문자열만 처리해 매칭 실패 → relation 0건 → rollup 0/None이었다. 다포맷 해석 + single_property 양방향 **미러링**으로 어느 쪽 rollup이든 집계되도록 복구. (그동안 recipe 경로만 검증돼 가려져 있었음)
+- **WS 미연결 시 무생성 함정 제거** — WebSocket 미연결 시 `/preview`(미리보기 전용, Notion 미생성)로 폴백하며 "성공"처럼 보이던 문제 → 미연결 경고 배너 + 정직한 안내 + 자동 재연결. 실제 UI 승인→생성 E2E 추가.
+- **차트 뷰 x_axis/y_axis dict 크래시** — dict를 멤버십 검사해 TypeError로 차트 포함 템플릿(가계부 등) 생성 전체가 실패하던 문제 수정.
+- **Groq/OpenAI json 모드 400** — `response_format=json_object`는 메시지에 'json' 단어 필수. user 메시지에 보장 → Gemini 쿼터 소진 시 Groq가 신뢰할 폴백이 됨.
+- **AI 무title 시 영어 기본값** — 'My Template'이 노션 제목이 되던 문제 → 사용자 요청에서 한국어 제목 생성. 날짜 `{start,end}` dict 미처리, 제목 선두 이모지 중복(`📚 📚`)도 수정.
+
+### Changed (2026-06-01)
+- **양방향 relation = single_property + 샘플 링크 미러링** (이전 dual_property 방식 폐기) — dual_property가 반대편 relation 이름을 Notion 자동명으로 덮어써 그 측 rollup을 영구 미집계로 깨뜨렸음(CE-01). 전부 single_property로 생성해 선언 이름을 보존하고, 후처리에서 양방향을 명시 충전.
+- **미사용 중복 채팅 UI 제거** — App은 DashboardPage→ChatPanel 사용. 임포트되지 않던 MainLayout→ChatWindow 체인(5파일) 삭제.
+
+### Known limitations (0.2.0 시점 — 정직 고지)
+- AI 생성은 provider 가용성에 의존. Gemini 키 쿼터 소진(429) 시 copilot/Groq에 의존하며, 둘 다 일시 실패하면 generic 폴백 템플릿으로 떨어질 수 있음.
+- AI 샘플 데이터의 날짜가 과거로 생성될 수 있어 D-Day/경과일 수식이 음수/큰 값이 될 수 있음(로직은 정상).
+- 단일 워커 권장(외부 상태 저장소 미사용). 48개 스킬 중 일부는 라이브 미검증.
+
+### Added (이전 하드닝 누적)
 - **세션 LLM 호출 예산** (`app/core/cost_control.py`) — ContextVar 기반 동시세션 격리, 호출 상한(기본 40)으로 비용 폭주 방지
 - **라이브 QA 하네스** (`backend/scripts/live_qa.py`) — 실제 Notion 생성 후 페이지/DB/샘플행/속성 정량 검증 (recipe·prompt 모드)
 - 보안: `.gitleaks.toml` + `.pre-commit-config.yaml`(gitleaks/detect-private-key/ruff) + CI 전체 히스토리 시크릿 스캔
@@ -20,7 +38,6 @@
 - **Provider Fallback 실배선** — Gen-Eval/pipeline/agent_loop가 `resolve_with_fallback` 사용, copilot 폴백 포함
 - **AI 생성 실패 시 작동하는 provider로 자동 폴백** — 1차 None 반환 시 키 있는 provider로 전환해 실제 AI 생성 보장
 - **Approval Gate 실배선** — 미리보기 후 승인 대기(타임아웃 시 중단), REST/Task는 자동 승인
-- **양방향 relation을 dual_property로 생성** — rollup 자동 집계 활성화
 - AgentLoop 스텝 하드캡(MAX_STEPS=15), Notion SDK 버전 핀
 - 서브페이지 `name`/`title` 키 호환(`_subpage_title`) — 서브페이지 콘텐츠 누락 수정
 - 제목 정리 — 색상 지시 제거(토큰 완전일치, '블루베리'·'그린팀' 보존)
@@ -32,8 +49,8 @@
 - 테스트 격리 — conftest가 LLM/Notion 키·circuit breaker·WS상태 미리셋
 
 ### Quality
-- 약 30개 결함 발견·수정 (라이브 E2E + 27-에이전트 자기검증), 전부 회귀테스트화
-- 백엔드 테스트 1,374 → **1,442**, 프론트 Vitest + Playwright E2E 신규
+- 약 40개 결함 발견·수정 (라이브 E2E + UI E2E + 멀티에이전트 자기검증), 전부 회귀테스트화
+- 백엔드 테스트 1,374 → **1,446**, 프론트 Vitest + Playwright E2E(스모크 + 승인→생성) 신규
 
 ### Gate 3~6 (추가 하드닝)
 - **Gate 3 API**: query 페이지네이션(has_more), rate limiter jitter + Retry-After, data_source 마이그레이션 정합

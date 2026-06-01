@@ -246,7 +246,7 @@ User Input
 | **AI** | Copilot SDK (GPT-4.1) / Claude / Gemini / Groq / OpenAI — Strategy Pattern |
 | **Notion** | notion-client 2.x + httpx (Dual API: write 2022-06-28 / read+views 2026-03-11) |
 | **Frontend** | React 19 / TypeScript 5.7 / Vite 7 / Zustand 5 / TailwindCSS 4 |
-| **Testing** | pytest (1,414 tests, 80%+ coverage) + live Notion QA harness |
+| **Testing** | pytest (1,446 tests, 80%+ coverage) + live Notion QA harness |
 | **CI/CD** | GitHub Actions (lint -> test -> typecheck -> docker -> security scan) |
 | **Deployment** | Docker Compose (multi-stage build) |
 
@@ -282,7 +282,7 @@ NotionForge/
 │   │   ├── routers/                  # FastAPI routers (8)
 │   │   ├── core/                     # Middleware, logging, metrics
 │   │   └── schemas/                  # Pydantic models
-│   └── tests/                        # 1,414 tests
+│   └── tests/                        # 1,446 tests
 │       └── unit/                     # Unit tests (58+ files)
 ├── frontend/
 │   └── src/
