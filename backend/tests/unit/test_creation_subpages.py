@@ -132,10 +132,11 @@ async def test_post_process_sample_links_sets_relation(monkeypatch):
     assert kw["properties"]["링크"]["relation"] == [{"id": "b1"}]
 
 
-async def test_post_process_bidirectional_pair_uses_dual_property(monkeypatch):
-    """양방향 relation 쌍은 dual_property 1개로 생성, 반대쪽은 skip (DATA-1, 라이브 검증).
+async def test_post_process_relations_all_single_property(monkeypatch):
+    """양방향 relation 쌍이라도 양측 모두 single_property로 생성 — 선언 이름 보존 (CE-01 회귀).
 
-    single_property 두 개면 rollup 자동집계가 안 됨 → dual로 통합해야 양쪽 동기화.
+    dual_property는 반대편 이름을 Notion 자동명으로 바꿔 그 측 rollup을 깨뜨리므로 사용하지 않는다.
+    rollup은 자기 측 relation이 채워지면 단방향이어도 정상 집계된다.
     """
     client = _mock_client(monkeypatch)
     calls: list = []
@@ -161,8 +162,8 @@ async def test_post_process_bidirectional_pair_uses_dual_property(monkeypatch):
                 rels.append(spec["relation"])
     dual = [r for r in rels if r.get("type") == "dual_property" or "dual_property" in r]
     single = [r for r in rels if "single_property" in r]
-    assert len(dual) == 1, f"양방향 쌍은 dual 1개여야 함: {rels}"
-    assert len(single) == 0, f"쌍의 반대쪽은 skip되어야 함: {rels}"
+    assert len(dual) == 0, f"dual_property는 사용하지 않아야 함: {rels}"
+    assert len(single) == 2, f"양측 relation 모두 single_property로 생성돼야 함: {rels}"
 
 
 async def test_post_process_derived_round_retry(monkeypatch):

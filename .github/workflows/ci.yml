@@ -187,11 +187,13 @@ jobs:
         run: |
           cd backend && uv run pip install pip-licenses -q
           uv run pip-licenses --format=markdown --with-urls > ../THIRD_PARTY_LICENSES.md || true
-          # GPL/AGPL 계열(비호환 가능) 발견 시 경고 — MIT 프로젝트 라이선스 호환성 점검
-          if uv run pip-licenses --format=plain | grep -iE "GPL|AGPL" | grep -ivE "LGPL"; then
-            echo "::warning::GPL/AGPL 계열 의존성 발견 — MIT 라이선스 호환성 검토 필요"
+          uv run pip-licenses --format=csv > ../licenses.csv || true
+          # License 컬럼만 정확 파싱(패키지명 오탐 방지). GPL/AGPL 계열은 경고(LGPL 제외)
+          BAD=$(python3 -c "import csv; rows=list(csv.reader(open('../licenses.csv'))); [print(r[0], r[2]) for r in rows[1:] if len(r)>=3 and 'GPL' in r[2].upper() and 'LGPL' not in r[2].upper()]" 2>/dev/null || true)
+          if [ -n "$BAD" ]; then
+            echo "::warning::GPL/AGPL 계열 라이선스 발견 — MIT 호환성 검토 필요:"; echo "$BAD"
           else
-            echo "[OK] GPL/AGPL 비호환 의존성 없음"
+            echo "[OK] GPL/AGPL 비호환 라이선스 없음"
           fi
 
       - name: Upload security report

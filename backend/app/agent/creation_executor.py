@@ -348,34 +348,12 @@ class CreationExecutor:
         def _props_of(db_spec: dict) -> dict:
             return db_spec.get("properties", db_spec.get("db_properties", {}))
 
-        # 선언된 relation 수집: db_index -> {prop_name: target_idx}
-        rel_decls: dict[int, dict[str, int]] = {}
-        for i, db_spec in enumerate(databases):
-            if i >= len(created_dbs):
-                continue
-            for name, spec in _props_of(db_spec).items():
-                if isinstance(spec, dict) and spec.get("type") == "relation" and "target_db_index" in spec:
-                    ti = spec["target_db_index"]
-                    if 0 <= ti < len(created_dbs):
-                        rel_decls.setdefault(i, {})[name] = ti
-
-        # 양방향 쌍 탐지 (DATA-1): i.name_i→j 와 j.name_j→i 가 모두 선언되면
-        # dual_property 로 1개만 생성(반대쪽은 Notion이 synced 속성으로 자동 생성) → rollup 집계 가능
-        dual_make: set[tuple[int, str]] = set()
-        dual_skip: set[tuple[int, str]] = set()
-        for i, props_i in rel_decls.items():
-            for name_i, j in props_i.items():
-                if i == j or (i, name_i) in dual_skip or (i, name_i) in dual_make:
-                    continue
-                back = next(
-                    (nj for nj, tj in rel_decls.get(j, {}).items() if tj == i and (j, nj) not in dual_skip),
-                    None,
-                )
-                if back is not None:
-                    dual_make.add((i, name_i))
-                    dual_skip.add((j, back))
-
-        # ── Pass 1: relation 생성 (rollup이 참조할 relation이 존재하도록) ──
+        # ── Pass 1: relation 생성 (모두 single_property) ──
+        # 모든 relation을 single_property로 만들면 blueprint가 선언한 양측 이름이 그대로 보존돼
+        # 어느 쪽 rollup이든 자기 relation을 참조해 정상 집계된다. rollup은 자기 측 relation이
+        # 채워지면(sample 링크가 채움) 단방향이어도 집계되므로 dual_property가 불필요하다.
+        # (과거 dual_property는 반대편 relation 이름을 Notion 자동명으로 바꿔 그 측 rollup을
+        #  영구 미집계로 깨뜨렸음 — CE-01. 다중 쌍 오매칭(CE-02)도 함께 제거.)
         for i, db_spec in enumerate(databases):
             if i >= len(created_dbs):
                 break
@@ -387,15 +365,9 @@ class CreationExecutor:
                     target_idx = prop_spec["target_db_index"]
                     if not (0 <= target_idx < len(created_dbs)):
                         continue
-                    if (i, prop_name) in dual_skip:
-                        continue  # 양방향 쌍의 synced 측 — dual 생성 시 자동 생성됨
-                    cfg: dict[str, Any] = {"database_id": created_dbs[target_idx]["id"]}
-                    if (i, prop_name) in dual_make:
-                        cfg["type"] = "dual_property"
-                        cfg["dual_property"] = {}
-                    else:
-                        cfg["single_property"] = {}
-                    relation_props[prop_name] = {"relation": cfg}
+                    relation_props[prop_name] = {
+                        "relation": {"database_id": created_dbs[target_idx]["id"], "single_property": {}}
+                    }
             if relation_props:
                 try:
                     await self.client.update_database(created_dbs[i]["id"], {"properties": relation_props})
@@ -442,7 +414,10 @@ class CreationExecutor:
                 else:
                     logger.info(f"[Derived 후처리] {created_dbs[i]['title']}.{prop_name}")
             if len(still) == len(pending):
-                logger.info(f"[Derived 후처리] {len(still)}개 미해결(의존성/스키마) — 중단: {[p for _, p, _ in still]}")
+                logger.warning(
+                    f"[Derived 후처리] rollup/formula {len(still)}개 미생성 — 의존성/스키마 오류 추정: "
+                    f"{[p for _, p, _ in still]} (rollup이면 집계 누락 가능)"
+                )
                 break
             pending = still
 
@@ -516,6 +491,12 @@ class CreationExecutor:
                     if not (0 <= tgt_idx < len(item_maps)):
                         continue
                     vals = item[rel_name] if isinstance(item[rel_name], list) else [item[rel_name]]
+                    unmatched = [str(v) for v in vals if str(v) not in item_maps[tgt_idx]]
+                    if unmatched:
+                        logger.warning(
+                            f"[샘플 링크] '{rel_name}' 대상 제목 미매칭 {unmatched} — "
+                            f"대상 DB 샘플 제목과 불일치(rollup 집계 누락 가능)"
+                        )
                     rel_ids = [{"id": item_maps[tgt_idx][str(v)]} for v in vals if str(v) in item_maps[tgt_idx]]
                     if rel_ids:
                         update_props[rel_name] = {"relation": rel_ids}
