@@ -66,9 +66,7 @@ def _normalize_db_properties(props: Any) -> dict[str, Any]:
         elif isinstance(item, str):
             out[item] = "title" if i == 0 else "rich_text"
     # title 보장 — 아무 속성도 title이 아니면 기존 속성을 덮지 말고 새 title 속성을 앞에 추가
-    if out and not any(
-        v == "title" or (isinstance(v, dict) and v.get("type") == "title") for v in out.values()
-    ):
+    if out and not any(v == "title" or (isinstance(v, dict) and v.get("type") == "title") for v in out.values()):
         out = {"이름": "title", **out}
     return out
 

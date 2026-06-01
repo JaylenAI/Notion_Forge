@@ -43,10 +43,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             del self._requests[ip]
 
     def _is_exempt(self, path: str) -> bool:
-        return (
-            path.startswith("/health")
-            or path in ("/docs", "/redoc", "/openapi.json", "/metrics")
-        )
+        return path.startswith("/health") or path in ("/docs", "/redoc", "/openapi.json", "/metrics")
 
     async def dispatch(self, request: Request, call_next) -> Response:
         if self._is_exempt(request.url.path):

@@ -229,7 +229,11 @@ class TestValidateViewPropertiesRegression:
                     "title": "가계부",
                     "db_properties": {"항목": "title", "카테고리": {"type": "select"}, "금액": {"type": "number"}},
                     "views": [
-                        {"type": "chart", "x_axis": {"property": "카테고리"}, "y_axis": {"property": "금액", "aggregation": "sum"}},
+                        {
+                            "type": "chart",
+                            "x_axis": {"property": "카테고리"},
+                            "y_axis": {"property": "금액", "aggregation": "sum"},
+                        },
                         {"type": "chart", "x_axis": {"property": "없는속성"}},
                     ],
                     "sample_items": [],

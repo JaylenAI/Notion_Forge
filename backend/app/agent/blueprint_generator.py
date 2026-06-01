@@ -388,9 +388,7 @@ def _fallback_candidates(exclude_provider: str, max_candidates: int = 3) -> list
         ]
     )
     candidates = [
-        (n, k)
-        for n, k in pairs
-        if n != exclude_provider and (n == "copilot" or k) and not _circuit_breaker.is_open(n)
+        (n, k) for n, k in pairs if n != exclude_provider and (n == "copilot" or k) and not _circuit_breaker.is_open(n)
     ]
     candidates.sort(key=lambda c: _circuit_breaker.failure_count(c[0]))
     return candidates[:max_candidates]
@@ -680,7 +678,18 @@ def _clean_title(user_message: str) -> str:
 
     t = user_message
     # 요청 동사/표현 제거 (동사는 어절 치환)
-    for v in ("만들어주세요", "만들어 줘", "만들어줘", "제작해 줘", "제작해줘", "생성해줘", "만들어", "제작", "해줘", "만들기"):
+    for v in (
+        "만들어주세요",
+        "만들어 줘",
+        "만들어줘",
+        "제작해 줘",
+        "제작해줘",
+        "생성해줘",
+        "만들어",
+        "제작",
+        "해줘",
+        "만들기",
+    ):
         t = t.replace(v, " ")
     t = t.replace("!", " ")
     # 색상 지시는 토큰 완전일치로만 제거

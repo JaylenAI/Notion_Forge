@@ -478,7 +478,9 @@ class TestQueryPagination:
 
         page1 = MagicMock()
         page1.status_code = 200
-        page1.json = MagicMock(return_value={"results": [{"id": "1"}, {"id": "2"}], "has_more": True, "next_cursor": "c1"})
+        page1.json = MagicMock(
+            return_value={"results": [{"id": "1"}, {"id": "2"}], "has_more": True, "next_cursor": "c1"}
+        )
         page2 = MagicMock()
         page2.status_code = 200
         page2.json = MagicMock(return_value={"results": [{"id": "3"}], "has_more": False})

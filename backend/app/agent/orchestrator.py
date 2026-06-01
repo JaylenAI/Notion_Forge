@@ -201,9 +201,7 @@ class AgentOrchestrator:
             from app.config import settings
 
             try:
-                await asyncio.wait_for(
-                    self._approval_event.wait(), timeout=settings.approval_timeout_seconds
-                )
+                await asyncio.wait_for(self._approval_event.wait(), timeout=settings.approval_timeout_seconds)
             except asyncio.TimeoutError:
                 # 응답 없으면 생성하지 않고 종료 (워크스페이스에 임의 생성 방지)
                 yield {
