@@ -1,13 +1,13 @@
 # Release Notes (Bilingual EN/KR)
 
 > GitHub Release 본문용 영문/국문 노트. 과거 v0.1.0~v0.1.6은 GitHub Releases 페이지에 반영됨.
-> v0.2.0은 릴리스 시점에 아래 내용을 태그 노트로 사용한다.
+> v0.1.7 태그 노트로 사용한다.
 
 ---
 
-## 🇬🇧 EN — v0.2.0: End-to-End Working (UI + AI Pipeline)
+## 🇬🇧 EN — v0.1.7: Stabilization (End-to-End Working, UI + AI Pipeline)
 
-The milestone where the product actually works end-to-end across **both** the UI and the AI pipeline.
+The release where the product actually works end-to-end across **both** the UI and the AI pipeline.
 Backend **1,461 tests** + frontend Vitest/Playwright E2E + live Notion verification.
 (A production-stable 1.0 is intentionally deferred until broader skill/beta validation.)
 
@@ -33,7 +33,7 @@ Backend **1,461 tests** + frontend Vitest/Playwright E2E + live Notion verificat
 
 ---
 
-## 🇰🇷 KR — v0.2.0: 전 경로 작동 확정 (UI + AI 파이프라인)
+## 🇰🇷 KR — v0.1.7: 전 경로 작동 확정 (UI + AI 파이프라인)
 
 제품이 UI·AI 파이프라인 **양쪽** 전 경로에서 실제로 end-to-end 작동하게 된 마일스톤.
 백엔드 **1,461 테스트** + 프론트 Vitest/Playwright E2E + 실제 Notion 라이브 검증.
