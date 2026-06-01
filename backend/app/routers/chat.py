@@ -49,13 +49,18 @@ async def websocket_chat(websocket: WebSocket):
         return
     recent.append(_now)
     _ws_recent_connects[ip] = recent
-    _ws_active[ip] += 1
-
-    await websocket.accept()
 
     agent: AgentOrchestrator | None = None
     process_task: asyncio.Task | None = None
     message_timestamps: list[float] = []
+    control_tasks: set[asyncio.Task] = set()
+    counted = False  # _ws_active 증가 여부 (finally 정확 감소용)
+
+    def _spawn(coro) -> None:
+        """fire-and-forget 태스크를 참조 보관 + 예외 로깅 (GC/누락 방지)."""
+        task = asyncio.create_task(coro)
+        control_tasks.add(task)
+        task.add_done_callback(control_tasks.discard)
 
     def _handle_control_message(msg_type: str, data: dict) -> bool:
         """설정/승인 등 제어 메시지 처리. 처리했으면 True 반환."""
@@ -74,29 +79,34 @@ async def websocket_chat(websocket: WebSocket):
 
         if msg_type == "set_complexity" and agent:
             agent.complexity = data.get("complexity", "standard")
-            asyncio.create_task(websocket.send_json({"type": "system", "content": f"복잡도 설정: {agent.complexity}"}))
+            _spawn(websocket.send_json({"type": "system", "content": f"복잡도 설정: {agent.complexity}"}))
             return True
 
         if msg_type == "set_language" and agent:
             agent.language = data.get("language", "ko")
-            asyncio.create_task(websocket.send_json({"type": "system", "content": f"언어 설정: {agent.language}"}))
+            _spawn(websocket.send_json({"type": "system", "content": f"언어 설정: {agent.language}"}))
             return True
 
         if msg_type == "set_pipeline" and agent:
             agent.use_pipeline = data.get("enabled", False)
             mode = "Multi-Agent Pipeline" if agent.use_pipeline else "Single Agent"
-            asyncio.create_task(websocket.send_json({"type": "system", "content": f"AI 모드: {mode}"}))
+            _spawn(websocket.send_json({"type": "system", "content": f"AI 모드: {mode}"}))
             return True
 
         if msg_type == "set_agent_loop" and agent:
             agent.use_agent_loop = data.get("enabled", False)
             mode = "Agent Loop (Plan-Execute-Reflect)" if agent.use_agent_loop else "표준 파이프라인"
-            asyncio.create_task(websocket.send_json({"type": "system", "content": f"생성 모드: {mode}"}))
+            _spawn(websocket.send_json({"type": "system", "content": f"생성 모드: {mode}"}))
             return True
 
         return False
 
     try:
+        # 카운터 증가 + accept를 try 안에서 — accept 실패해도 finally가 감소 보장 (WS-001)
+        _ws_active[ip] += 1
+        counted = True
+        await websocket.accept()
+
         # init 메시지 대기 (타임아웃 적용)
         try:
             raw = await asyncio.wait_for(websocket.receive_text(), timeout=WS_INIT_TIMEOUT)
@@ -188,8 +198,20 @@ async def websocket_chat(websocket: WebSocket):
         except Exception:
             pass
     finally:
-        _ws_active[ip] = max(0, _ws_active[ip] - 1)
-        if _ws_active[ip] == 0:
-            _ws_active.pop(ip, None)
+        # 카운터는 증가한 경우에만 감소 (WS-001: accept 실패 시 누수 방지)
+        if counted:
+            _ws_active[ip] = max(0, _ws_active[ip] - 1)
+            if _ws_active[ip] == 0:
+                _ws_active.pop(ip, None)
+        # 신규연결 윈도우 정리 — 만료 항목 제거, 비면 키 삭제 (WS-002: 메모리 누수 방지)
+        now = asyncio.get_event_loop().time()
+        fresh = [t for t in _ws_recent_connects.get(ip, []) if now - t < 60]
+        if fresh:
+            _ws_recent_connects[ip] = fresh
+        else:
+            _ws_recent_connects.pop(ip, None)
         if process_task and not process_task.done():
             process_task.cancel()
+        for t in control_tasks:
+            if not t.done():
+                t.cancel()

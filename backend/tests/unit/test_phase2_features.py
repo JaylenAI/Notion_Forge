@@ -396,8 +396,9 @@ class TestQueryDatabaseExtended:
             filter_properties=["Name", "Status"],
         )
         call_args = client._http_client.post.call_args
-        body = call_args.kwargs["json"]
-        assert body["filter_properties"] == ["Name", "Status"]
+        # filter_properties는 쿼리스트링 파라미터로 전송됨 (body 아님) — NIO-01
+        assert call_args.kwargs["params"]["filter_properties"] == ["Name", "Status"]
+        assert "filter_properties" not in call_args.kwargs["json"]
 
     @pytest.mark.asyncio
     async def test_request_status_incomplete_logged(self):

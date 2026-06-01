@@ -256,8 +256,8 @@ class DatabaseOpsMixin:
             body["filter"] = filters
         if sorts:
             body["sorts"] = sorts
-        if filter_properties:
-            body["filter_properties"] = filter_properties
+        # filter_properties는 신규/레거시 모두 쿼리스트링 파라미터 (body 아님) — NIO-01
+        params = {"filter_properties": filter_properties} if filter_properties else None
 
         data_source_id = await self.get_data_source_id(database_id)
         results: list[dict[str, Any]] = []
@@ -269,14 +269,14 @@ class DatabaseOpsMixin:
                 body["start_cursor"] = cursor
             await self.rate_limiter.acquire()
             try:
-                resp = await client.post(endpoint, json=body)
+                resp = await client.post(endpoint, json=body, params=params)
                 # 첫 페이지에서 새 API 실패 시 레거시 엔드포인트로 1회 폴백
                 if resp.status_code >= 400 and not results and client is self._http_client:
                     logger.info("[query_database] 2026-03-11 실패, 레거시 폴백 시도")
                     client = self._http_client_legacy
                     endpoint = f"/databases/{database_id}/query"
                     await self.rate_limiter.acquire()
-                    resp = await client.post(endpoint, json=body)
+                    resp = await client.post(endpoint, json=body, params=params)
                 if resp.status_code >= 400:
                     logger.warning(f"[query_database 에러 {resp.status_code}] {resp.text[:200]}")
                     break

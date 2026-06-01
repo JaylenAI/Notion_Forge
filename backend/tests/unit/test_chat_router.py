@@ -786,3 +786,26 @@ class TestSanitizeError:
             assert response["content"] == "안전한 에러 메시지"
 
         mock_sanitize.assert_called_once()
+
+
+class TestWsCounterLeak:
+    async def test_counter_released_on_accept_failure(self):
+        """accept() 실패 시 _ws_active 카운터가 누수되지 않아야 한다 (WS-001 회귀)."""
+        from unittest.mock import AsyncMock, MagicMock
+
+        from app.routers import chat
+
+        chat._ws_active.clear()
+        chat._ws_recent_connects.clear()
+
+        ws = MagicMock()
+        ws.headers = {}
+        ws.client = MagicMock(host="9.9.9.9")
+        ws.accept = AsyncMock(side_effect=RuntimeError("handshake abort"))
+        ws.send_json = AsyncMock()
+        ws.close = AsyncMock()
+
+        await chat.websocket_chat(ws)
+
+        # accept 실패해도 finally가 카운터를 정리 → 영구 누수 없음
+        assert chat._ws_active.get("9.9.9.9", 0) == 0

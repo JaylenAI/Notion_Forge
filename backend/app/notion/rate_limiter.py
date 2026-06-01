@@ -1,4 +1,9 @@
-"""Notion API Rate Limiter: Semaphore 기반 동시 요청 제한 + 지수 백오프(+jitter, Retry-After)"""
+"""Notion API Rate Limiter — 초당 요청 수(timestamp 슬라이딩 윈도우) 페이싱 + 429 재시도(지수 백오프 +jitter, Retry-After).
+
+주의: acquire()는 요청 '개시 시점'을 max_per_second로 페이싱한다(동시 in-flight 요청 수를 잡아두는
+방식이 아님). 내부 semaphore는 timestamp 부킹 구간을 직렬화하는 용도이며, 호출자는 acquire() 반환
+직후 HTTP 요청을 보낸다. 진짜 동시성 상한이 필요하면 호출부(asyncio.gather)에서 별도 제한할 것.
+"""
 
 import asyncio
 import logging
