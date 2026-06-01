@@ -329,6 +329,18 @@ function ChatPanel() {
         <ModelBadgeInline />
       </div>
 
+      {/* 미연결 경고 — 연결되지 않으면 Notion에 생성되지 않으므로 명확히 알린다 */}
+      {connectionStatus !== "connected" && (
+        <div className="mx-3 sm:mx-4 mb-2 rounded-lg bg-[#ffb4ab]/15 border border-[#ffb4ab]/30 px-3 py-2 text-xs text-[#ffb4ab] flex items-center gap-2">
+          <span className="material-symbols-outlined text-sm">
+            {connectionStatus === "connecting" ? "sync" : "cloud_off"}
+          </span>
+          {connectionStatus === "connecting"
+            ? "서버에 연결 중입니다… 연결되면 실제 생성이 가능합니다."
+            : "서버 미연결 — 지금 보내면 미리보기만 생성되고 Notion에는 저장되지 않습니다. 백엔드(포트 9500)를 확인하세요."}
+        </div>
+      )}
+
       {/* Input Area */}
       <div className="p-3 sm:p-4 bg-[var(--surface-low,#1c1b1b)] border-b-0 border-t-0">
         <div className="flex items-end gap-2">

@@ -110,6 +110,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (ws && connectionStatus === "connected") {
       ws.send(JSON.stringify({ type: "message", content }));
     } else {
+      // WS 미연결 — 재연결을 시도하고, 미리보기만 가능함을 정직하게 알린다.
+      // (과거엔 'Preview generated successfully'로 성공처럼 보였지만 Notion에는 아무것도 생성되지 않아
+      //  사용자가 생성된 줄 착각하는 함정이었다.)
+      useConnectionStore.getState().connect();
       const controller = new AbortController();
       set({ abortController: controller });
 
@@ -134,8 +138,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
             id: crypto.randomUUID(),
             role: "assistant",
             content: meta
-              ? `${meta.title} (${meta.template_type})\nPreview generated successfully.`
-              : "Request processed.",
+              ? `⚠️ 서버에 연결되지 않아 '구조 미리보기'만 생성했습니다. Notion에는 아직 저장되지 않았습니다.\n\n${meta.title} (${meta.template_type})\n\n실제로 생성하려면 연결이 복구된 뒤(우측 상단 연결 표시가 초록색) 다시 보내주세요.`
+              : "⚠️ 서버에 연결되지 않았습니다. 백엔드(포트 9500)가 실행 중인지 확인하고 다시 시도해주세요.",
             timestamp: new Date(),
             metadata: {
               type: "blueprint_preview",
@@ -174,7 +178,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               {
                 id: crypto.randomUUID(),
                 role: "assistant" as const,
-                content: "Failed to connect to server. Please check your connection settings.",
+                content: "서버에 연결할 수 없습니다. 백엔드(포트 9500)가 실행 중인지 확인한 뒤 다시 시도해주세요.",
                 timestamp: new Date(),
                 metadata: { type: "error" },
               },
