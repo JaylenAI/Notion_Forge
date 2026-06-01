@@ -217,6 +217,32 @@ class TestValidateViewPropertiesRegression:
         # Should fallback to first select/status prop
         assert view["x_axis"] in ("Category", "Status")
 
+    def test_chart_view_x_axis_as_dict_no_crash(self, validator):
+        """chart 뷰 x_axis가 dict({"property":..})여도 크래시 없이 속성명으로 정규화 (라이브 회귀: 가계부).
+
+        과거 'x_axis not in prop_names'가 dict를 set 멤버십 검사해 TypeError(unhashable)로
+        가계부 등 차트 포함 템플릿 생성 전체가 실패했다.
+        """
+        content = {
+            "databases": [
+                {
+                    "title": "가계부",
+                    "db_properties": {"항목": "title", "카테고리": {"type": "select"}, "금액": {"type": "number"}},
+                    "views": [
+                        {"type": "chart", "x_axis": {"property": "카테고리"}, "y_axis": {"property": "금액", "aggregation": "sum"}},
+                        {"type": "chart", "x_axis": {"property": "없는속성"}},
+                    ],
+                    "sample_items": [],
+                }
+            ],
+            "blocks": [],
+        }
+        result = validator._validate_view_properties(content)
+        views = result["databases"][0]["views"]
+        assert views[0]["x_axis"] == "카테고리"  # dict → 속성명 정규화
+        assert views[0]["y_axis"] == "금액"  # y_axis도 정규화
+        assert views[1]["x_axis"] == "카테고리"  # 없는 속성 → select 폴백
+
     def test_empty_views_list(self, validator):
         """빈 views 리스트 처리"""
         content = {

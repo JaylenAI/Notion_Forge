@@ -377,9 +377,18 @@ class BlueprintValidator:
                         view["date_property"] = date_props[0]
 
                 elif vtype == "chart":
+                    # AI가 x_axis를 문자열 또는 {"property":..} dict로 내보낸다. dict면 속성명만 추출
+                    # (calendar/board와 동일 처리). 과거엔 dict를 set 멤버십 검사해 unhashable 크래시 →
+                    # 차트가 포함된 템플릿(가계부 등) 생성 전체가 실패했다.
                     x_axis = view.get("x_axis")
-                    if x_axis and x_axis not in prop_names:
+                    if isinstance(x_axis, dict):
+                        x_axis = x_axis.get("property") or x_axis.get("name") or ""
+                        view["x_axis"] = x_axis
+                    if x_axis and isinstance(x_axis, str) and x_axis not in prop_names:
                         view["x_axis"] = select_props[0] if select_props else None
+                    y_axis = view.get("y_axis")
+                    if isinstance(y_axis, dict):  # y_axis도 dict 형태 정규화(속성명 보존)
+                        view["y_axis"] = y_axis.get("property") or y_axis.get("name") or y_axis
 
         return content
 
