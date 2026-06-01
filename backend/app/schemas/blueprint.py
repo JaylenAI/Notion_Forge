@@ -36,6 +36,54 @@ class AIContentSpec(BaseModel):
     model_config = {"extra": "allow"}
 
 
+def _normalize_db_properties(props: Any) -> dict[str, Any]:
+    """AI가 properties를 list로 내보내도 dict로 정규화.
+
+    AI(특히 Groq)가 properties를 dict 대신 list로 반환하는 경우가 있다:
+      - [{"name": "회원명", "type": "title"}, ...]      → {"회원명": "title", ...}
+      - [{"회원명": "title"}, {"참석": "number"}]        → {"회원명": "title", "참석": "number"}
+      - ["회원명", "참석"]                                → {"회원명": "title", "참석": "rich_text"}
+    이를 처리하지 않으면 downstream의 props.values()가 'list' object 에러로 크래시해
+    Gen-Eval이 매번 실패하고 smart_fallback으로 떨어졌다(라이브 회귀).
+    """
+    if isinstance(props, dict):
+        return props
+    if not isinstance(props, list):
+        return {}
+    out: dict[str, Any] = {}
+    for i, item in enumerate(props):
+        if isinstance(item, dict):
+            if "name" in item:  # {"name": X, "type": Y, ...}
+                name = str(item["name"])
+                rest = {k: v for k, v in item.items() if k != "name"}
+                if set(rest.keys()) == {"type"}:
+                    out[name] = rest["type"]
+                else:
+                    out[name] = rest or "rich_text"
+            else:  # {"회원명": "title"} 등 단일/다중 키 dict
+                for k, v in item.items():
+                    out[str(k)] = v
+        elif isinstance(item, str):
+            out[item] = "title" if i == 0 else "rich_text"
+    # title 보장 — 아무 속성도 title이 아니면 기존 속성을 덮지 말고 새 title 속성을 앞에 추가
+    if out and not any(
+        v == "title" or (isinstance(v, dict) and v.get("type") == "title") for v in out.values()
+    ):
+        out = {"이름": "title", **out}
+    return out
+
+
+def _normalize_content_properties(raw: dict[str, Any]) -> dict[str, Any]:
+    """raw의 모든 DB properties를 dict로 정규화 (성공/실패 반환 경로 모두 적용되도록 raw 자체를 보정)."""
+    for db in raw.get("databases", []):
+        if not isinstance(db, dict):
+            continue
+        for key in ("db_properties", "properties"):
+            if key in db:
+                db[key] = _normalize_db_properties(db[key])
+    return raw
+
+
 def validate_ai_content(raw: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     """AI 출력을 Pydantic으로 검증 + 교정. (교정된 dict, 에러 목록) 반환.
 
@@ -44,14 +92,17 @@ def validate_ai_content(raw: dict[str, Any]) -> tuple[dict[str, Any], list[str]]
     """
     errors: list[str] = []
 
-    # db_properties → databases 정규화 (단일 DB 래핑)
+    # list 형태 properties를 dict로 정규화 (성공/실패 반환 모두 안전하게)
+    raw = _normalize_content_properties(raw)
+
+    # db_properties → databases 정규화 (단일 DB 래핑) — top-level props도 list면 dict로
     if "db_properties" in raw and "databases" not in raw:
         raw = {
             **raw,
             "databases": [
                 {
                     "title": raw.get("title", "DB"),
-                    "db_properties": raw["db_properties"],
+                    "db_properties": _normalize_db_properties(raw["db_properties"]),
                     "views": raw.get("views", ["table"]),
                     "sample_items": raw.get("sample_items", []),
                 }
@@ -69,6 +120,8 @@ def validate_ai_content(raw: dict[str, Any]) -> tuple[dict[str, Any], list[str]]
 
         for di, db in enumerate(result.get("databases", [])):
             props = db.get("db_properties", db.get("properties", {}))
+            if not isinstance(props, dict):  # 방어: 정규화 누락 시에도 크래시 금지
+                props = _normalize_db_properties(props)
             has_title = any(v == "title" or (isinstance(v, dict) and v.get("type") == "title") for v in props.values())
             if not has_title:
                 errors.append(f"Pydantic: databases[{di}]에 title 타입 속성이 없습니다.")

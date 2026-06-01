@@ -6,7 +6,54 @@ import pytest
 
 from app.agent.agent_loop import AgentLoop
 from app.agent.providers.base import BaseProvider
-from app.schemas.blueprint import AIContentSpec, validate_ai_content
+from app.schemas.blueprint import AIContentSpec, _normalize_db_properties, validate_ai_content
+
+
+class TestNormalizeListProperties:
+    """AI가 properties를 list로 내보내도 dict로 정규화 (라이브 회귀: 'list' object has no attribute 'values')."""
+
+    def test_list_of_name_type_dicts(self):
+        props = [{"name": "회원명", "type": "title"}, {"name": "참석", "type": "number"}]
+        assert _normalize_db_properties(props) == {"회원명": "title", "참석": "number"}
+
+    def test_list_of_single_key_dicts(self):
+        props = [{"회원명": "title"}, {"참석횟수": "number"}]
+        assert _normalize_db_properties(props) == {"회원명": "title", "참석횟수": "number"}
+
+    def test_list_of_strings_first_becomes_title(self):
+        assert _normalize_db_properties(["회원명", "참석"]) == {"회원명": "title", "참석": "rich_text"}
+
+    def test_name_dict_with_options_kept(self):
+        props = [{"name": "단계", "type": "select", "options": [{"name": "리드"}]}]
+        out = _normalize_db_properties(props)
+        assert out["단계"]["type"] == "select" and "options" in out["단계"]
+
+    def test_ensures_title_when_none(self):
+        out = _normalize_db_properties([{"name": "수량", "type": "number"}])
+        # title이 하나도 없으면 기존 속성 보존 + 새 title 속성 추가
+        assert out["수량"] == "number" and out.get("이름") == "title"
+
+    def test_dict_passthrough(self):
+        d = {"이름": "title", "상태": {"type": "status"}}
+        assert _normalize_db_properties(d) == d
+
+    def test_validate_ai_content_with_list_properties_no_crash(self):
+        """list 형태 properties가 와도 validate_ai_content가 크래시하지 않고 정규화."""
+        raw = {
+            "title": "독서 모임",
+            "blocks": [{"type": "callout", "text": "환영"}],
+            "databases": [
+                {
+                    "title": "회원",
+                    "db_properties": [{"name": "회원명", "type": "title"}, {"name": "참석", "type": "number"}],
+                    "sample_items": [{"회원명": "A"}, {"회원명": "B"}, {"회원명": "C"}],
+                }
+            ],
+        }
+        result, errors = validate_ai_content(raw)
+        assert not any("title 타입 속성이 없습니다" in e for e in errors)
+        props = result["databases"][0].get("db_properties", result["databases"][0].get("properties"))
+        assert isinstance(props, dict) and props.get("회원명") == "title"
 
 
 class TestAIContentSpec:
