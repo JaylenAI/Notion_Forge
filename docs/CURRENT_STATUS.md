@@ -1,7 +1,7 @@
 # 진행 현황 (Current Status)
 
 > 최종 업데이트: 2026-06-02
-> 현재 브랜치: feature/sellability-layer (Track 2 진행)
+> 현재 브랜치: feature/visual-premium-views (Track 2 진행)
 > 버전: **v0.1.7** (안정화 릴리스 — 2026-06-01)
 
 ---
@@ -16,8 +16,11 @@
 - ✅ **Phase A2 — 셀러빌리티 레이어** (2026-06-02)
   - 온보딩 "시작하기" 페이지 + 상단 네비 + 목차 자동 주입(멱등) + 리스팅 키트 생성.
   - 실데이터: golden 평균 **53.6→60.1(+6.5)**, flagship **88→92($100+)**. 라이브 "독서 트래커" **44.6→51.2**. 백엔드 **1,505** 테스트(신규 13)·ruff clean.
-- 🔄 다음: **Phase A3 — 시각 프리미엄** (Views API 큐레이션 활용·파일 업로드 커스텀 커버/아이콘·formula/status 풍부화)
-- ❌ A4 품질 게이트 차단형·결정성 / A5 RAG 코퍼스 / B1 AI 대화형 수정 / B2 캔버스 / C 완벽화
+- ✅ **Phase A3 — 시각 프리미엄** (2026-06-02)
+  - 뷰 큐레이션(속성→board/calendar 자동, 멱등) + 아이콘 보강(키워드 인지). view_ops·creation_executor는 완비 — 생성기가 풍부한 뷰를 채우게 함.
+  - 실데이터: golden 뷰 큐레이션 작동(dashboard +3뷰 등), 라이브 "프로젝트 대시보드" DB아이콘✅·table/board/calendar. 백엔드 **1,513** 테스트(신규 8)·ruff clean.
+- 🔄 다음: **Phase A4 — 품질 게이트 차단형 + 결정성** (A1 루브릭을 프리미엄 모드에서 차단형으로 + blueprint pin 재생성 안정성)
+- ❌ A5 RAG 코퍼스 / B1 AI 대화형 수정 / B2 캔버스 / C 완벽화
 
 ---
 

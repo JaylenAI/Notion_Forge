@@ -653,15 +653,17 @@ def _assemble_blueprint(content: dict, user_message: str = "") -> dict[str, Any]
             }
         )
 
-    # 셀러빌리티 보강 (Phase A2) — 온보딩/상단네비/목차 주입 + 리스팅 키트 (품질 측정 전에 적용)
+    # 셀러빌리티(A2) + 시각 프리미엄(A3) 보강 → 리스팅 키트 (품질 측정 전에 적용)
     try:
         from app.agent.listing_kit import build_listing_kit
         from app.agent.sellability import enrich_blueprint
+        from app.agent.visual_enrich import enrich_visuals
 
-        enrich_blueprint(blueprint)
+        enrich_blueprint(blueprint)  # A2: 온보딩/상단네비/목차
+        enrich_visuals(blueprint)  # A3: 뷰 큐레이션(board/calendar) + 아이콘 보강
         blueprint["metadata"]["listing_kit"] = build_listing_kit(blueprint)
     except Exception as e:
-        logger.info(f"[Sellability 스킵] {str(e)[:80]}")
+        logger.info(f"[Enrich 스킵] {str(e)[:80]}")
 
     # 품질 스코어카드 (비차단, Phase A1) — 구조 점수 + 유료급 루브릭을 metadata에 기록
     try:
