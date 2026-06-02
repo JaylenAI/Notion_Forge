@@ -32,6 +32,9 @@ class ClaudeProvider(BaseProvider):
             text = response.content[0].text
 
             logger.info(f"[Claude] 토큰: {response.usage.input_tokens}→{response.usage.output_tokens}")
+            from app.core.cost_control import note_tokens
+
+            note_tokens(response.usage.input_tokens + response.usage.output_tokens)
 
             return self.extract_json(text)
         except ImportError:

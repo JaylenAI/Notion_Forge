@@ -79,6 +79,16 @@ class GenerationMetrics:
         self.end_time = time.time()
         self.success = success
         self.error = error
+        # provider가 note_tokens로 누적한 세션 토큰을 기록 (metrics 항상 0 → 실측, Phase 5/C1)
+        if not self.tokens_used:
+            try:
+                from app.core.cost_control import current_budget
+
+                b = current_budget()
+                if b and b.tokens:
+                    self.tokens_used = b.tokens
+            except Exception:
+                pass
         self._log_summary()
 
     @property

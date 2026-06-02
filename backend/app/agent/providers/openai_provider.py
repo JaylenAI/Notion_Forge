@@ -51,6 +51,9 @@ class OpenAIProvider(BaseProvider):
                 usage = data.get("usage")
                 if usage:
                     logger.info(f"[OpenAI] 토큰: {usage.get('prompt_tokens', 0)}→{usage.get('completion_tokens', 0)}")
+                    from app.core.cost_control import note_tokens
+
+                    note_tokens(int(usage.get("prompt_tokens", 0)) + int(usage.get("completion_tokens", 0)))
 
                 return self.extract_json(text)
         except Exception as e:

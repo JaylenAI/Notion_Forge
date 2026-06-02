@@ -51,6 +51,9 @@ class GroqProvider(BaseProvider):
 
             if response.usage:
                 logger.info(f"[Groq] 토큰: {response.usage.prompt_tokens}→{response.usage.completion_tokens}")
+                from app.core.cost_control import note_tokens
+
+                note_tokens(response.usage.prompt_tokens + response.usage.completion_tokens)
 
             return self.extract_json(text)
         except ImportError:
