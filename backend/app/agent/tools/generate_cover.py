@@ -1,17 +1,23 @@
+import json
+from pathlib import Path
 from typing import Any
 
 from app.agent.tools.base import BaseTool
 
-COVER_URLS = {
-    "blue": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200",
-    "orange": "https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=1200",
-    "green": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1200",
-    "red": "https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=1200",
-    "purple": "https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?w=1200",
-    "pink": "https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=1200",
-    "yellow": "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1200",
-    "default": "https://images.unsplash.com/photo-1557683316-973673baf926?w=1200",
-}
+# 커버 URL은 data/cover_urls.json 단일 출처(SSOT)에서 로드. (인라인 8개 중복 제거 — C3)
+_COVER_FILE = Path(__file__).resolve().parent.parent / "data" / "cover_urls.json"
+_DEFAULT = "https://images.unsplash.com/photo-1557683316-973673baf926?w=1600"
+
+
+def _load_covers() -> dict[str, list[str]]:
+    try:
+        data = json.loads(_COVER_FILE.read_text(encoding="utf-8"))
+        return {k: (v if isinstance(v, list) else [v]) for k, v in data.items()}
+    except Exception:
+        return {"default": [_DEFAULT]}
+
+
+COVER_URLS = _load_covers()
 
 
 class GenerateCoverTool(BaseTool):
@@ -23,4 +29,5 @@ class GenerateCoverTool(BaseTool):
 
     async def execute(self, **kwargs: Any) -> dict[str, Any]:
         color = kwargs.get("color", "default")
-        return {"url": COVER_URLS.get(color, COVER_URLS["default"]), "color": color}
+        urls = COVER_URLS.get(color) or COVER_URLS.get("default") or [_DEFAULT]
+        return {"url": urls[0], "color": color}

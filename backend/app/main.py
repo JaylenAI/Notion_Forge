@@ -1,5 +1,4 @@
 import logging
-import os
 import time
 from contextlib import asynccontextmanager
 
@@ -82,8 +81,7 @@ def create_app() -> FastAPI:
         allow_headers=["Content-Type", "Authorization", "X-Notion-Token", "X-Request-ID"],
     )
 
-    rate_limit_rpm = int(os.environ.get("RATE_LIMIT_RPM", "60"))
-    app.add_middleware(RateLimitMiddleware, rpm=rate_limit_rpm)
+    app.add_middleware(RateLimitMiddleware, rpm=settings.rate_limit_rpm)
     app.add_middleware(RequestIdMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
 

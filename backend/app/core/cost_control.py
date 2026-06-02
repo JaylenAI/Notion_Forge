@@ -25,9 +25,9 @@ class BudgetExceededError(RuntimeError):
 
 @dataclass
 class CostBudget:
-    max_calls: int = 30
+    max_calls: int = 40  # config.max_llm_calls_per_session와 일치 (set_budget이 항상 주입; 기본값 혼선 방지)
     calls: int = 0
-    tokens: int = 0  # provider usage 보고 시 누적 (현재는 note_tokens로만 채워짐)
+    tokens: int = 0  # provider usage가 note_tokens로 누적 (Phase 5/C1 배선됨)
 
     def note_call(self) -> None:
         self.calls += 1

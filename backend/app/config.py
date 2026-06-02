@@ -8,9 +8,11 @@ class Settings(BaseSettings):
 
     # Groq API (무료, gpt-oss-120b)
     groq_api_key: str = ""
+    groq_model: str = "openai/gpt-oss-120b"
 
     # Gemini API (무료)
     gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
 
     # Claude API (유료, 선택)
     anthropic_api_key: str = ""
@@ -21,6 +23,7 @@ class Settings(BaseSettings):
     frontend_port: int = 9501
     frontend_url: str = "http://localhost:9501"
     cors_origins: list[str] = ["http://localhost:9501", "http://localhost:3000"]
+    rate_limit_rpm: int = 60  # HTTP IP 레이트리밋 (main.py가 Settings 우회하던 것 일원화)
 
     # Optional
     unsplash_access_key: str = ""

@@ -118,7 +118,7 @@ async def _groq_analyze(message: str) -> IntentResult:
 
         client = AsyncGroq(api_key=settings.groq_api_key)
         response = await client.chat.completions.create(
-            model="openai/gpt-oss-120b",
+            model=settings.groq_model,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": message},
@@ -145,7 +145,7 @@ async def _gemini_analyze(message: str) -> IntentResult:
 
         client = genai.Client(api_key=settings.gemini_api_key)
         response = await client.aio.models.generate_content(
-            model="gemini-2.5-flash",
+            model=settings.gemini_model,
             contents=message,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,

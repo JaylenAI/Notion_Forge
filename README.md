@@ -31,7 +31,7 @@
 Just say **"Build me a CRM dashboard"** — the AI designs databases, arranges 10 view types, wires Relations/Formulas/Rollups, lays out dashboard widgets, and fills in sample data. Supports 5 AI providers and leverages nearly every feature of the Notion API 2026-03-11.
 
 <table>
-<tr><td><b>Plan-Execute-Reflect Agent</b></td><td>Autonomous agent loop: AI selects tools, executes them, and self-validates — up to 3 re-plans for optimal results.</td></tr>
+<tr><td><b>Gen-Eval Quality Loop</b></td><td>Generate → validate → repair (up to 3 retries) plus an LLM quality judge that re-generates on fail (evaluator-optimizer). A tool-calling agent loop also exists as an optional path — not the default chat flow.</td></tr>
 <tr><td><b>11 Tools + 48 Skills</b></td><td>Tool Registry with LLM function calling. 12 Tier-1 + 36 Tier-2 domain-specific skills generate the perfect template for any request.</td></tr>
 <tr><td><b>5 AI Providers</b></td><td>Copilot SDK (GPT-4.1, free) / Claude / Gemini / Groq / OpenAI — Strategy Pattern auto-detects whichever API key you set.</td></tr>
 <tr><td><b>10 View Types + Dashboards</b></td><td>Table, Board, Calendar, Timeline, Gallery, List, Chart, Form, Dashboard, Pivot — auto-placed widgets with filter/sort bindings.</td></tr>

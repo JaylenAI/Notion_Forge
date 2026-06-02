@@ -1,7 +1,7 @@
 # 진행 현황 (Current Status)
 
 > 최종 업데이트: 2026-06-02
-> 현재 브랜치: dev (v1.0 완성 진행 — 축A + Phase 1~5 + E2E품질보정 머지됨, 다음 Phase 6/릴리스)
+> 현재 브랜치: dev (v1.0 — 코드 6 Phase 전부 완료, 릴리스만 남음(사용자 결정). dev origin +12)
 > 버전: **v0.1.7** (안정화 릴리스 — 2026-06-01)
 
 ---
@@ -32,7 +32,9 @@
 - ✅ **Phase 3 — B1 AI 대화형 수정 (1차)** (2026-06-02): LLM 분류기(자유 발화→올바른 핸들러, regex 폴백) + recolor("색 바꿔줘" 라이브 변경). **실 Notion E2E: 보라색 recolor 4/4 블록 확인** + rich_text 누락 400 수정. 1,547 green. (후속: op별 LLM 파라미터 추출·구조화 diff)
 - ✅ **Phase 4 — B2 캔버스 UX (1차)** (2026-06-02): 버전 히스토리/롤백(`VersionRail` — 세션 내 blueprint 리비전을 v1·v2·최신 칩으로 열람). 2-pane 프리뷰는 기존. 프론트 tsc/build·lint 0err·vitest 9. (후속: 스코프드 편집·점진 채워짐)
 - ✅ **Phase 5 — C1 비용 + C2 평가 (1차)** (2026-06-02): 토큰 집계 실측(provider usage→note_tokens→metrics.finish, /metrics 0→실측, **라이브 4,706토큰**) + 품질 회귀 게이트(recipe 밴드 미달 시 CI 실패). 1,555 green. (후속: 모델 라우팅·캐싱, 프론트 jsdom·라이브 Notion 회귀 CI)
-- 🔄 다음: **Phase 6 — C3 위생·정직화 + 릴리스** (死코드 `skill_matcher`+프론트 잔여·하드코딩4·README 정직화 + 버전 bump/dev→main/태그/push)
+- ✅ **Phase 6 — C3 위생·정직화** (2026-06-02): 死코드 7파일 제거(`skill_matcher`+프론트 5종)·하드코딩 4 봉합·README 정직화(Gen-Eval+judge로 정정)·.env.example 보강. 백엔드 1,545·프론트 build green.
+- 🏁 **v1.0 코드 6 Phase 전부 완료.** 남은 건 **릴리스(버전 bump/dev→main/태그/push) — 사용자 결정.**
+- 잔여 확장(선택, v1.0+): B1 파라미터 추출, B2 스코프드 편집, C1 모델 라우팅·캐싱, C2 jsdom·라이브 Notion 회귀 CI.
 
 ---
 

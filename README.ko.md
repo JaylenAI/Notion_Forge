@@ -31,7 +31,7 @@
 "CRM 대시보드 만들어줘" — 이 한 마디면 AI가 데이터베이스 설계, 뷰 10종 배치, Relation/Formula/Rollup 연결, 대시보드 위젯 구성, 샘플 데이터 채우기까지 전부 처리합니다. 5개 AI 프로바이더를 지원하고, Notion API 2026-03-11의 거의 모든 기능을 활용합니다.
 
 <table>
-<tr><td><b>Plan-Execute-Reflect Agent</b></td><td>AI가 도구를 직접 선택·실행·검증하는 자율 에이전트 루프. 최대 3회 Re-plan으로 최적 결과 도출.</td></tr>
+<tr><td><b>Gen-Eval 품질 루프</b></td><td>생성 → 검증 → 재생성(최대 3회) + LLM 품질 심사가 미달 시 재생성(evaluator-optimizer). 도구 호출 에이전트 루프도 있으나 선택적 경로 — 기본 채팅 흐름은 아님.</td></tr>
 <tr><td><b>11개 도구 + 48개 스킬</b></td><td>Tool Registry 기반 LLM function calling. 12개 Tier1 + 36개 Tier2 도메인 특화 스킬로 어떤 요청이든 최적 템플릿 생성.</td></tr>
 <tr><td><b>5개 AI 프로바이더</b></td><td>Copilot SDK (GPT-4.1, 무료) / Claude / Gemini / Groq / OpenAI — Strategy Pattern으로 API 키만 넣으면 자동 감지.</td></tr>
 <tr><td><b>뷰 10종 + 대시보드</b></td><td>Table, Board, Calendar, Timeline, Gallery, List, Chart, Form, Dashboard, Pivot — 위젯 자동 배치, 필터/정렬 바인딩.</td></tr>

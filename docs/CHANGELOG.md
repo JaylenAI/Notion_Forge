@@ -8,7 +8,7 @@
 
 > **Track 2 "유료급 품질" 진행 중** — 산출물을 $20-49 마켓플레이스 품질 바로 끌어올리는 작업.
 > **축A(유료급 품질) 전체 완료** — A1(품질 측정), A2(셀러빌리티), A3(시각 프리미엄), A4(품질 게이트+결정성), A5(도메인 예시 검색·주입).
-> **v1.0 완성 플랜 진행 중**: Phase 1·2·E2E보정·3(B1 1차)·4(B2 1차)·5(C1+C2 1차) 완료. 다음 Phase 6(C3 위생·정직화 + 릴리스).
+> **v1.0 완성 플랜 — 코드 6 Phase 전부 완료**: Phase 1·2·E2E보정·3(B1 1차)·4(B2 1차)·5(C1+C2 1차)·6-C3(위생·정직화). 남은 건 **릴리스(버전 bump/main 머지/태그/push — 사용자 결정)**.
 
 ### Added (Phase A1 — 품질 측정 인프라)
 - **유료급 품질 루브릭 (`premium_rubric`)** — 블루프린트를 0~100점 + 가격 밴드($0 / $5-15 / $20-49 / $50-99 / $100+)로 결정적 채점. 시장 리서치 기반 10개 기준(연결 DB·작동 rollup·대시보드·formula·온보딩·시각·샘플·모바일/네비, + 영상·지원은 산출물 밖으로 정규화 제외). 개선 약점 Top3 자동 도출.
@@ -110,6 +110,16 @@
 ### 검증 (Phase 5)
 - 백엔드 **1,555** 테스트(신규 8: 토큰 3 + 회귀 5), ruff clean. C1 라이브 토큰 집계 확인.
 - 후속(C1/C2 확장): 모델 라우팅(Haiku/Opus)·프롬프트 캐싱(Claude 특정), 프론트 컴포넌트 테스트(jsdom)·라이브 Notion 회귀 CI 워크플로.
+
+### Changed / Removed (Phase 6 — C3 위생·정직화)
+- **死코드 제거** — backend `skill_matcher.py`(+테스트), frontend 5종(Header·LoadingSpinner·SettingsPanel·lib/api·lib/i18n, ~340줄). 임포트 0 확인 후 삭제, 빌드 영향 0.
+- **하드코딩 균열 4 봉합** — generate_cover Unsplash 8개 → `cover_urls.json` SSOT 로드 / `RATE_LIMIT_RPM` config.Settings 일원화(os.environ 우회 제거) / `CostBudget` 기본 30→40(config 일치) / intent_analyzer 모델 하드코딩 → `settings.groq_model`·`gemini_model`.
+- **README 정직화** — "Plan-Execute-Reflect Agent / autonomous agent loop" 헤드라인을 실제 기본 경로(**Gen-Eval + judge→repair**)로 정정, 도구 호출 에이전트 루프는 '선택적 경로'로 명시(ko/en 양본).
+- **.env.example 보강** — groq/gemini/claude 모델, `enable_llm_judge`·`judge_repair_enabled`·`quality_gate_*`·`max_llm_calls_per_session` 추가.
+
+### 검증 (Phase 6/C3)
+- 백엔드 **1,545** 테스트(skill_matcher 死테스트 제거분 반영)·ruff clean, 프론트 build green.
+- 잔여(릴리스 직전 polish, 선택): README 본문 일부(플로우 다이어그램)·`/health` skills 카운트. 릴리스(버전 bump/dev→main/태그/push)는 **사용자 결정**.
 
 ---
 
