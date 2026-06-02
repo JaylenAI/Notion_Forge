@@ -623,6 +623,26 @@ def _fallback_title_from_message(user_message: str) -> str:
     return title or "새 템플릿"
 
 
+def _infer_db_name(databases: list[dict[str, Any]], idx: int) -> str | None:
+    """AI가 DB title을 누락했을 때 다른 DB의 relation이 이 DB(idx)를 가리키면
+    그 relation 이름을 DB명으로 유추한다(예: 고객 DB의 '거래' relation→DB1 ⇒ DB1='거래').
+
+    실 Notion E2E에서 '데이터베이스 1/2' generic 폴백이 유료급 품질을 해치던 문제 보정.
+    """
+    for j, other in enumerate(databases):
+        if j == idx or not isinstance(other, dict):
+            continue
+        props = other.get("db_properties") or other.get("properties") or {}
+        if not isinstance(props, dict):
+            continue
+        for pname, spec in props.items():
+            if isinstance(spec, dict) and spec.get("type") == "relation" and spec.get("target_db_index") == idx:
+                name = str(pname).strip()
+                if name and name.lower() != "items":
+                    return name
+    return None
+
+
 def _assemble_blueprint(content: dict, user_message: str = "") -> dict[str, Any]:
     """AI가 생성한 전체 구조를 Blueprint로 조립"""
     color = content.get("color", "gray")
@@ -679,7 +699,11 @@ def _assemble_blueprint(content: dict, user_message: str = "") -> dict[str, Any]
             # AI가 DB title을 안 주면(groq 등) 영어 'Items' 중복 대신 고유 한국어 기본값
             db_title = (db.get("title") or db.get("db_name") or "").strip()
             if not db_title or db_title.lower() == "items":
-                db_title = "데이터베이스" if len(content["databases"]) == 1 else f"데이터베이스 {i + 1}"
+                inferred = _infer_db_name(content["databases"], i)
+                if inferred:
+                    db_title = inferred
+                else:
+                    db_title = "데이터베이스" if len(content["databases"]) == 1 else f"데이터베이스 {i + 1}"
             blueprint["databases"].append(
                 {
                     "title": db_title,

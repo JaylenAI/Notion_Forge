@@ -76,6 +76,16 @@
 - 프론트 tsc+build 통과(312 모듈), eslint 0 errors(기존 a11y warn만), vitest **6 통과**(QualityPanel `bandTone` 2종 신규). 백엔드 무변경(**1,534** 유지).
 - 데이터 계약 확인: 백엔드 metadata(premium_*·listing_kit) ↔ QualityPanel 소비 일치(라이브 3-tier QA에서 실측: 중간 $50-99·어려움 $100+).
 
+### Fixed (E2E 품질 보정 — 실제 Notion E2E에서 발견)
+> 검증 기준 강화: 실데이터 = **실제 Notion 생성 + rollup 집계값까지 확인**(blueprint/점수에서 멈추지 않음).
+- **generic DB명 제거** — AI가 DB title 누락 시 `데이터베이스 1/2`로 폴백하던 것을, **다른 DB의 relation이 가리키면 그 이름으로 유추**(고객의 '거래' relation→DB1 ⇒ '거래').
+- **status 옵션 coercion** — AI가 옵션을 문자열(`"시작 전"`)로 주면 Notion 400(`options should be an object`)→status 드롭하던 것을 select과 동일하게 `{name,color}` 객체로 강제.
+- **live_qa 하네스 강화** — rollup **집계값**까지 검증 + generic DB명 플래그(구조·샘플행 수만 보던 한계 보정).
+
+### 검증 (E2E 품질 보정)
+- **실제 Notion E2E 재확인**: AI "고객 관리 CRM" → DB명 **고객/거래(정상)**, rollup '총 거래액' **실집계 [₩2.5M,2M,3M,9M]**. recipe crm → '총 딜금액' [₩3M,80M,5M,15M,50M].
+- 백엔드 **1,540** 테스트(신규 6), ruff clean.
+
 ---
 
 ## [0.1.7] - 2026-06-01

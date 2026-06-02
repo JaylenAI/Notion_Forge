@@ -642,7 +642,9 @@ def build_database_properties(props: dict[str, Any]) -> dict[str, Any]:
                 "pink",
                 "red",
             }
-            if prop_type in ("select", "multi_select") and "options" in spec:
+            if prop_type in ("select", "multi_select", "status") and "options" in spec:
+                # 옵션을 문자열("시작 전")로 줘도 {name,color} 객체로 강제.
+                # (status가 raw 통과해 'options[0] should be an object' 400 나던 E2E 결함 보정)
                 config["options"] = [
                     {
                         "name": str(opt["name"] if isinstance(opt, dict) else opt),
@@ -654,8 +656,6 @@ def build_database_properties(props: dict[str, Any]) -> dict[str, Any]:
                     }
                     for opt in spec["options"]
                 ]
-            elif prop_type == "status" and "options" in spec:
-                config["options"] = spec["options"]
             elif prop_type == "relation" and "database_id" in spec:
                 config["database_id"] = spec["database_id"]
                 if spec.get("single_property"):

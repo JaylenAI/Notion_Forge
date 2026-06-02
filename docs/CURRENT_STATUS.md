@@ -1,7 +1,7 @@
 # 진행 현황 (Current Status)
 
 > 최종 업데이트: 2026-06-02
-> 현재 브랜치: dev (v1.0 완성 진행 — 축A + Phase 1·2 머지됨, 다음 Phase 3)
+> 현재 브랜치: dev (v1.0 완성 진행 — 축A + Phase 1·2 + E2E품질보정 머지됨, 다음 Phase 3)
 > 버전: **v0.1.7** (안정화 릴리스 — 2026-06-01)
 
 ---
@@ -28,6 +28,7 @@
 - 🏁 **축A(유료급 품질) 전체 완료** (A1~A5) — 측정→셀러빌리티→시각→게이트→예시주입
 - ✅ **Phase 1 — 엔진 품질 마무리** (judge→repair, 2026-06-02): judge FAIL→약점 피드백→1회 재생성→더 나은 것 채택(evaluator-optimizer 완성). 단위 5종·**1,534** green.
 - ✅ **Phase 2 — 가치 가시화 + 정직성** (2026-06-02): QualityPanel(품질 등급·판매준비·점수·리스팅 초안 표시) + StatusBar 가짜 텔레메트리 제거 + ProfilePage 정적스킬→`/api/skills` 동적. 프론트 tsc/build/lint·vitest 6 통과. (토큰메트릭 정직화는 C1에서 실측 배선)
+- ✅ **E2E 품질 보정** (2026-06-02): 실제 Notion E2E에서 발견한 generic DB명·status 옵션 400·하네스 한계 수정. DB명 유추(고객/거래), status 옵션 객체화, **하네스가 rollup 집계값까지 검증**(재확인: 총거래액 [₩2.5M,2M,3M,9M] 실집계). 1,540 green. **QA 기준 = 실제 Notion 생성+rollup값 확인.**
 - 🔄 다음: **Phase 3 — B1 AI 대화형 수정**: ModifyHandler regex→LLM patch ("색 바꿔줘"·"DB 추가" 자유 수정)
 - ❌ Phase 4 B2(캔버스) / 5 C1+C2(비용·평가) / 6 C3+릴리스
 

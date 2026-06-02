@@ -50,6 +50,24 @@ async def _inspect_dbs(client: NotionClient, result: dict, expected_samples: dic
             if len(rows) < 1:
                 issues.append(f"{title}: 샘플행 0개 (AI가 샘플 미생성)")
         print(f"      relation={relation} rollup={rollup} formula={formula}")
+        if title == "데이터베이스" or title.startswith("데이터베이스 "):
+            issues.append(f"generic DB명 '{title}' — AI title 누락(유료급 흠)")
+        # rollup 집계값 검증 (차별점이 실제 집계되는지). Notion 비동기 계산 대기 후 재조회.
+        if rollup:
+            await asyncio.sleep(3)
+            fresh = await client.query_database(db_id)
+            for rname in rollup:
+                vals = [
+                    rv["number"]
+                    for row in fresh
+                    if (rv := row.get("properties", {}).get(rname, {}).get("rollup", {})).get("type") == "number"
+                    and rv.get("number") is not None
+                ]
+                if any(vals):
+                    print(f"      ✅ rollup '{rname}' 집계: {vals}")
+                else:
+                    issues.append(f"{title}.{rname}: rollup 집계값 0/None (샘플 링크 미연결 가능)")
+                    print(f"      ⚠️ rollup '{rname}' 집계값 없음")
         if not any(t == "title" for t in types.values()):
             issues.append(f"{title}: title 속성 없음")
     return issues
