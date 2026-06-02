@@ -62,7 +62,11 @@ async def test_recolor_updates_themed_and_heading_only():
     rt = [{"type": "text", "text": {"content": "내용"}}]
     fake = _FakeClient(
         blocks=[
-            {"id": "b1", "type": "callout", "callout": {"rich_text": rt, "color": "gray_background", "icon": {"emoji": "📌"}}},
+            {
+                "id": "b1",
+                "type": "callout",
+                "callout": {"rich_text": rt, "color": "gray_background", "icon": {"emoji": "📌"}},
+            },
             {"id": "b2", "type": "heading_1", "heading_1": {"rich_text": rt, "color": "default"}},
             {"id": "b3", "type": "divider", "divider": {}},
             {"id": "b4", "type": "quote", "quote": {"rich_text": rt, "color": "default"}},
