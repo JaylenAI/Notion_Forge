@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     # 품질 게이트 (Phase A4) — 프리미엄 모드에서 유료급 미달 시 경고 고지. 기본 비활성(측정만).
     quality_gate_enabled: bool = False
     quality_gate_min_score: float = 60.0  # $20-49 진입 기준점
+    # judge→repair (Phase 1) — LLM 심사 FAIL 시 약점 피드백으로 1회 재생성(evaluator-optimizer 완성)
+    judge_repair_enabled: bool = True
 
     @property
     def ai_provider(self) -> str:

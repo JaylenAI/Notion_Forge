@@ -173,23 +173,104 @@ def _evaluate_ai_output(content: dict[str, Any]) -> tuple[bool, list[str]]:
 # ============================================================
 
 
-async def _finalize_blueprint(blueprint: dict[str, Any], ai_key: str, ai_model: str) -> dict[str, Any]:
-    """성공 경로 마무리 — 설정 시 LLM 주관 심사를 metadata에 부착(비차단).
+async def _finalize_blueprint(
+    blueprint: dict[str, Any],
+    user_message: str,
+    ai_key: str,
+    ai_model: str,
+    skill_guide: str = "",
+    conversation_history: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    """성공 경로 마무리 — LLM 주관 심사 + (FAIL 시) 1회 품질 repair.
 
-    심사 실패/미설정/예산초과 시 blueprint를 그대로 반환한다(생성은 막지 않음).
+    evaluator-optimizer 완성: judge가 측정만 하던 것을, FAIL 시 약점을 피드백해
+    1회 재생성하고 더 나은 결과를 채택한다(Phase 1). 심사 실패/미설정/예산초과 시
+    blueprint를 그대로 반환한다(생성은 막지 않음).
     """
     try:
         from app.config import settings
 
-        if getattr(settings, "enable_llm_judge", True):
-            from app.agent.premium_judge import judge_blueprint
+        if not getattr(settings, "enable_llm_judge", True):
+            return blueprint
 
-            verdict = await judge_blueprint(blueprint, ai_key=ai_key, ai_model=ai_model)
-            if verdict is not None:
-                blueprint.setdefault("metadata", {}).update(verdict.to_metadata())
+        from app.agent.premium_judge import judge_blueprint
+
+        verdict = await judge_blueprint(blueprint, ai_key=ai_key, ai_model=ai_model)
+        if verdict is None:  # provider 무응답/형식불일치 → 그대로
+            return blueprint
+        blueprint.setdefault("metadata", {}).update(verdict.to_metadata())
+
+        # judge PASS or repair 비활성 → 측정만 하고 반환
+        if verdict.overall_pass or not getattr(settings, "judge_repair_enabled", True):
+            return blueprint
+
+        # judge FAIL → 약점 피드백으로 1회 재생성 (optimizer 단계)
+        return await _attempt_quality_repair(
+            blueprint, verdict, user_message, ai_key, ai_model, skill_guide, conversation_history
+        )
     except Exception as e:
         logger.info(f"[Judge 스킵] {str(e)[:80]}")
     return blueprint
+
+
+async def _attempt_quality_repair(
+    original: dict[str, Any],
+    verdict: Any,
+    user_message: str,
+    ai_key: str,
+    ai_model: str,
+    skill_guide: str,
+    conversation_history: list[dict[str, str]] | None,
+) -> dict[str, Any]:
+    """judge FAIL 시 약점 피드백으로 1회 재생성 → 더 나은 것 채택. 실패 시 원본 유지."""
+    try:
+        from app.agent.premium_judge import judge_blueprint
+        from app.schemas.blueprint import validate_ai_content
+
+        md = original.get("metadata", {})
+        fails = verdict.to_metadata().get("judge_fails", [])
+        premium_weak = md.get("premium_weakest", [])
+        feedback = (
+            f"{user_message}\n\n"
+            "[QUALITY FEEDBACK — 이전 설계가 판매 품질 기준 미달입니다. 다음을 개선해 다시 설계하세요]\n"
+            f"미달 심사 기준: {', '.join(fails) or '전반적 완성도'}\n"
+            f"약한 영역: {', '.join(premium_weak) or '구조 깊이'}\n"
+            "연결된 멀티 데이터베이스 + relation/rollup 집계 + 충분한 샘플데이터를 강화하세요."
+        )
+
+        candidate = await _call_ai_for_content(
+            feedback,
+            ai_key=ai_key,
+            ai_model=ai_model,
+            extra_context=skill_guide,
+            conversation_history=conversation_history,
+        )
+        if not candidate or not (candidate.get("databases") or candidate.get("db_properties")):
+            return original
+
+        candidate, _ = validate_ai_content(candidate)
+        is_pass, _ = _evaluate_ai_output(candidate)
+        if not is_pass:
+            candidate = blueprint_validator.validate_and_fix(candidate)
+
+        new_bp = _assemble_blueprint(candidate, user_message)  # enrich + 결정적 품질 재부착
+        new_bp["metadata"]["generation_method"] = md.get("generation_method", "ai_dynamic")
+        new_verdict = await judge_blueprint(new_bp, ai_key=ai_key, ai_model=ai_model)
+        if new_verdict is not None:
+            new_bp.setdefault("metadata", {}).update(new_verdict.to_metadata())
+
+        orig_score = md.get("premium_score", 0) or 0
+        new_score = new_bp.get("metadata", {}).get("premium_score", 0) or 0
+        new_pass = bool(new_verdict and new_verdict.overall_pass)
+        if new_score > orig_score or (new_score == orig_score and new_pass):
+            new_bp["metadata"]["judge_repaired"] = True
+            logger.info(f"[Judge repair] 채택 (유료급 {orig_score:.0f}→{new_score:.0f}, judge_pass={new_pass})")
+            return new_bp
+        logger.info(f"[Judge repair] 원본 유지 (재생성 {new_score:.0f} ≤ 원본 {orig_score:.0f})")
+        return original
+    except Exception as e:
+        logger.info(f"[Judge repair 스킵] {str(e)[:80]}")
+        return original
 
 
 async def generate_blueprint(
@@ -291,7 +372,9 @@ async def generate_blueprint(
                         gen_eval_attempts=attempt + 1,
                     )
                 )
-                return await _finalize_blueprint(blueprint, ai_key, ai_model)
+                return await _finalize_blueprint(
+                    blueprint, user_message, ai_key, ai_model, skill_guide, conversation_history
+                )
 
             # 검증 실패 → 에러를 피드백으로 구성
             error_count = len(eval_errors)
@@ -344,7 +427,7 @@ async def generate_blueprint(
         blueprint["metadata"]["generation_method"] = "ai_dynamic_partial"
         blueprint["metadata"]["gen_eval_attempts"] = max_retries
         blueprint["metadata"]["gen_eval_errors"] = best_error_count
-        return await _finalize_blueprint(blueprint, ai_key, ai_model)
+        return await _finalize_blueprint(blueprint, user_message, ai_key, ai_model, skill_guide, conversation_history)
 
     logger.info("[Gen-Eval 전체 실패 → 스마트 폴백 사용]")
     memory.save_episode(
