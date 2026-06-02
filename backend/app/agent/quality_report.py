@@ -53,11 +53,36 @@ def build_deterministic_report(blueprint: dict[str, Any]) -> QualityReport:
     )
 
 
+def evaluate_premium_gate(report: QualityReport, min_score: float) -> tuple[bool, list[str]]:
+    """유료급 게이트 판정 (Phase A4). (통과여부, 미달사유 목록) 반환.
+
+    결정적 신호만 사용(점수 + 구조 무결성) — judge 가용성에 의존하지 않는다.
+    judge 결과는 metadata(judge_pass)로 별도 노출된다.
+    """
+    blockers: list[str] = []
+    if report.premium.score < min_score:
+        weak = ", ".join(c.label for c in report.premium.weakest(2))
+        blockers.append(f"유료급 점수 {report.premium.score:.0f} < 기준 {min_score:.0f} (약점: {weak})")
+    if not report.structural_passed:
+        blockers.append("구조 검증 미통과(critical 오류)")
+    return (len(blockers) == 0), blockers
+
+
+def _attach_gate(blueprint: dict[str, Any], report: QualityReport) -> None:
+    from app.config import settings
+
+    ready, blockers = evaluate_premium_gate(report, settings.quality_gate_min_score)
+    md = blueprint.setdefault("metadata", {})
+    md["premium_ready"] = ready
+    md["premium_blockers"] = blockers
+
+
 def attach_deterministic_quality(blueprint: dict[str, Any]) -> QualityReport:
     """결정적 품질 신호를 계산해 blueprint['metadata']에 부착 (비차단)."""
     report = build_deterministic_report(blueprint)
     md = blueprint.setdefault("metadata", {})
     md.update(report.to_metadata())
+    _attach_gate(blueprint, report)
     logger.info(
         f"[QualityReport] 구조={report.structural_score:.0f} "
         f"유료급={report.premium.score:.0f} ({report.premium.band_price}) "

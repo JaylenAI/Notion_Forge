@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     max_llm_calls_per_session: int = 40
     # 품질 LLM 심사 (Phase A1) — 생성 후 주관적 품질 PASS/FAIL 평가. 비용 1콜/생성, 비차단.
     enable_llm_judge: bool = True
+    # 품질 게이트 (Phase A4) — 프리미엄 모드에서 유료급 미달 시 경고 고지. 기본 비활성(측정만).
+    quality_gate_enabled: bool = False
+    quality_gate_min_score: float = 60.0  # $20-49 진입 기준점
 
     @property
     def ai_provider(self) -> str:

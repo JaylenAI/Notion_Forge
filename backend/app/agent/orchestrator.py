@@ -188,6 +188,20 @@ class AgentOrchestrator:
                 ),
             }
 
+        # 품질 게이트 (Phase A4) — 프리미엄 모드에서 유료급 미달 시 고지(비차단).
+        from app.config import settings as _settings
+
+        if _settings.quality_gate_enabled and not meta.get("premium_ready", True):
+            blockers = meta.get("premium_blockers", [])
+            yield {
+                "type": "system",
+                "content": (
+                    "⚠️ 유료급 품질 기준 미달: "
+                    + ("; ".join(blockers) if blockers else "기준 점수 미달")
+                    + ". 더 구체적으로 요청하면(예: 연결할 데이터·계산 항목 명시) 품질을 높일 수 있어요."
+                ),
+            }
+
         # ── Approval Gate ──
         # require_approval=True면 사용자(또는 자동승인 호출자)의 승인을 대기한다.
         if self.require_approval:

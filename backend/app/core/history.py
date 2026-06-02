@@ -101,6 +101,44 @@ def load_recent_blueprints(limit: int = 100) -> list[dict]:
     return out
 
 
+# ── Blueprint Pin (Phase A4: 결정적 재생성) ──────────────────
+PINNED_DIR = BLUEPRINT_DIR / "pinned"
+
+
+def _safe_pin_id(pin_id: str) -> str:
+    safe = "".join(c for c in str(pin_id) if c.isalnum() or c in "-_")
+    return safe or "pin"
+
+
+def pin_blueprint(blueprint: dict, pin_id: str) -> Path | None:
+    """blueprint를 고정 id로 저장 (판매용 byte-stable 재생성).
+
+    같은 blueprint는 항상 동일 파일 바이트(sort_keys)로 저장돼, execute_blueprint(결정적)로
+    AI 없이 동일하게 재생성할 수 있다 — "이 템플릿 그대로 다시" 보장.
+    """
+    if not blueprint or not pin_id:
+        return None
+    try:
+        PINNED_DIR.mkdir(parents=True, exist_ok=True)
+        fp = PINNED_DIR / f"{_safe_pin_id(pin_id)}.json"
+        fp.write_text(json.dumps(blueprint, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+        return fp
+    except Exception as e:
+        logger.warning(f"[History] pin 저장 실패: {str(e)[:80]}")
+        return None
+
+
+def load_pinned(pin_id: str) -> dict | None:
+    """고정된 blueprint 로드 (없으면 None)."""
+    try:
+        fp = PINNED_DIR / f"{_safe_pin_id(pin_id)}.json"
+        if fp.exists():
+            return json.loads(fp.read_text(encoding="utf-8"))
+    except Exception as e:
+        logger.warning(f"[History] pin 로드 실패: {str(e)[:80]}")
+    return None
+
+
 def cleanup_old_history(retention_days: int = 30) -> int:
     """오래된 이력 파일 삭제 (보존 정책)
 

@@ -1,7 +1,7 @@
 # 진행 현황 (Current Status)
 
 > 최종 업데이트: 2026-06-02
-> 현재 브랜치: feature/visual-premium-views (Track 2 진행)
+> 현재 브랜치: dev (Track 2 진행 — A1~A4 머지됨, 다음 A5)
 > 버전: **v0.1.7** (안정화 릴리스 — 2026-06-01)
 
 ---
@@ -19,8 +19,11 @@
 - ✅ **Phase A3 — 시각 프리미엄** (2026-06-02)
   - 뷰 큐레이션(속성→board/calendar 자동, 멱등) + 아이콘 보강(키워드 인지). view_ops·creation_executor는 완비 — 생성기가 풍부한 뷰를 채우게 함.
   - 실데이터: golden 뷰 큐레이션 작동(dashboard +3뷰 등), 라이브 "프로젝트 대시보드" DB아이콘✅·table/board/calendar. 백엔드 **1,513** 테스트(신규 8)·ruff clean.
-- 🔄 다음: **Phase A4 — 품질 게이트 차단형 + 결정성** (A1 루브릭을 프리미엄 모드에서 차단형으로 + blueprint pin 재생성 안정성)
-- ❌ A5 RAG 코퍼스 / B1 AI 대화형 수정 / B2 캔버스 / C 완벽화
+- ✅ **Phase A4 — 품질 게이트 + 결정성** (2026-06-02)
+  - `premium_ready` 판정 + 미달 사유 고지(`quality_gate_enabled`) + blueprint pin(byte-stable 재생성). 실데이터 QA로 QualityValidator title false-positive(게이트 차단급) 발견·수정.
+  - 게이트 검증: 프리미엄(92/86/84) ✅통과 / 단순($40-57) ❌차단. 백엔드 **1,521** 테스트·ruff clean.
+- 🔄 다음: **Phase A5 — RAG exemplar 코퍼스** (도메인별 우수 예시 큐레이션 + few-shot 주입 — 품질 최대 레버)
+- ❌ B1 AI 대화형 수정 / B2 캔버스 / C 완벽화
 
 ---
 

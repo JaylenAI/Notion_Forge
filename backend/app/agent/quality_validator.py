@@ -156,7 +156,9 @@ class QualityValidator:
         blocks = bp.get("blocks", [])
         databases = bp.get("databases", [])
 
-        if not bp.get("title"):
+        # 제목은 top-level(원시 content) 또는 main_page/metadata(조립된 blueprint)에 있을 수 있다.
+        title = bp.get("title") or bp.get("main_page", {}).get("title") or bp.get("metadata", {}).get("title")
+        if not title:
             issues.append(ValidationIssue("schema", "critical", "title 필드가 없습니다.", "title"))
 
         if not blocks:
@@ -437,7 +439,7 @@ class QualityValidator:
     def validate_design(self, bp: dict[str, Any]) -> list[ValidationIssue]:
         issues: list[ValidationIssue] = []
         blocks = bp.get("blocks", [])
-        color = bp.get("color", "default")
+        color = bp.get("color") or bp.get("metadata", {}).get("color_theme", "default")
         sub_pages = bp.get("sub_pages", [])
 
         if not blocks:
@@ -527,7 +529,7 @@ class QualityValidator:
                     )
                 )
 
-        if not bp.get("icon"):
+        if not (bp.get("icon") or bp.get("main_page", {}).get("icon")):
             issues.append(
                 ValidationIssue(
                     "design",

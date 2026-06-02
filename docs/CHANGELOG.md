@@ -7,7 +7,7 @@
 ## [Unreleased]
 
 > **Track 2 "유료급 품질" 진행 중** — 산출물을 $20-49 마켓플레이스 품질 바로 끌어올리는 작업.
-> Phase A1(품질 측정 인프라), A2(셀러빌리티 레이어), A3(시각 프리미엄) 완료.
+> Phase A1(품질 측정), A2(셀러빌리티), A3(시각 프리미엄), A4(품질 게이트+결정성) 완료.
 
 ### Added (Phase A1 — 품질 측정 인프라)
 - **유료급 품질 루브릭 (`premium_rubric`)** — 블루프린트를 0~100점 + 가격 밴드($0 / $5-15 / $20-49 / $50-99 / $100+)로 결정적 채점. 시장 리서치 기반 10개 기준(연결 DB·작동 rollup·대시보드·formula·온보딩·시각·샘플·모바일/네비, + 영상·지원은 산출물 밖으로 정규화 제외). 개선 약점 Top3 자동 도출.
@@ -39,6 +39,17 @@
 - 라이브: "프로젝트 대시보드" 실제 AI 생성 → DB 아이콘 ✅ 자동 채움, table/board/calendar 다중 뷰, 리스팅에 "다중 뷰" 노출.
 - 백엔드 **1,513** 테스트 통과(A3 신규 8), ruff clean.
 - 참고: 뷰 풍부화는 실제 산출물·리스팅·LLM 심사엔 반영되나 결정적 루브릭 점수엔 직접 미반영(단일DB는 핵심 약점이 relation_rollup/linked_db — A5에서 해소).
+
+### Added (Phase A4 — 품질 게이트 + 결정성)
+- **품질 게이트 (`quality_report.evaluate_premium_gate`)** — 유료급 점수 + 구조 무결성으로 `premium_ready` 판정 + 미달 사유(약점 가이드 포함)를 metadata에 부착. `quality_gate_enabled` 시 orchestrator가 미달을 고지(비차단). 기준 `quality_gate_min_score`(기본 60 = $20-49).
+- **blueprint pin (`history.pin_blueprint`/`load_pinned`)** — 생성 blueprint를 고정 id로 byte-stable 저장 → `execute_blueprint`(결정적)로 AI 없이 동일 재생성("이 템플릿 그대로 다시").
+
+### Fixed (Phase A4 — 실데이터 QA에서 발견)
+- **QualityValidator title/icon/color false-positive (게이트 차단급)** — 조립된 blueprint는 제목이 main_page/metadata에 있는데 top-level `title`만 확인해 **모든 조립 blueprint를 'title 없음' critical로 오판** → 게이트가 정상 프리미엄 템플릿(dashboard_widgets 92, crm 86)까지 막던 결함. title/icon/color 조회를 조립 구조까지 보도록 하위호환 수정. (A1 이전엔 `passed` 미사용으로 잠복하던 결함)
+
+### 실데이터 검증 (Phase A4)
+- 게이트 판정: dashboard_widgets(92)·crm(86)·okr(84) ✅통과, 단순 단일DB($40-57) ❌차단(사유: relation_rollup 약점). 기준대로 정확히 변별.
+- 백엔드 **1,521** 테스트 통과(A4 신규 8 + 회귀 1), ruff clean.
 
 ---
 
