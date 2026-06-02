@@ -8,7 +8,7 @@
 
 > **Track 2 "유료급 품질" 진행 중** — 산출물을 $20-49 마켓플레이스 품질 바로 끌어올리는 작업.
 > **축A(유료급 품질) 전체 완료** — A1(품질 측정), A2(셀러빌리티), A3(시각 프리미엄), A4(품질 게이트+결정성), A5(도메인 예시 검색·주입).
-> **v1.0 완성 플랜 진행 중**: Phase 1(엔진 품질 마무리), Phase 2(가치 가시화·정직성) 완료. 다음 Phase 3(B1 대화형 수정).
+> **v1.0 완성 플랜 진행 중**: Phase 1(엔진 품질), 2(가치·정직), E2E 품질보정, 3(B1 대화형 수정 1차) 완료. 다음 Phase 4(B2 캔버스).
 
 ### Added (Phase A1 — 품질 측정 인프라)
 - **유료급 품질 루브릭 (`premium_rubric`)** — 블루프린트를 0~100점 + 가격 밴드($0 / $5-15 / $20-49 / $50-99 / $100+)로 결정적 채점. 시장 리서치 기반 10개 기준(연결 DB·작동 rollup·대시보드·formula·온보딩·시각·샘플·모바일/네비, + 영상·지원은 산출물 밖으로 정규화 제외). 개선 약점 Top3 자동 도출.
@@ -85,6 +85,18 @@
 ### 검증 (E2E 품질 보정)
 - **실제 Notion E2E 재확인**: AI "고객 관리 CRM" → DB명 **고객/거래(정상)**, rollup '총 거래액' **실집계 [₩2.5M,2M,3M,9M]**. recipe crm → '총 딜금액' [₩3M,80M,5M,15M,50M].
 - 백엔드 **1,540** 테스트(신규 6), ruff clean.
+
+### Added (Phase 3 — B1 AI 대화형 수정, 1차)
+- **LLM 수정 분류기 (`modify_classifier`)** — ModifyHandler의 regex 분류(자유 발화·미지원 op 누락) 대신 LLM이 요청+템플릿 맥락으로 operation 분류. provider 실패 시 **regex 폴백**(robustness 유지).
+- **recolor 핸들러** — "색 바꿔줘/파란색으로" → **라이브 Notion 페이지 블록 색을 실제 변경**(callout/heading/quote/toggle). regex엔 핸들러조차 없던 기능.
+- `handle_modify`: LLM 분류 우선 → 기존 검증된 핸들러 재사용 + recolor 신설.
+
+### Fixed (Phase 3 — 실 Notion E2E에서 발견)
+- **recolor가 rich_text 누락으로 Notion 400**('rich_text should be defined') → heading/quote/toggle 실제 변경 실패+성공 오보고하던 것을, 기존 rich_text/icon 보존 + 실패(fallback)는 카운트 제외로 수정.
+
+### 검증 (Phase 3)
+- 백엔드 **1,547** 테스트(B1 신규 7), ruff clean. **실 Notion E2E: 생성→"보라색으로 바꿔줘"→callout/heading/quote/toggle 4/4 실제 purple 변경 확인.**
+- 후속(B1 확장): op별 LLM 파라미터 추출(현재 분류만 LLM·파라미터는 핸들러 자체 파싱), 구조화 diff/스코프드 편집.
 
 ---
 

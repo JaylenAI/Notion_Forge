@@ -35,6 +35,7 @@ class ModifyHandler:
 
     # ── 디스패치 테이블: 수정 유형 → 핸들러 메서드 이름 ──────────
     _HANDLERS: dict[str, str] = {
+        "recolor": "_handle_recolor",
         "delete_property": "_handle_delete_property",
         "add_property": "_handle_add_property",
         "add_view": "_handle_add_view",
@@ -75,7 +76,12 @@ class ModifyHandler:
             yield {"type": "ai_response", "content": "수정할 템플릿이 없습니다. 먼저 템플릿을 생성해주세요."}
             return
 
-        modify_type = self._classify_modify_type(message, result)
+        # LLM 분류 우선 (자유 발화·recolor 등 지원), 실패/미설정 시 regex 폴백 (robustness)
+        from app.agent.modify_classifier import classify_modification
+
+        modify_type = await classify_modification(message, result, last_blueprint, self.ai_key, self.ai_model)
+        if not modify_type:
+            modify_type = self._classify_modify_type(message, result)
         handler_name = self._HANDLERS.get(modify_type, "_handle_modify_default")
         handler = getattr(self, handler_name)
 
@@ -141,6 +147,49 @@ class ModifyHandler:
         return "modify_default"
 
     # ── 개별 핸들러 ────────────────────────────────────────────────
+
+    async def _handle_recolor(
+        self,
+        message: str,
+        result: dict[str, Any],
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """라이브 페이지 블록 색상을 테마 색으로 변경 (B1 — '색 바꿔줘')."""
+        from app.agent.intent_analyzer import COLOR_MAP
+
+        msg = message.lower()
+        new_color = next((en for kr, en in COLOR_MAP.items() if kr in msg), None)
+        if not new_color:
+            yield {"type": "ai_response", "content": "어떤 색으로 바꿀까요? (예: 파란색, 초록색, 보라색)"}
+            return
+
+        main_page_id = result["pages"][0]["id"]
+        yield {"type": "progress", "step": "modifying", "message": f"🎨 {new_color} 테마로 색상을 바꾸고 있어요..."}
+        bg = f"{new_color}_background"
+        themed = {"callout", "quote", "toggle"}
+        headings = {"heading_1", "heading_2", "heading_3"}
+        changed = 0
+        try:
+            children = await self.client.get_block_children(main_page_id)
+            for ch in children:
+                t = ch.get("type")
+                if t not in themed and t not in headings:
+                    continue
+                payload = ch.get(t, {}) or {}
+                # Notion 블록 update는 rich_text가 필수 → 기존 내용 보존하고 color만 교체.
+                upd: dict[str, Any] = {"color": bg if t in themed else new_color}
+                if payload.get("rich_text") is not None:
+                    upd["rich_text"] = payload["rich_text"]
+                if t == "callout" and payload.get("icon"):
+                    upd["icon"] = payload["icon"]
+                res = await self.client.update_block(ch["id"], {t: upd})
+                if not (isinstance(res, dict) and res.get("fallback")):
+                    changed += 1
+            if changed:
+                yield {"type": "complete", "content": f"✅ {changed}개 블록을 {new_color} 테마로 바꿨어요!"}
+            else:
+                yield {"type": "ai_response", "content": "색을 적용할 블록을 찾지 못했어요(콜아웃/헤딩 없음)."}
+        except Exception as e:
+            yield {"type": "error", "content": f"색상 변경 실패: {str(e)[:100]}"}
 
     async def _handle_delete_property(
         self,
