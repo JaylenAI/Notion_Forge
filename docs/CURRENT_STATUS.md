@@ -1,7 +1,7 @@
 # 진행 현황 (Current Status)
 
 > 최종 업데이트: 2026-06-02
-> 현재 브랜치: dev (Track 2 진행 — A1~A4 머지됨, 다음 A5)
+> 현재 브랜치: dev (Track 2 진행 — 축A(A1~A5) 머지됨, 다음 축B/B1)
 > 버전: **v0.1.7** (안정화 릴리스 — 2026-06-01)
 
 ---
@@ -22,8 +22,12 @@
 - ✅ **Phase A4 — 품질 게이트 + 결정성** (2026-06-02)
   - `premium_ready` 판정 + 미달 사유 고지(`quality_gate_enabled`) + blueprint pin(byte-stable 재생성). 실데이터 QA로 QualityValidator title false-positive(게이트 차단급) 발견·수정.
   - 게이트 검증: 프리미엄(92/86/84) ✅통과 / 단순($40-57) ❌차단. 백엔드 **1,521** 테스트·ruff clean.
-- 🔄 다음: **Phase A5 — RAG exemplar 코퍼스** (도메인별 우수 예시 큐레이션 + few-shot 주입 — 품질 최대 레버)
-- ❌ B1 AI 대화형 수정 / B2 캔버스 / C 완벽화
+- ✅ **Phase A5 — 도메인 예시 검색·주입** (2026-06-02)
+  - 고품질 recipe를 예시 코퍼스로, 도메인 키워드(한국어 포함) 매칭 → 멀티DB 예시를 생성 프롬프트에 주입. **벡터 RAG 아님**(golden few-shot 확장, 무DB).
+  - 라이브: "고객 관리 영업 시스템" → 실제 AI 3DB·relation 2개, **70.4 ($20-49) premium_ready=True**. 백엔드 **1,529** 테스트.
+- 🏁 **축A(유료급 품질) 전체 완료** (A1~A5) — 측정→셀러빌리티→시각→게이트→예시주입
+- 🔄 다음: **축B / Phase B1 — AI 대화형 수정** (ModifyHandler regex → LLM patch 루프, "색 바꿔줘"·"DB 추가" 자유 수정)
+- ❌ B2 캔버스 / C1~C3 완벽화(비용·평가·정직화)
 
 ---
 

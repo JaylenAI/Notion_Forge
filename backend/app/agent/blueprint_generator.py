@@ -211,6 +211,13 @@ async def generate_blueprint(
     if memory_context:
         skill_guide += f"\n\n{memory_context}"
 
+    # 도메인 매칭 우수 예시 주입 (Phase A5) — 멀티DB+집계 구조 모방 유도 (벡터 아님, 키워드 매칭)
+    from app.agent.exemplar_retriever import build_exemplar_hint
+
+    exemplar_hint = build_exemplar_hint(user_message)
+    if exemplar_hint:
+        skill_guide += f"\n\n{exemplar_hint}"
+
     max_retries = 3
     feedback_context = ""
     best_content: dict[str, Any] | None = None
