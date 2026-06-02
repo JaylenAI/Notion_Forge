@@ -110,13 +110,17 @@ cd frontend && npm install && npm run dev
 
 | Feature | Description |
 |---------|-------------|
-| Plan-Execute-Reflect Loop | AI autonomously selects tools, executes, and validates — up to 3 re-plans |
-| Tool Registry (11 tools) | create_page, create_database, add_blocks, create_columns, add_database_items, link_databases, create_view, create_worker, register_external_agent, apply_color_theme, generate_cover |
-| Hybrid SkillRouter | Keyword fast-path (score >= 2) + LLM precise classification |
-| Episodic Memory | Learns success/failure patterns + remembers user preferences |
-| Provider Strategy | 5 providers with auto-detection + Fallback Chain + Circuit Breaker |
-| Input Guardrail | Prompt injection defense + input validation |
-| Approval Gate | User confirmation before creation begins |
+| Gen-Eval + judge→repair | Generate → validate → repair (≤3) + LLM quality judge re-generates on fail (evaluator-optimizer) |
+| Premium quality rubric & gate | 0–100 sellability score + price band ($0 / $5-15 / $20-49 / $50-99 / $100+) |
+| Sellability layer | Auto onboarding page, top nav, table-of-contents, listing kit |
+| Visual premium | Property-based view curation (board/calendar) + icon enrichment |
+| Domain exemplar injection | Retrieves curated multi-DB examples to steer structure |
+| Conversational edit | LLM-classified modifications + live recolor ("make it blue") |
+| Hybrid SkillRouter | Keyword fast-path + LLM precise classification (48 skills) |
+| Episodic Memory | Learns success/failure patterns + user preferences |
+| Provider Strategy | 5 providers, auto-detection + Fallback Chain + Circuit Breaker + token accounting |
+| Input Guardrail / Approval Gate | Prompt injection defense; user confirmation before creation |
+| Tool-calling agent loop (optional) | 11-tool registry path — not the default chat flow |
 
 ### Full Notion API Coverage (2026-03-11)
 
@@ -175,7 +179,7 @@ User Input
   |
   +-- [9] Approval Gate --------- User confirmation / cancel
   |
-  +-- [10] Agent Loop ----------- Plan-Execute-Reflect (11-tool Tool Registry)
+  +-- [10] Quality + judge->repair  Premium rubric/gate + LLM judge, re-gen on fail (agent loop = optional, off default)
   |
   +-- [11] 5-Pass Creation ------ Page -> Subpages -> DB(legacy) -> Views(latest) -> Sample data
   |

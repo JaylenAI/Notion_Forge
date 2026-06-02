@@ -110,13 +110,17 @@ cd frontend && npm install && npm run dev
 
 | 기능 | 설명 |
 |------|------|
-| Plan-Execute-Reflect 루프 | AI가 도구 선택 → 실행 → 검증을 자율 반복 (최대 3회 Re-plan) |
-| Tool Registry 11개 | create_page, create_database, add_blocks, create_columns, add_database_items, link_databases, create_view, create_worker, register_external_agent, apply_color_theme, generate_cover |
-| 하이브리드 SkillRouter | 키워드 빠른경로 (score>=2) + LLM 정밀 분류 |
+| Gen-Eval + judge→repair | 생성 → 검증 → 재생성(≤3) + LLM 품질 심사가 미달 시 재생성 (evaluator-optimizer) |
+| 유료급 품질 루브릭·게이트 | 0~100 판매 품질 점수 + 가격 밴드 ($0 / $5-15 / $20-49 / $50-99 / $100+) |
+| 셀러빌리티 레이어 | 온보딩 "시작하기" 페이지·상단 네비·목차·리스팅 키트 자동 생성 |
+| 시각 프리미엄 | 속성 기반 뷰 큐레이션(board/calendar) + 아이콘 보강 |
+| 도메인 예시 주입 | 큐레이션된 멀티DB 예시로 구조 유도 |
+| 대화형 수정 | LLM 분류 기반 수정 + 라이브 recolor("파란색으로 바꿔줘") |
+| 하이브리드 SkillRouter | 키워드 빠른경로 + LLM 정밀 분류 (48 스킬) |
 | Episodic Memory | 성공/실패 패턴 학습 + 유저 선호도 기억 |
-| Provider Strategy | 5개 프로바이더 자동 감지 + Fallback Chain + Circuit Breaker |
-| Input Guardrail | 프롬프트 인젝션 방어 + 입력 검증 |
-| Approval Gate | 생성 전 사용자 확인/취소 |
+| Provider Strategy | 5개 프로바이더 자동 감지 + Fallback Chain + Circuit Breaker + 토큰 집계 |
+| Input Guardrail / Approval Gate | 프롬프트 인젝션 방어; 생성 전 사용자 확인 |
+| 도구 호출 에이전트 루프 (선택) | 11개 도구 레지스트리 경로 — 기본 채팅 흐름 아님 |
 
 ### Notion API 전체 지원 (2026-03-11)
 
@@ -175,7 +179,7 @@ User Input
   │
   ├─ [9] Approval Gate ───── 사용자 확인/취소
   │
-  ├─ [10] Agent Loop ──────── Plan-Execute-Reflect (Tool Registry 11개 도구)
+  ├─ [10] 품질 + judge→repair ─ 유료급 루브릭/게이트 + LLM 심사·재생성 (에이전트 루프=선택, 기본 아님)
   │
   ├─ [11] 5-Pass Creation ── 페이지 → 서브페이지 → DB(레거시) → 뷰(최신) → 샘플 데이터
   │
