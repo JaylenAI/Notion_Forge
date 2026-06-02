@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     gen_eval_max_retries: int = 3
     # 세션당 LLM 호출 상한 (비용 폭주 방지). Gen-Eval·멀티에이전트·AgentLoop 누적 호출의 안전망.
     max_llm_calls_per_session: int = 40
+    # 품질 LLM 심사 (Phase A1) — 생성 후 주관적 품질 PASS/FAIL 평가. 비용 1콜/생성, 비차단.
+    enable_llm_judge: bool = True
 
     @property
     def ai_provider(self) -> str:

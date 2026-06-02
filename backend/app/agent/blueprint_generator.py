@@ -173,6 +173,25 @@ def _evaluate_ai_output(content: dict[str, Any]) -> tuple[bool, list[str]]:
 # ============================================================
 
 
+async def _finalize_blueprint(blueprint: dict[str, Any], ai_key: str, ai_model: str) -> dict[str, Any]:
+    """성공 경로 마무리 — 설정 시 LLM 주관 심사를 metadata에 부착(비차단).
+
+    심사 실패/미설정/예산초과 시 blueprint를 그대로 반환한다(생성은 막지 않음).
+    """
+    try:
+        from app.config import settings
+
+        if getattr(settings, "enable_llm_judge", True):
+            from app.agent.premium_judge import judge_blueprint
+
+            verdict = await judge_blueprint(blueprint, ai_key=ai_key, ai_model=ai_model)
+            if verdict is not None:
+                blueprint.setdefault("metadata", {}).update(verdict.to_metadata())
+    except Exception as e:
+        logger.info(f"[Judge 스킵] {str(e)[:80]}")
+    return blueprint
+
+
 async def generate_blueprint(
     user_message: str,
     ai_key: str = "",
@@ -265,7 +284,7 @@ async def generate_blueprint(
                         gen_eval_attempts=attempt + 1,
                     )
                 )
-                return blueprint
+                return await _finalize_blueprint(blueprint, ai_key, ai_model)
 
             # 검증 실패 → 에러를 피드백으로 구성
             error_count = len(eval_errors)
@@ -318,7 +337,7 @@ async def generate_blueprint(
         blueprint["metadata"]["generation_method"] = "ai_dynamic_partial"
         blueprint["metadata"]["gen_eval_attempts"] = max_retries
         blueprint["metadata"]["gen_eval_errors"] = best_error_count
-        return blueprint
+        return await _finalize_blueprint(blueprint, ai_key, ai_model)
 
     logger.info("[Gen-Eval 전체 실패 → 스마트 폴백 사용]")
     memory.save_episode(
@@ -634,15 +653,13 @@ def _assemble_blueprint(content: dict, user_message: str = "") -> dict[str, Any]
             }
         )
 
-    # 품질 스코어카드 (비차단) — 생성은 막지 않고 점수만 metadata에 기록
+    # 품질 스코어카드 (비차단, Phase A1) — 구조 점수 + 유료급 루브릭을 metadata에 기록
     try:
-        from app.agent.quality_validator import QualityValidator
+        from app.agent.quality_report import attach_deterministic_quality
 
-        qresult = QualityValidator().validate(blueprint)
-        blueprint["metadata"]["quality_score"] = qresult.score
-        blueprint["metadata"]["quality_breakdown"] = qresult.layer_scores
+        attach_deterministic_quality(blueprint)
     except Exception as e:
-        logger.info(f"[QualityValidator 스킵] {str(e)[:80]}")
+        logger.info(f"[QualityReport 스킵] {str(e)[:80]}")
 
     return blueprint
 

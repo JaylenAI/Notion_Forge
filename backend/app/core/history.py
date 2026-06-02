@@ -6,12 +6,15 @@ data/history/ 디렉토리에 날짜별 파일.
 
 import json
 import logging
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
 logger = logging.getLogger("notionforge.history")
 
 HISTORY_DIR = Path(__file__).parent.parent.parent / "data" / "history"
+# 전체 blueprint 본문 저장 (error analysis / 품질 회귀 분석용). 메타데이터 JSONL과 별개.
+BLUEPRINT_DIR = Path(__file__).parent.parent.parent / "data" / "blueprints"
 
 
 def save_generation_record(metrics_dict: dict, blueprint: dict | None = None) -> Path | None:
@@ -52,6 +55,10 @@ def save_generation_record(metrics_dict: dict, blueprint: dict | None = None) ->
         with open(filepath, "a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
+        # 전체 blueprint도 별도 파일로 보관 (error analysis용). 메타데이터 JSONL은 그대로 인덱스 역할.
+        if blueprint:
+            save_full_blueprint(blueprint)
+
         logger.info(f"[History] 이력 저장: {filepath.name}")
         return filepath
 
@@ -60,29 +67,71 @@ def save_generation_record(metrics_dict: dict, blueprint: dict | None = None) ->
         return None
 
 
+def save_full_blueprint(blueprint: dict) -> Path | None:
+    """전체 blueprint 본문을 data/blueprints/<date>/ 에 저장 (error analysis / 재현용).
+
+    Phase A1: '메타데이터만 저장'(블루프린트 전체 유실) 한계를 DB 없이 로컬 파일로 보완.
+    """
+    if not blueprint:
+        return None
+    try:
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        day_dir = BLUEPRINT_DIR / today
+        day_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%H%M%S_%f")
+        filepath = day_dir / f"{stamp}.json"
+        filepath.write_text(json.dumps(blueprint, ensure_ascii=False, indent=2), encoding="utf-8")
+        return filepath
+    except Exception as e:
+        logger.warning(f"[History] 전체 blueprint 저장 실패: {str(e)[:80]}")
+        return None
+
+
+def load_recent_blueprints(limit: int = 100) -> list[dict]:
+    """error analysis용 — 최근 저장된 전체 blueprint 본문 로드 (최신순)."""
+    out: list[dict] = []
+    if not BLUEPRINT_DIR.exists():
+        return out
+    files = sorted(BLUEPRINT_DIR.glob("*/*.json"), reverse=True)[:limit]
+    for f in files:
+        try:
+            out.append(json.loads(f.read_text(encoding="utf-8")))
+        except Exception:
+            continue
+    return out
+
+
 def cleanup_old_history(retention_days: int = 30) -> int:
     """오래된 이력 파일 삭제 (보존 정책)
 
     Returns:
         삭제된 파일 수
     """
-    if not HISTORY_DIR.exists():
-        return 0
-
     cutoff = datetime.now(timezone.utc) - __import__("datetime").timedelta(days=retention_days)
     cutoff_str = cutoff.strftime("%Y-%m-%d")
     deleted = 0
 
-    for filepath in HISTORY_DIR.glob("*.jsonl"):
-        if filepath.stem < cutoff_str:
-            try:
-                filepath.unlink()
-                deleted += 1
-            except Exception:
-                continue
+    if HISTORY_DIR.exists():
+        for filepath in HISTORY_DIR.glob("*.jsonl"):
+            if filepath.stem < cutoff_str:
+                try:
+                    filepath.unlink()
+                    deleted += 1
+                except Exception:
+                    continue
+
+    # 전체 blueprint 디렉토리(data/blueprints/<date>/)도 보존 기간 적용
+    if BLUEPRINT_DIR.exists():
+        for day_dir in BLUEPRINT_DIR.glob("*"):
+            if day_dir.is_dir() and day_dir.name < cutoff_str:
+                try:
+                    shutil.rmtree(day_dir)
+                    deleted += 1
+                except Exception:
+                    continue
 
     if deleted > 0:
-        logger.info(f"[History] {deleted}개 오래된 이력 파일 삭제 (>{retention_days}일)")
+        logger.info(f"[History] {deleted}개 오래된 이력/블루프린트 삭제 (>{retention_days}일)")
     return deleted
 
 

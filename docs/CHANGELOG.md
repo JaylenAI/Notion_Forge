@@ -4,6 +4,24 @@
 
 ---
 
+## [Unreleased]
+
+> **Track 2 "유료급 품질" 진행 중** — 산출물을 $20-49 마켓플레이스 품질 바로 끌어올리는 작업.
+> Phase A1(품질 측정 인프라) 완료.
+
+### Added (Phase A1 — 품질 측정 인프라)
+- **유료급 품질 루브릭 (`premium_rubric`)** — 블루프린트를 0~100점 + 가격 밴드($0 / $5-15 / $20-49 / $50-99 / $100+)로 결정적 채점. 시장 리서치 기반 10개 기준(연결 DB·작동 rollup·대시보드·formula·온보딩·시각·샘플·모바일/네비, + 영상·지원은 산출물 밖으로 정규화 제외). 개선 약점 Top3 자동 도출.
+- **LLM 주관 품질 심사 (`premium_judge`)** — 도메인 적합성·네이밍·레이아웃·완성도·지불의사를 LLM이 PASS/FAIL 이진 판정(self-preference bias 회피 위해 생성과 다른 모델 권장). provider 실패/예산초과 시 graceful skip. `enable_llm_judge` 설정으로 토글.
+- **통합 품질 리포트 (`quality_report`)** — 구조 검증(QualityValidator) + 유료급 루브릭 + LLM 심사를 묶어 생성 결과 metadata에 부착. **A1은 비차단(측정 전용)** — 차단 게이트는 Phase A4.
+- **전체 blueprint 로컬 영속성 (`history`)** — 메타데이터만 저장하던 한계를 보완해 error analysis용으로 전체 blueprint 본문을 `data/blueprints/`에 저장(DB 아님, 로컬 파일) + 보존기간 정리.
+
+### 실데이터 검증 (Phase A1)
+- golden 8 + recipe 4 baseline 측정: 멀티DB 플래그십 $50-99(최대 88점), 단순 레이아웃 대부분 $5-15 → "few-shot exemplar가 약해 AI 출력이 그 수준을 물려받음"을 정량 확인(→ Phase A2/A5 정당화).
+- 라이브: 자연어→실제 AI 생성→유료급 리포트 부착 정상(독서 트래커 = $5-15), LLM judge 실제 verdict(Gemini, CRM recipe 5/5 PASS $20-49).
+- 백엔드 **1,492** 테스트 통과(신규 31), ruff clean.
+
+---
+
 ## [0.1.7] - 2026-06-01
 
 > 제품이 UI·AI 파이프라인 전 경로에서 실제로 end-to-end 작동하게 된 안정화 릴리스.
