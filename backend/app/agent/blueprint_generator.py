@@ -653,6 +653,16 @@ def _assemble_blueprint(content: dict, user_message: str = "") -> dict[str, Any]
             }
         )
 
+    # 셀러빌리티 보강 (Phase A2) — 온보딩/상단네비/목차 주입 + 리스팅 키트 (품질 측정 전에 적용)
+    try:
+        from app.agent.listing_kit import build_listing_kit
+        from app.agent.sellability import enrich_blueprint
+
+        enrich_blueprint(blueprint)
+        blueprint["metadata"]["listing_kit"] = build_listing_kit(blueprint)
+    except Exception as e:
+        logger.info(f"[Sellability 스킵] {str(e)[:80]}")
+
     # 품질 스코어카드 (비차단, Phase A1) — 구조 점수 + 유료급 루브릭을 metadata에 기록
     try:
         from app.agent.quality_report import attach_deterministic_quality

@@ -1,7 +1,7 @@
 # 진행 현황 (Current Status)
 
 > 최종 업데이트: 2026-06-02
-> 현재 브랜치: feature/quality-rubric-judge (Track 2 진행)
+> 현재 브랜치: feature/sellability-layer (Track 2 진행)
 > 버전: **v0.1.7** (안정화 릴리스 — 2026-06-01)
 
 ---
@@ -12,9 +12,12 @@
 
 - ✅ **Phase A1 — 품질 측정 인프라** (2026-06-02)
   - 유료급 루브릭(0~100 + 가격 밴드) + LLM 주관 심사(PASS/FAIL) + 통합 리포트(**비차단 측정**) + 전체 blueprint 로컬 저장(error analysis용).
-  - baseline: golden/recipe 측정 → 멀티DB $50-99, 단순 레이아웃 $5-15. 라이브: AI 생성→리포트 부착, Gemini judge CRM 5/5 PASS 검증. 백엔드 **1,492** 테스트(신규 31)·ruff clean.
-- 🔄 다음: **Phase A2 — 셀러빌리티 레이어** (온보딩 페이지·샘플데이터 강화·모바일 상단네비·리스팅 키트)
-- ❌ A3 시각 프리미엄 / A4 품질 게이트 차단형·결정성 / A5 RAG 코퍼스 / B1 AI 대화형 수정 / B2 캔버스 / C 완벽화
+  - baseline: golden/recipe 측정 → 멀티DB $50-99, 단순 레이아웃 $5-15. 라이브: Gemini judge CRM 5/5 PASS.
+- ✅ **Phase A2 — 셀러빌리티 레이어** (2026-06-02)
+  - 온보딩 "시작하기" 페이지 + 상단 네비 + 목차 자동 주입(멱등) + 리스팅 키트 생성.
+  - 실데이터: golden 평균 **53.6→60.1(+6.5)**, flagship **88→92($100+)**. 라이브 "독서 트래커" **44.6→51.2**. 백엔드 **1,505** 테스트(신규 13)·ruff clean.
+- 🔄 다음: **Phase A3 — 시각 프리미엄** (Views API 큐레이션 활용·파일 업로드 커스텀 커버/아이콘·formula/status 풍부화)
+- ❌ A4 품질 게이트 차단형·결정성 / A5 RAG 코퍼스 / B1 AI 대화형 수정 / B2 캔버스 / C 완벽화
 
 ---
 
