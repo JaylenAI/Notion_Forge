@@ -1,7 +1,7 @@
 # 진행 현황 (Current Status)
 
 > 최종 업데이트: 2026-06-02
-> 현재 브랜치: dev (v1.0 완성 진행 — 축A + Phase 1·2·3 + E2E품질보정 머지됨, 다음 Phase 4)
+> 현재 브랜치: dev (v1.0 완성 진행 — 축A + Phase 1·2·3·4 + E2E품질보정 머지됨, 다음 Phase 5)
 > 버전: **v0.1.7** (안정화 릴리스 — 2026-06-01)
 
 ---
@@ -30,8 +30,9 @@
 - ✅ **Phase 2 — 가치 가시화 + 정직성** (2026-06-02): QualityPanel(품질 등급·판매준비·점수·리스팅 초안 표시) + StatusBar 가짜 텔레메트리 제거 + ProfilePage 정적스킬→`/api/skills` 동적. 프론트 tsc/build/lint·vitest 6 통과. (토큰메트릭 정직화는 C1에서 실측 배선)
 - ✅ **E2E 품질 보정** (2026-06-02): 실제 Notion E2E에서 발견한 generic DB명·status 옵션 400·하네스 한계 수정. DB명 유추(고객/거래), status 옵션 객체화, **하네스가 rollup 집계값까지 검증**(재확인: 총거래액 [₩2.5M,2M,3M,9M] 실집계). 1,540 green. **QA 기준 = 실제 Notion 생성+rollup값 확인.**
 - ✅ **Phase 3 — B1 AI 대화형 수정 (1차)** (2026-06-02): LLM 분류기(자유 발화→올바른 핸들러, regex 폴백) + recolor("색 바꿔줘" 라이브 변경). **실 Notion E2E: 보라색 recolor 4/4 블록 확인** + rich_text 누락 400 수정. 1,547 green. (후속: op별 LLM 파라미터 추출·구조화 diff)
-- 🔄 다음: **Phase 4 — B2 캔버스 UX** (2-pane 라이브 프리뷰·스코프드 편집·버전/롤백)
-- ❌ Phase 5 C1+C2(비용·평가) / 6 C3+릴리스
+- ✅ **Phase 4 — B2 캔버스 UX (1차)** (2026-06-02): 버전 히스토리/롤백(`VersionRail` — 세션 내 blueprint 리비전을 v1·v2·최신 칩으로 열람). 2-pane 프리뷰는 기존. 프론트 tsc/build·lint 0err·vitest 9. (후속: 스코프드 편집·점진 채워짐)
+- 🔄 다음: **Phase 5 — C1 비용·성능 + C2 평가 자동화** (모델 라우팅·프롬프트 캐싱·토큰집계 + golden 회귀 eval·프론트 테스트·라이브 Notion 회귀·slice 메트릭)
+- ❌ Phase 6 C3+릴리스 (死코드·하드코딩·README 정직화 + 버전/태그/push)
 
 ---
 

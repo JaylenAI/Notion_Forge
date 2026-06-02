@@ -3,6 +3,8 @@ import toast from "react-hot-toast";
 import { useChatStore } from "../../stores/chatStore";
 import NotionRenderer, { type NotionBlueprintData } from "./NotionRenderer";
 import QualityPanel from "./QualityPanel";
+import VersionRail from "./VersionRail";
+import { extractRevisions } from "../../lib/revisions";
 
 interface BlueprintData {
   readonly metadata?: {
@@ -334,6 +336,7 @@ function LivePreview() {
   const messages = useChatStore((s) => s.messages);
   const [previewMode, setPreviewMode] = useState(true);
   const [zoomIndex, setZoomIndex] = useState(2); // Default 100%
+  const [selectedRev, setSelectedRev] = useState<number | null>(null); // null = 최신 버전 보기
 
   const zoomLevel = ZOOM_LEVELS[zoomIndex] ?? 100;
 
@@ -349,17 +352,20 @@ function LivePreview() {
     setZoomIndex(2);
   }, []);
 
+  const revisions = useMemo(() => extractRevisions(messages), [messages]);
+
   const { blueprint, notionUrl, isComplete } = useMemo(() => {
     const reversed = [...messages].reverse();
-    const blueprintMsg = reversed.find((m) => m.metadata?.blueprint);
     const urlMsg = reversed.find((m) => m.metadata?.notionUrl);
     const completeMsg = reversed.find((m) => m.metadata?.type === "complete");
+    const latest = revisions.length > 0 ? revisions[revisions.length - 1] : undefined;
+    const chosen = selectedRev !== null && revisions[selectedRev] ? revisions[selectedRev] : latest;
     return {
-      blueprint: blueprintMsg?.metadata?.blueprint as BlueprintData | undefined,
+      blueprint: chosen?.blueprint as BlueprintData | undefined,
       notionUrl: urlMsg?.metadata?.notionUrl,
       isComplete: !!completeMsg,
     };
-  }, [messages]);
+  }, [messages, revisions, selectedRev]);
 
   const hasBlueprint = !!blueprint;
   const isLoading = useChatStore((s) => s.isLoading);
@@ -507,6 +513,14 @@ function LivePreview() {
           style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top center" }}
         >
           {isComplete && notionUrl && <CompleteBanner notionUrl={notionUrl} />}
+
+          {revisions.length > 1 && (
+            <VersionRail
+              revisions={revisions}
+              selected={selectedRev ?? revisions.length - 1}
+              onSelect={(i) => setSelectedRev(i === revisions.length - 1 ? null : i)}
+            />
+          )}
 
           {hasBlueprint && <QualityPanel metadata={blueprint?.metadata} />}
 
