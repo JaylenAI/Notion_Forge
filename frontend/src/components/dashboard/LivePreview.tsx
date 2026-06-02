@@ -2,6 +2,7 @@ import { useMemo, useState, useCallback } from "react";
 import toast from "react-hot-toast";
 import { useChatStore } from "../../stores/chatStore";
 import NotionRenderer, { type NotionBlueprintData } from "./NotionRenderer";
+import QualityPanel from "./QualityPanel";
 
 interface BlueprintData {
   readonly metadata?: {
@@ -10,6 +11,15 @@ interface BlueprintData {
     readonly template_type?: string;
     readonly color_theme?: string;
     readonly description?: string;
+    readonly premium_score?: number;
+    readonly premium_band?: string;
+    readonly premium_band_label?: string;
+    readonly premium_ready?: boolean;
+    readonly listing_kit?: {
+      readonly tagline?: string;
+      readonly features?: ReadonlyArray<string>;
+      readonly suggested_price_band?: string;
+    };
   };
   readonly databases?: ReadonlyArray<{
     readonly name?: string;
@@ -497,6 +507,8 @@ function LivePreview() {
           style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top center" }}
         >
           {isComplete && notionUrl && <CompleteBanner notionUrl={notionUrl} />}
+
+          {hasBlueprint && <QualityPanel metadata={blueprint?.metadata} />}
 
           {hasBlueprint ? (
             <>

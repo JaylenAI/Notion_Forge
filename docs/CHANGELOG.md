@@ -8,7 +8,7 @@
 
 > **Track 2 "유료급 품질" 진행 중** — 산출물을 $20-49 마켓플레이스 품질 바로 끌어올리는 작업.
 > **축A(유료급 품질) 전체 완료** — A1(품질 측정), A2(셀러빌리티), A3(시각 프리미엄), A4(품질 게이트+결정성), A5(도메인 예시 검색·주입).
-> **v1.0 완성 플랜 진행 중**: Phase 1(엔진 품질 마무리) 완료. 다음 Phase 2(가치 가시화·정직성).
+> **v1.0 완성 플랜 진행 중**: Phase 1(엔진 품질 마무리), Phase 2(가치 가시화·정직성) 완료. 다음 Phase 3(B1 대화형 수정).
 
 ### Added (Phase A1 — 품질 측정 인프라)
 - **유료급 품질 루브릭 (`premium_rubric`)** — 블루프린트를 0~100점 + 가격 밴드($0 / $5-15 / $20-49 / $50-99 / $100+)로 결정적 채점. 시장 리서치 기반 10개 기준(연결 DB·작동 rollup·대시보드·formula·온보딩·시각·샘플·모바일/네비, + 영상·지원은 산출물 밖으로 정규화 제외). 개선 약점 Top3 자동 도출.
@@ -66,6 +66,15 @@
 - 동작: judge가 "사용 가능한 단순 템플릿"엔 관대 → repair는 진짜 실패(깨짐/generic)에 발동하는 보정 장치(결정적 게이트 premium_ready와 상보).
 - 라이브: 파이프라인 정상(judge PASS→재생성 없음, judge skip→graceful). 단위 5종(채택/원본유지/비활성/PASS-무repair/None).
 - 백엔드 **1,534** 테스트 통과(Phase1 신규 5), ruff clean.
+
+### Added (Phase 2 — 가치 가시화 + 정직성)
+- **프론트 품질신호 표시 (`QualityPanel`)** — 백엔드 metadata로 도착하나 렌더 0이던 `premium_score/band/ready`·`listing_kit`를 라이브 프리뷰에 **판매 품질 패널**(등급 배지·판매준비·점수 바·리스팅 초안)로 표시. `BlueprintMetadata` 타입 확장.
+- **가짜 데이터 제거(정직성)** — StatusBar `GPU-Cluster/Latency` 더미 텔레메트리 제거 + ProfilePage 정적 12스킬 → `/api/skills` 실데이터(실제 개수·이름) 동적 로드(실패 시 정직 고지).
+- 토큰/비용 메트릭 정직화는 실제 배선이 필요해 **Phase 5(C1)에서 처리**(제거 아닌 실측).
+
+### 검증 (Phase 2)
+- 프론트 tsc+build 통과(312 모듈), eslint 0 errors(기존 a11y warn만), vitest **6 통과**(QualityPanel `bandTone` 2종 신규). 백엔드 무변경(**1,534** 유지).
+- 데이터 계약 확인: 백엔드 metadata(premium_*·listing_kit) ↔ QualityPanel 소비 일치(라이브 3-tier QA에서 실측: 중간 $50-99·어려움 $100+).
 
 ---
 

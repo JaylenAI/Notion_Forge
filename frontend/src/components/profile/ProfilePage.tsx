@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useChatStore } from "../../stores/chatStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useConnectionStore } from "../../stores/connectionStore";
@@ -13,6 +14,19 @@ function ProfilePage() {
   const starredCount = templates.filter((t) => t.starred).length;
   const hasNotion = !!settings.notionKey;
   const hasAi = !!settings.aiKey;
+
+  // 실제 스킬 목록을 백엔드에서 로드 (정적 하드코딩 대신 — Phase 2 정직화)
+  const [skills, setSkills] = useState<string[]>([]);
+  useEffect(() => {
+    const base = import.meta.env.VITE_API_URL ?? "http://localhost:9500";
+    fetch(`${base}/api/skills`)
+      .then((r) => r.json())
+      .then((d: { skills?: ReadonlyArray<{ name?: string; id?: string }> }) => {
+        const list = Array.isArray(d.skills) ? d.skills : [];
+        setSkills(list.map((s) => s.name ?? s.id ?? "").filter((n) => n.length > 0));
+      })
+      .catch(() => setSkills([]));
+  }, []);
 
   return (
     <div className="flex-1 overflow-y-auto pt-8 pb-20">
@@ -102,15 +116,19 @@ function ProfilePage() {
             <div className="bg-[#1c1b1b] rounded-xl p-6">
               <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-4">
                 <span className="material-symbols-outlined text-sm text-[#adc6ff]">category</span>
-                Available Skills
+                Available Skills{skills.length > 0 ? ` (${skills.length})` : ""}
               </h3>
-              <div className="flex flex-wrap gap-2">
-                {["Track", "Collect", "Manage", "Plan", "Organize", "Guide", "Hub", "Finance", "Journal", "Content", "Learn", "CRM"].map((skill) => (
-                  <span key={skill} className="px-2.5 py-1 rounded-lg bg-[#252525] text-[10px] text-[#c2c6d8] border border-[#333]">
-                    {skill}
-                  </span>
-                ))}
-              </div>
+              {skills.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {skills.slice(0, 24).map((skill) => (
+                    <span key={skill} className="px-2.5 py-1 rounded-lg bg-[#252525] text-[10px] text-[#c2c6d8] border border-[#333]">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500">스킬 목록을 불러올 수 없습니다 (서버 미연결).</p>
+              )}
             </div>
           </div>
 

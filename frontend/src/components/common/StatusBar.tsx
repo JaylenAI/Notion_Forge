@@ -32,14 +32,6 @@ function StatusBar({ sidebarWidth }: StatusBarProps) {
           {statusText}
         </span>
       </div>
-      <div className="ml-auto flex gap-6">
-        <span className="text-[var(--text-primary,#e5e2e1)]/40 font-mono text-[10px] uppercase tracking-tighter hidden sm:inline">
-          GPU-Cluster: Beta-09
-        </span>
-        <span className="text-[var(--text-primary,#e5e2e1)]/40 font-mono text-[10px] uppercase tracking-tighter hidden sm:inline">
-          Latency: 24ms
-        </span>
-      </div>
     </footer>
   );
 }
