@@ -9,16 +9,20 @@ from app.agent.sellability import (
 )
 
 
-def _blueprint(sub_pages=None):
+def _blueprint(sub_pages=None, blocks=None, databases=None):
     return {
         "metadata": {"title": "프로젝트 관리", "color_theme": "blue"},
         "main_page": {"title": "프로젝트 관리", "icon": "📋", "cover_url": "http://x/c.jpg"},
-        "blocks": [
+        "blocks": blocks
+        if blocks is not None
+        else [
             {"type": "callout", "text": "환영"},
             {"type": "heading_1", "text": "프로젝트"},
             {"type": "database_ref", "db_index": 0},
         ],
-        "databases": [
+        "databases": databases
+        if databases is not None
+        else [
             {
                 "title": "프로젝트",
                 "properties": {"이름": "title", "상태": "status"},
@@ -29,6 +33,36 @@ def _blueprint(sub_pages=None):
         ],
         "sub_pages": sub_pages if sub_pages is not None else [],
     }
+
+
+def _complex_blueprint():
+    """멀티 DB + 기존 하위페이지 1 + heading 3 — 적응형 셸이 모두 적용되는 복잡한 템플릿."""
+    return _blueprint(
+        sub_pages=[{"title": "참고자료", "icon": "📁"}],
+        databases=[
+            {
+                "title": "프로젝트",
+                "properties": {"이름": "title", "상태": "status"},
+                "views": [{"type": "board"}],
+                "sample_items": [{"이름": "A"}],
+                "description": "프로젝트 추적",
+            },
+            {
+                "title": "작업",
+                "properties": {"이름": "title", "담당": "people"},
+                "views": [{"type": "table"}],
+                "sample_items": [{"이름": "X"}],
+                "description": "작업 목록",
+            },
+        ],
+        blocks=[
+            {"type": "callout", "text": "환영"},
+            {"type": "heading_1", "text": "프로젝트"},
+            {"type": "heading_2", "text": "작업"},
+            {"type": "heading_2", "text": "통계"},
+            {"type": "database_ref", "db_index": 0},
+        ],
+    )
 
 
 def test_inject_onboarding_adds_guide_subpage():
@@ -62,12 +96,11 @@ def test_inject_top_nav_column_list_for_multiple():
     assert bp["blocks"][1]["type"] == "column_list"
 
 
-def test_inject_top_nav_single_link_for_one():
+def test_inject_top_nav_skips_single_subpage():
+    """적응형: 하위 페이지가 1개뿐이면 가로 네비를 만들지 않는다(단일 링크 = 클러터)."""
     bp = _blueprint(sub_pages=[{"title": "가이드문서", "icon": "📖"}])
-    added = inject_top_nav(bp)
-    assert added is True
-    link = next((b for b in bp["blocks"] if b.get("type") == "link_to_page"), None)
-    assert link is not None and link["sub_page_ref"] == "가이드문서"
+    assert inject_top_nav(bp) is False
+    assert not any(b.get("type") in ("column_list", "link_to_page") for b in bp["blocks"])
 
 
 def test_inject_top_nav_noop_without_subpages():
@@ -81,15 +114,23 @@ def test_inject_top_nav_idempotent():
     assert inject_top_nav(bp) is False  # 이미 네비 존재
 
 
-def test_ensure_toc_adds_when_headings_present():
-    bp = _blueprint()
+def test_ensure_toc_adds_when_many_headings():
+    """적응형: heading이 3개 이상인 섹션 많은 템플릿에만 목차를 추가한다."""
+    bp = _complex_blueprint()  # heading 3개
     assert ensure_toc(bp) is True
     assert any(b.get("type") == "table_of_contents" for b in bp["blocks"])
     assert ensure_toc(bp) is False  # 멱등
 
 
+def test_ensure_toc_skips_when_few_headings():
+    """적응형: heading이 적은(<3) 단순 템플릿엔 목차를 강제하지 않는다."""
+    bp = _blueprint()  # heading 1개
+    assert ensure_toc(bp) is False
+    assert not any(b.get("type") == "table_of_contents" for b in bp["blocks"])
+
+
 def test_enrich_raises_premium_score():
-    bp = _blueprint()
+    bp = _complex_blueprint()  # 멀티 DB → 적응형 셸 모두 적용
     before = score_blueprint(bp)
     enrich_blueprint(bp)
     after = score_blueprint(bp)
@@ -102,7 +143,17 @@ def test_enrich_raises_premium_score():
 
 
 def test_enrich_records_applied_in_metadata():
-    bp = _blueprint()
+    bp = _complex_blueprint()
     enrich_blueprint(bp)
     applied = bp["metadata"]["sellability_applied"]
     assert "onboarding" in applied and "top_nav" in applied
+
+
+def test_enrich_minimal_for_simple_single_db():
+    """적응형 핵심: 단일 DB 단순 템플릿엔 온보딩 페이지를 강제하지 않는다(다양성 보존)."""
+    bp = _blueprint()  # 단일 DB
+    enrich_blueprint(bp)
+    applied = bp["metadata"]["sellability_applied"]
+    assert "onboarding" not in applied
+    titles = [sp.get("title", "") for sp in bp["sub_pages"]]
+    assert not any("시작하기" in t for t in titles)

@@ -105,16 +105,15 @@ def inject_top_nav(blueprint: dict[str, Any]) -> bool:
     blocks = blueprint.setdefault("blocks", [])
     titles = [sp.get("title") for sp in blueprint.get("sub_pages", []) if isinstance(sp, dict) and sp.get("title")]
     titles = titles[:_NAV_MAX]
-    if not titles or _nav_already_present(blocks):
+    # 적응형: 링크 대상 하위 페이지가 2개 이상일 때만 가로 네비를 만든다.
+    # (단일 페이지 네비는 의미 없는 클러터 — 모든 템플릿이 같은 셸로 보이던 원인 중 하나)
+    if len(titles) < 2 or _nav_already_present(blocks):
         return False
 
-    if len(titles) >= 2:
-        nav_block: dict[str, Any] = {
-            "type": "column_list",
-            "columns": [[{"type": "link_to_page", "sub_page_ref": t}] for t in titles],
-        }
-    else:
-        nav_block = {"type": "link_to_page", "sub_page_ref": titles[0]}
+    nav_block: dict[str, Any] = {
+        "type": "column_list",
+        "columns": [[{"type": "link_to_page", "sub_page_ref": t}] for t in titles],
+    }
 
     # 환영 callout 다음(있으면)에 네비 삽입
     insert_at = 1 if blocks and isinstance(blocks[0], dict) and blocks[0].get("type") == "callout" else 0
@@ -128,7 +127,8 @@ def ensure_toc(blueprint: dict[str, Any]) -> bool:
     types = [b.get("type") for b in blocks if isinstance(b, dict)]
     if "table_of_contents" in types:
         return False
-    if not any(t in ("heading_1", "heading_2") for t in types):
+    # 적응형: 섹션이 충분히 많을 때(heading ≥3)만 목차를 넣는다. 짧은 단순 템플릿엔 불필요.
+    if sum(1 for t in types if t in ("heading_1", "heading_2")) < 3:
         return False
     insert_at = 1 if blocks and isinstance(blocks[0], dict) and blocks[0].get("type") == "callout" else 0
     blocks.insert(insert_at, {"type": "table_of_contents", "color": "default"})
@@ -139,8 +139,13 @@ def enrich_blueprint(blueprint: dict[str, Any]) -> dict[str, bool]:
     """조립된 blueprint에 셀러빌리티 보강을 적용. 적용 내역 반환.
 
     순서 중요: 온보딩 페이지를 먼저 추가해야 상단 네비가 그 페이지도 링크한다.
+
+    적응형 — 단일 DB의 단순 트래커엔 별도 온보딩 페이지를 강제하지 않는다(self-evident).
+    멀티 DB의 복잡한 템플릿에만 풍부한 셸을 적용해, 템플릿 복잡도에 따라 형태가 달라지게 한다.
+    (모든 템플릿에 동일 셸을 박아 다양성을 가리던 회귀 수정.)
     """
-    onboarding = inject_onboarding_page(blueprint)
+    multi_db = len(blueprint.get("databases", [])) >= 2
+    onboarding = inject_onboarding_page(blueprint) if multi_db else False
     toc = ensure_toc(blueprint)
     nav = inject_top_nav(blueprint)
     applied = {"onboarding": onboarding, "top_nav": nav, "toc": toc}

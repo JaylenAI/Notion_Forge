@@ -623,12 +623,37 @@ def _fallback_title_from_message(user_message: str) -> str:
     return title or "새 템플릿"
 
 
-def _infer_db_name(databases: list[dict[str, Any]], idx: int) -> str | None:
-    """AI가 DB title을 누락했을 때 다른 DB의 relation이 이 DB(idx)를 가리키면
-    그 relation 이름을 DB명으로 유추한다(예: 고객 DB의 '거래' relation→DB1 ⇒ DB1='거래').
+_DESC_SUFFIX_WORDS = {"정보", "기록", "목록", "관리", "데이터", "내용", "추적", "현황", "대장", "리스트", "db"}
+_GENERIC_TITLE_PROPS = {"이름", "제목", "title", "name", "항목", "items", "id"}
 
-    실 Notion E2E에서 '데이터베이스 1/2' generic 폴백이 유료급 품질을 해치던 문제 보정.
+
+def _db_name_from_description(desc: str) -> str | None:
+    """짧은 명사구 description에서 핵심 엔티티명을 뽑는다.
+
+    AI가 DB title을 누락해도 description은 명확히 주는 경우가 많다(라이브 출판사 케이스:
+    '출판사 작가 정보'→작가, '출판된 도서 정보'→도서, '도서 판매 기록'→판매).
     """
+    import re
+
+    toks = [t for t in re.split(r"[\s/·,]+", (desc or "").strip()) if t]
+    if not toks or len(toks) > 4:  # 문장형(긴) 설명은 신뢰 낮음 → 스킵
+        return None
+    while toks and toks[-1].lower() in _DESC_SUFFIX_WORDS:
+        toks.pop()
+    return toks[-1] if toks else None
+
+
+def _infer_db_name(databases: list[dict[str, Any]], idx: int) -> str | None:
+    """AI가 DB title을 누락했을 때 DB명을 유추한다(generic '데이터베이스 N' 방지).
+
+    우선순위: ① 다른 DB의 relation이 이 DB를 가리키면 그 relation 이름
+    (예: 고객 DB의 '거래' relation→DB1 ⇒ DB1='거래')
+    ② 이 DB의 description 핵심 명사 ③ 구별되는 title 속성명.
+    실 Notion E2E에서 generic 폴백이 유료급 품질을 해치던 문제 보정.
+    """
+    import re
+
+    # ① 역방향 relation 이름
     for j, other in enumerate(databases):
         if j == idx or not isinstance(other, dict):
             continue
@@ -640,6 +665,23 @@ def _infer_db_name(databases: list[dict[str, Any]], idx: int) -> str | None:
                 name = str(pname).strip()
                 if name and name.lower() != "items":
                     return name
+
+    me = databases[idx] if 0 <= idx < len(databases) and isinstance(databases[idx], dict) else {}
+
+    # ② description 핵심 명사
+    desc_name = _db_name_from_description(me.get("description", ""))
+    if desc_name:
+        return desc_name
+
+    # ③ 구별되는 title 속성명 (예: '판매 ID'→'판매')
+    props = me.get("db_properties") or me.get("properties") or {}
+    if isinstance(props, dict):
+        for n, s in props.items():
+            if s == "title" or (isinstance(s, dict) and s.get("type") == "title"):
+                base = re.sub(r"\s*(id|ID|번호|명)$", "", str(n)).strip()
+                if base and base.lower() not in _GENERIC_TITLE_PROPS:
+                    return base
+                break
     return None
 
 
@@ -648,7 +690,9 @@ def _assemble_blueprint(content: dict, user_message: str = "") -> dict[str, Any]
     color = content.get("color", "gray")
     # AI(특히 Groq)가 title을 안 주거나 영어 기본값을 주면 사용자 요청에서 한국어 제목을 만든다
     # (과거 'My Template'/'Untitled'가 그대로, 또는 긴 메시지 전체가 노션 제목이 되던 결함).
-    raw_title = (content.get("title") or "").strip()
+    # title은 top-level 또는 main_page.title 어느 쪽에 와도 받는다(provider별 편차).
+    mp = content.get("main_page") if isinstance(content.get("main_page"), dict) else {}
+    raw_title = (content.get("title") or mp.get("title") or "").strip()
     if not raw_title or raw_title.lower() in ("my template", "untitled", "template", "items"):
         raw_title = _fallback_title_from_message(user_message)
     title = _strip_leading_emoji(raw_title)
@@ -657,9 +701,17 @@ def _assemble_blueprint(content: dict, user_message: str = "") -> dict[str, Any]
     cover_category = content.get("cover_category", "")
     cover_url = _pick_cover(cover_category, color)
 
+    # 라우팅된 레이아웃을 metadata에 기록 (관측·프론트 반영용). route()는 결정적 키워드 함수.
+    routed_layout = layout_router.route(user_message).layout if user_message else ""
+
     blueprint: dict[str, Any] = {
         "version": "3.0",
-        "metadata": {"title": title, "template_type": content.get("skill", "custom"), "color_theme": color},
+        "metadata": {
+            "title": title,
+            "template_type": content.get("skill", "custom"),
+            "color_theme": color,
+            "layout": routed_layout,
+        },
         "main_page": {"title": title, "icon": content.get("icon", "📋"), "cover_url": cover_url},
         "blocks": [],
         "databases": [],

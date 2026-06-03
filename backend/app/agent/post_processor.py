@@ -41,13 +41,35 @@ class BlueprintValidator:
         content = self._enhance_design_diversity(content)
         return content
 
+    @staticmethod
+    def _resolve_title(content: dict[str, Any]) -> str:
+        """제목을 top-level / main_page / metadata 순으로 해석.
+
+        AI(특히 일부 provider)는 제목을 top-level 'title'이 아니라 main_page.title에만
+        담아 보낸다. 한 곳만 보면 'My Template' 플레이스홀더가 환영 callout/quote로 새어
+        구매자에게 미완성으로 보였다(라이브 회귀). 세 위치를 모두 본다.
+        """
+        mp = content.get("main_page") if isinstance(content.get("main_page"), dict) else {}
+        md = content.get("metadata") if isinstance(content.get("metadata"), dict) else {}
+        for src in (content.get("title"), mp.get("title"), md.get("title")):
+            if isinstance(src, list):
+                src = " ".join(str(t) for t in src)
+            s = str(src).strip() if src else ""
+            if s and s.lower() not in ("my template", "untitled", "template", "temp", "items"):
+                return s
+        return ""
+
     def _normalize_fields(self, content: dict[str, Any]) -> dict[str, Any]:
         """AI 응답의 필드 타입을 정규화 (list→str 등)"""
         title = content.get("title", "")
         if isinstance(title, list):
-            content["title"] = " ".join(str(t) for t in title) if title else "My Template"
-        elif not title:
-            content["title"] = "My Template"
+            content["title"] = " ".join(str(t) for t in title) if title else ""
+        # top-level title이 비어도 main_page/metadata에 있을 수 있으니 'My Template'로 덮지 않는다.
+        # 해석되면 채우고, 끝까지 없으면 _assemble_blueprint이 메시지 기반으로 보정한다.
+        if not content.get("title"):
+            resolved = self._resolve_title(content)
+            if resolved:
+                content["title"] = resolved
 
         for block in content.get("blocks", []):
             if isinstance(block, dict):
@@ -65,14 +87,19 @@ class BlueprintValidator:
         return content
 
     def _ensure_welcome_callout(self, content: dict[str, Any]) -> dict[str, Any]:
-        """첫 번째 블록이 callout인지 확인, 없으면 추가"""
+        """상단에 인트로 callout이 없을 때만 추가.
+
+        과거: 첫 블록만 검사 → AI가 도메인 인트로 callout을 (헤딩 뒤 등) 넣어도 그 앞에
+        제네릭 환영 callout을 또 prepend → 모든 템플릿이 똑같은 인사로 시작(다양성 회귀).
+        이제 상단 3블록 안에 callout이 이미 있으면 AI 것을 존중하고 스킵한다.
+        """
         blocks = content.get("blocks", [])
         if not blocks:
             return content
 
-        first = blocks[0]
-        if first.get("type") != "callout":
-            title = content.get("title", "My Template")
+        has_intro_callout = any(isinstance(b, dict) and b.get("type") == "callout" for b in blocks[:3])
+        if not has_intro_callout:
+            title = self._resolve_title(content) or "이 템플릿"
             icon = content.get("icon", "📋")
             color = content.get("color", "blue")
             bg = f"{color}_background" if color != "default" else "blue_background"
@@ -417,14 +444,15 @@ class BlueprintValidator:
                 )
                 blocks.insert(insert_pos, stat_cards)
 
-        # 2. 명언/인사이트 인용구
+        # 2. 명언/인사이트 인용구 (제목이 해석될 때만 제목형 문구 포함 — My Template 누출 방지)
         if not has_quote and len(blocks) >= 5:
-            title = content.get("title", "")
+            title = self._resolve_title(content)
             quote_texts = [
-                f"'{title}'로 더 체계적인 관리를 시작하세요.",
                 "작은 기록이 큰 변화를 만듭니다.",
                 "체계적인 관리가 성공의 첫걸음입니다.",
             ]
+            if title:
+                quote_texts.insert(0, f"'{title}'로 더 체계적인 관리를 시작하세요.")
             quote_block = {
                 "type": "quote",
                 "text": random.choice(quote_texts),
