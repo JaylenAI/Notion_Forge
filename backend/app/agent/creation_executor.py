@@ -509,17 +509,27 @@ class CreationExecutor:
             spec = databases[i] if i < len(databases) else {}
             title_keys.append(self._title_key(_props_of(spec)))
 
-        # 각 DB의 relation 속성 → target_db_index 맵
+        # 각 DB의 생성된 row page_id (순서 보존) — 폴백 라운드로빈 배정용
+        page_ids: list[list[str]] = [list(m.values()) for m in item_maps]
+
+        # 각 DB의 relation 속성 → target_db_index 맵 + rollup이 참조하는 relation 이름
         rel_targets: list[dict[str, int]] = []
+        rollup_rels: list[set[str]] = []
         for i in range(n_db):
             spec = databases[i] if i < len(databases) else {}
             rt: dict[str, int] = {}
+            rr: set[str] = set()
             for n, s in _props_of(spec).items():
-                if isinstance(s, dict) and s.get("type") == "relation" and "target_db_index" in s:
+                if not isinstance(s, dict):
+                    continue
+                if s.get("type") == "relation" and "target_db_index" in s:
                     tgt = s["target_db_index"]
                     if 0 <= tgt < n_db:
                         rt[n] = tgt
+                elif s.get("type") == "rollup" and s.get("relation_property"):
+                    rr.add(s["relation_property"])
             rel_targets.append(rt)
+            rollup_rels.append(rr)
 
         def _inverse_rel(i: int, j: int) -> str | None:
             """db i→j 의 명확한 역방향(db j→i) relation 이름. 양쪽 각각 1개일 때만(모호하면 None)."""
@@ -578,6 +588,29 @@ class CreationExecutor:
                         _add(src_id, rel_name, tgt_id)
                         if inv:  # single_property 양방향 미러링 → 반대편 rollup도 집계
                             _add(tgt_id, inv, src_id)
+
+        # 폴백: rollup을 먹이는 relation이 (제목 불일치/필드 누락으로) 한 줄도 연결되지 않았으면,
+        # 대상 DB 샘플을 라운드로빈 배정해 rollup이 반드시 실제 값을 집계하도록 데모 링크를 만든다.
+        # (AI/제목 매칭으로 이미 연결된 relation은 의미 보존 위해 건드리지 않음.)
+        for i in range(n_db):
+            for rel_name, tgt_idx in rel_targets[i].items():
+                if rel_name not in rollup_rels[i]:
+                    continue
+                if any(page_rel.get(sid, {}).get(rel_name) for sid in page_ids[i]):
+                    continue  # 이미 연결됨
+                src_ids, tgt_ids = page_ids[i], page_ids[tgt_idx]
+                if not src_ids or not tgt_ids:
+                    continue
+                inv = _inverse_rel(i, tgt_idx)
+                for m, tgt_id in enumerate(tgt_ids):
+                    src_id = src_ids[m % len(src_ids)]
+                    _add(src_id, rel_name, tgt_id)
+                    if inv:
+                        _add(tgt_id, inv, src_id)
+                logger.info(
+                    f"[샘플 링크 폴백] DB{i}.'{rel_name}' rollup 집계용 데모 링크 "
+                    f"{len(tgt_ids)}개 자동 배정 (AI 샘플 미연결 보정)"
+                )
 
         for page_id, rels in page_rel.items():
             update_props = {n: {"relation": [{"id": rid} for rid in sorted(ids)]} for n, ids in rels.items()}
