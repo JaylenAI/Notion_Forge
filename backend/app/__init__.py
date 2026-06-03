@@ -4,4 +4,4 @@
 pyproject.toml / frontend package.json 과의 일치는 CI(release-check)에서 검증.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"

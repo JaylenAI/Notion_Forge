@@ -112,7 +112,7 @@ cd frontend && npm install && npm run dev
 |---------|-------------|
 | Gen-Eval + judge→repair | Generate → validate → repair (≤3) + LLM quality judge re-generates on fail (evaluator-optimizer) |
 | Premium quality rubric & gate | 0–100 sellability score + price band ($0 / $5-15 / $20-49 / $50-99 / $100+) |
-| Sellability layer | Auto onboarding page, top nav, table-of-contents, listing kit |
+| Sellability layer (adaptive) | Onboarding/top-nav/TOC scaled to complexity (lean for simple, rich for multi-DB) + listing kit |
 | Visual premium | Property-based view curation (board/calendar) + icon enrichment |
 | Domain exemplar injection | Retrieves curated multi-DB examples to steer structure |
 | Conversational edit | LLM-classified modifications + live recolor ("make it blue") |
